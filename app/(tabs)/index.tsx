@@ -26,7 +26,7 @@ export default function HomeScreen() {
         if (active == null) {
           // create a new pending round if none
           const roundId = await createRound('pending');
-          await setActiveRound(roundId);
+          await setActiveRound(roundId ?? null);
           if (mounted) setCurrentRoundId(roundId ?? null);
           const p = await getPlayersForRound(roundId ?? null);
           if (mounted) setPlayers(p);
@@ -84,11 +84,11 @@ export default function HomeScreen() {
     // Ask whether to copy active players from last round
     Alert.alert('New round', 'Create an empty round or copy active players from the most recent round?', [
       { text: 'Empty', onPress: async () => {
-        const id = await createRound('pending');
-        await setActiveRound(id);
-        setCurrentRoundId(id ?? null);
-        await refreshRounds();
-        const p = await getPlayersForRound(id ?? null);
+  const id = await createRound('pending');
+  await setActiveRound(id ?? null);
+  setCurrentRoundId(id ?? null);
+  await refreshRounds();
+  const p = await getPlayersForRound(id ?? null);
         setPlayers(p);
       }},
       { text: 'Copy from last', onPress: async () => {
@@ -100,13 +100,13 @@ export default function HomeScreen() {
             // import helper lazily to avoid circular issues
             const mod = await import('@/lib/players');
             if (mod.copyActivePlayersToRound) {
-              await mod.copyActivePlayersToRound(last, id);
+              if (typeof id !== 'undefined') await mod.copyActivePlayersToRound(last, id);
             }
           } catch (e) {
             console.warn('Copy failed', e);
           }
         }
-        await setActiveRound(id);
+        await setActiveRound(id ?? null);
         setCurrentRoundId(id ?? null);
         await refreshRounds();
         const p = await getPlayersForRound(id ?? null);
@@ -212,14 +212,23 @@ export default function HomeScreen() {
       <FlatList
         data={players}
         keyExtractor={(item) => String(item.id)}
+        ListHeaderComponent={() => (
+          <View style={{ padding: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderColor: '#ddd' }}>
+            <Text style={{ fontWeight: '700' }}>Name</Text>
+            <Text style={{ fontWeight: '700' }}>Active</Text>
+          </View>
+        )}
+        ListFooterComponent={() => (
+          <View style={{ padding: 8, borderTopWidth: 1, borderColor: '#eee' }}>
+            <Text style={{ fontWeight: '600' }}>{`Active players: ${players.filter(p => p.active).length}`}</Text>
+          </View>
+        )}
         renderItem={({ item }) => (
           <ThemedView style={{ padding: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <>
               <ThemedText>{item.name} — {item.speedIndex}</ThemedText>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <Switch value={!!item.active} onValueChange={(_val) => { void toggleActive(item); }} />
-                <Button title="Edit" onPress={() => startEdit(item)} />
-                <Button title="Delete" color="#d00" onPress={() => confirmDelete(item)} />
               </View>
             </>
           </ThemedView>

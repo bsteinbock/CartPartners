@@ -16,6 +16,7 @@ export default function PlayerEditScreen() {
 
   const [name, setName] = useState('');
   const [speedIndex, setSpeedIndex] = useState('0');
+  const [available, setAvailable] = useState(true);
   const [errors, setErrors] = useState<string[]>([]);
 
   const nameRef = useRef<TextInput | null>(null);
@@ -26,6 +27,23 @@ export default function PlayerEditScreen() {
     // if editing we could load player details here; the home screen already has the data,
     // but to keep this screen independent we won't fetch a single player record —
     // instead the route should be opened with the current values if needed.
+    if (!isNew) {
+      (async () => {
+        try {
+          const numericId = Number(id);
+          if (Number.isFinite(numericId)) {
+            const p = await (await import('@/lib/players')).getPlayerById(numericId);
+            if (p) {
+              setName(p.name);
+              setSpeedIndex(String(p.speedIndex));
+              setAvailable(p.available === undefined ? true : !!p.available);
+            }
+          }
+        } catch (e) {
+          console.warn('Load player failed', e);
+        }
+      })();
+    }
   }, []);
 
   const validate = () => {
@@ -43,11 +61,11 @@ export default function PlayerEditScreen() {
     if (!validate()) return;
     try {
       if (isNew) {
-        await addPlayer({ name: name.trim(), speedIndex: Number(speedIndex) });
+        await addPlayer({ name: name.trim(), speedIndex: Number(speedIndex), available });
       } else {
         const numericId = Number(id);
         if (!Number.isFinite(numericId)) throw new Error('invalid id');
-        await updatePlayerById(numericId, { name: name.trim(), speedIndex: Number(speedIndex) });
+        await updatePlayerById(numericId, { name: name.trim(), speedIndex: Number(speedIndex), available });
       }
       Keyboard.dismiss();
       // navigate back
@@ -68,6 +86,11 @@ export default function PlayerEditScreen() {
 
         <Text style={styles.label}>Speed Index</Text>
         <TextInput style={styles.input} value={speedIndex} onChangeText={setSpeedIndex} keyboardType="numeric" />
+
+        <Text style={styles.label}>Available</Text>
+        <View style={{ marginBottom: 12 }}>
+          <Button title={available ? 'Available' : 'Unavailable'} onPress={() => setAvailable((v) => !v)} />
+        </View>
 
         {errors.length > 0 && (
           <View style={{ marginTop: 8 }}>

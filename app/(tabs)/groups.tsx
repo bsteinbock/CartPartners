@@ -295,6 +295,7 @@ export default function GroupsScreen() {
     // Persist bestAssignment
     for (const grp of bestAssignment) {
       const gid = await createGroupForRound(currentRoundId);
+      if (typeof gid === 'undefined') continue;
       const playersToInsert: { player_id: number; cart_index: number; slot_index: number }[] = [];
       for (let i = 0; i < grp.length; i++) {
         const cart_index = Math.floor(i / 2) + 1;
