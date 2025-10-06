@@ -505,4 +505,5 @@ export function deletePlayerById(id: number): Promise<void> {
     );
   });
 }
+
 // (name-based helper removed — use explicit ids)

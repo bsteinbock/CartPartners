@@ -3,15 +3,15 @@ import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, Button, FlatList, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 
-import { addPlayer, createRound, deletePlayerById, getActiveRound, getPlayersForRound, getRoundSummaries, initDb, PlayerWithActive, setActiveRound, setPlayerActiveForRound, setRoundStatus } from '@/app/lib/players';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { addPlayer, createRound, deletePlayerById, getActiveRound, getPlayersForRound, getRoundSummaries, initDb, PlayerWithActive, setActiveRound, setPlayerActiveForRound, setRoundStatus } from '@/lib/players';
 
 export default function HomeScreen() {
   const router = useRouter();
   const [players, setPlayers] = useState<PlayerWithActive[]>([]);
   const [currentRoundId, setCurrentRoundId] = useState<number | null>(null);
-  const [rounds, setRounds] = useState<import('@/app/lib/players').RoundSummary[] | import('@/app/lib/players').Round[]>([]);
+  const [rounds, setRounds] = useState<import('@/lib/players').RoundSummary[] | import('@/lib/players').Round[]>([]);
 
   useEffect(() => {
     let mounted = true;
@@ -98,7 +98,7 @@ export default function HomeScreen() {
           // import here
           try {
             // import helper lazily to avoid circular issues
-            const mod = await import('@/app/lib/players');
+            const mod = await import('@/lib/players');
             if (mod.copyActivePlayersToRound) {
               await mod.copyActivePlayersToRound(last, id);
             }

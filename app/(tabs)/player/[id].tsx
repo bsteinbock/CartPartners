@@ -1,6 +1,6 @@
-import { addPlayer, updatePlayerById } from '@/app/lib/players';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { addPlayer, updatePlayerById } from '@/lib/players';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Button, Keyboard, StyleSheet, Text, TextInput, View } from 'react-native';
