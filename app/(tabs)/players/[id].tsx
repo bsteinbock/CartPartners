@@ -1,4 +1,5 @@
 import { ThemedText } from '@/components/themed-text';
+import { ThemedTextInput } from '@/components/themed-textinput';
 import { ThemedView } from '@/components/themed-view';
 import { addPlayer, updatePlayerById } from '@/lib/db-helper';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -81,8 +82,8 @@ export default function PlayerEditScreen() {
       <ThemedText type="title">{isNew ? 'Add player' : 'Edit player'}</ThemedText>
 
       <View style={{ marginTop: 12 }}>
-        <Text style={styles.label}>Name</Text>
-        <TextInput
+        <ThemedText style={styles.label}>Name</ThemedText>
+        <ThemedTextInput
           ref={nameRef}
           style={styles.input}
           value={name}
@@ -90,15 +91,15 @@ export default function PlayerEditScreen() {
           returnKeyType="next"
         />
 
-        <Text style={styles.label}>Speed Index</Text>
-        <TextInput
+        <ThemedText style={styles.label}>Speed Index</ThemedText>
+        <ThemedTextInput
           style={styles.input}
           value={speedIndex}
           onChangeText={setSpeedIndex}
           keyboardType="numeric"
         />
 
-        <Text style={styles.label}>Available</Text>
+        <ThemedText style={styles.label}>Available</ThemedText>
         <View style={{ marginBottom: 12 }}>
           <Button title={available ? 'Available' : 'Unavailable'} onPress={() => setAvailable((v) => !v)} />
         </View>
