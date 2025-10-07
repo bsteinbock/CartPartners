@@ -1,11 +1,11 @@
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Button, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Button, FlatList, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { createRound, getRoundSummaries, initDb, setRoundStatus } from '@/lib/db-helper';
+import { createRound, getRoundSummaries, initDb } from '@/lib/db-helper';
 
 export default function RoundsScreen() {
   const router = useRouter();
@@ -38,13 +38,14 @@ export default function RoundsScreen() {
   );
 
   const createAndOpen = async () => {
-    const id = await createRound('pending');
-    if (typeof id !== 'undefined') router.push({ pathname: '/(tabs)/rounds', params: { id: String(id) } });
+    const id = await createRound();
+    if (typeof id !== 'undefined')
+      router.push({ pathname: '/(tabs)/rounds/[id]', params: { id: String(id) } });
   };
 
   const openEdit = (r: any) => {
     if (r && typeof r.id !== 'undefined')
-      router.push({ pathname: '/(tabs)/rounds', params: { id: String(r.id) } });
+      router.push({ pathname: '/(tabs)/rounds/[id]', params: { id: String(r.id) } });
   };
 
   return (
@@ -63,32 +64,11 @@ export default function RoundsScreen() {
         renderItem={({ item }) => (
           <Pressable
             onPress={() => openEdit(item)}
-            onLongPress={() => {
-              Alert.alert('Round actions', `Round ${item.id}`, [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                  text: 'Mark completed',
-                  onPress: async () => {
-                    await setRoundStatus(item.id, 'completed');
-                    const r = await getRoundSummaries();
-                    setRounds(r as any);
-                  },
-                },
-                {
-                  text: 'Mark canceled',
-                  onPress: async () => {
-                    await setRoundStatus(item.id, 'canceled');
-                    const r = await getRoundSummaries();
-                    setRounds(r as any);
-                  },
-                },
-              ]);
-            }}
             style={{ padding: 12, borderBottomWidth: 1, borderColor: '#eee' }}
           >
-            <Text>{`${item.id} • ${new Date(item.date).toLocaleString()} (${item.status}) — ${
+            <ThemedText>{`${new Date(item.date).toLocaleDateString()} (${item.course}) — ${
               item.activeCount ?? 0
-            } active`}</Text>
+            } players`}</ThemedText>
           </Pressable>
         )}
       />

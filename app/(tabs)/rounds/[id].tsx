@@ -4,7 +4,7 @@ import { Alert, Button, StyleSheet, Text, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { deleteGroupsForRound, getRoundSummaries, setRoundStatus } from '@/lib/db-helper';
+import { deleteGroupsForRound, getRoundSummaries } from '@/lib/db-helper';
 
 type Params = { id: string };
 
@@ -35,7 +35,6 @@ export default function RoundEdit() {
   }
 
   const mark = async (status: any) => {
-    await setRoundStatus(round.id, status);
     const sums = await getRoundSummaries();
     const found = (sums as any).find((r: any) => r.id === round.id);
     setRound(found || null);

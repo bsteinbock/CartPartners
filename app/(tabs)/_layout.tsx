@@ -11,14 +11,15 @@ export default function TabLayout() {
   const colorScheme = useColorScheme();
 
   return (
-    <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
+    <SafeAreaView style={{ flex: 1 }} edges={['top']}>
       <Tabs
         screenOptions={{
           tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
           headerShown: false,
           tabBarShowLabel: true,
           tabBarButton: HapticTab,
-        }}>
+        }}
+      >
         <Tabs.Screen
           name="index"
           options={{
@@ -34,32 +35,18 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
-          name="players/index"
+          name="players"
           options={{
             title: 'Players',
             tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.2.fill" color={color} />,
           }}
         />
         <Tabs.Screen
-          name="rounds/index"
+          name="rounds"
           options={{
             title: 'Rounds',
             tabBarLabel: 'Rounds',
             tabBarIcon: ({ color }) => <IconSymbol size={28} name="calendar" color={color} />,
-          }}
-        />
-        {/* hide rounds detail route from the tab bar */}
-        <Tabs.Screen
-          name="rounds/[id]"
-          options={{
-          href: null,
-          }}
-        />
-        {/* hide the player editor route from the tab bar while keeping it in this route group */}
-        <Tabs.Screen
-          name="player/[id]"
-          options={{
-               href: null,
           }}
         />
       </Tabs>

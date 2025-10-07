@@ -85,9 +85,11 @@ export default function PlayersScreen() {
             }}
           >
             <ThemedText style={{ fontWeight: '700' }}>Name</ThemedText>
-            <ThemedText style={{ fontWeight: '700' }}>Available</ThemedText>
-            <ThemedText style={{ fontWeight: '700' }}>Edit</ThemedText>
-            <ThemedText style={{ fontWeight: '700' }}>Delete</ThemedText>
+            <ThemedText style={{ fontWeight: '700', textAlign: 'right', flex: 1, paddingRight: 20 }}>
+              Available
+            </ThemedText>
+            <ThemedText style={{ fontWeight: '700', width: 50 }}></ThemedText>
+            {false && <ThemedText style={{ fontWeight: '700' }}>Delete</ThemedText>}
           </ThemedView>
         )}
         renderItem={({ item }) => (
@@ -108,7 +110,7 @@ export default function PlayersScreen() {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <Switch value={!!item.available} onValueChange={() => toggleAvailable(item)} />
               <Button title="Edit" onPress={() => startEdit(item.id)} />
-              <Button title="Delete" color="#d00" onPress={() => confirmDelete(item)} />
+              {false && <Button title="Delete" color="#d00" onPress={() => confirmDelete(item)} />}
             </View>
           </View>
         )}
