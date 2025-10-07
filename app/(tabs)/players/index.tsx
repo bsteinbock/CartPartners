@@ -1,7 +1,7 @@
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Button, FlatList, Switch, Text, View } from 'react-native';
+import { Alert, Button, FlatList, Switch, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -13,7 +13,7 @@ export default function PlayersScreen() {
 
   async function load() {
     try {
-      const rows = await getPlayers();
+      const rows = await getPlayers(false);
       // getPlayers returns minimal info (name, speedIndex). We'll map to objects with id optionally absent.
       setPlayers(rows as any[]);
     } catch (e) {
@@ -65,11 +65,20 @@ export default function PlayersScreen() {
       <FlatList
         data={players}
         keyExtractor={(item, i) => String(item.id ?? i)}
+                ListHeaderComponent={() => (
+          <ThemedView style={{ padding: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderColor: '#ddd' }}>
+            <ThemedText style={{ fontWeight: '700' }}>Name</ThemedText>
+            <ThemedText style={{ fontWeight: '700' }}>Available</ThemedText>
+            <ThemedText style={{ fontWeight: '700' }}>Edit</ThemedText>
+            <ThemedText style={{ fontWeight: '700' }}>Delete</ThemedText>
+          </ThemedView>
+        )}
+
         renderItem={({ item }) => (
           <View style={{ padding: 12, borderBottomWidth: 1, borderColor: '#eee', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <View>
-              <Text>{item.name}</Text>
-              <Text style={{ color: '#666' }}>{`Speed: ${item.speedIndex}`}</Text>
+              <ThemedText>{item.name}</ThemedText>
+              <ThemedText style={{ color: '#666' }}>{`Speed: ${item.speedIndex}`}</ThemedText>
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <Switch value={!!item.available} onValueChange={() => toggleAvailable(item)} />

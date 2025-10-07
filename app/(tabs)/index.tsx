@@ -213,10 +213,10 @@ export default function HomeScreen() {
         data={players}
         keyExtractor={(item) => String(item.id)}
         ListHeaderComponent={() => (
-          <View style={{ padding: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderColor: '#ddd' }}>
-            <Text style={{ fontWeight: '700' }}>Name</Text>
-            <Text style={{ fontWeight: '700' }}>Active</Text>
-          </View>
+          <ThemedView style={{ padding: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderColor: '#ddd' }}>
+            <ThemedText style={{ fontWeight: '700' }}>Name</ThemedText>
+            <ThemedText style={{ fontWeight: '700' }}>Active</ThemedText>
+          </ThemedView>
         )}
         ListFooterComponent={() => (
           <View style={{ padding: 8, borderTopWidth: 1, borderColor: '#eee' }}>

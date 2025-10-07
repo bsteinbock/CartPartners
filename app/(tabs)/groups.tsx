@@ -2,7 +2,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { addPlayersToGroup, createGroupForRound, deleteGroupById, deleteGroupsForRound, getGroupsForRound, getPlayersForRound, getRecentActivePlayerIds, getRecentPairCounts, getRoundSummaries, setActiveRound, updateGroupPlayers } from '@/lib/players';
 import * as Clipboard from 'expo-clipboard';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Button, FlatList, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
 type Candidate = { id: number; name: string; speedIndex: number };
@@ -95,7 +95,7 @@ export default function GroupsScreen() {
   // - Avoid players used in the last N rounds where possible
   // - Balance groups by sum of speedIndex
   // - Create groups of 4 when possible, allow groups of 3 when needed
-  const generateGroups = useCallback(async (opts?: { randomize?: boolean; overwrite?: boolean; trials?: number; localIters?: number }) => {
+  async function generateGroups (opts?: { randomize?: boolean; overwrite?: boolean; trials?: number; localIters?: number }) {
     if (!currentRoundId) return Alert.alert('No round selected');
     const { activeIds, recentIds } = await getRecentActivePlayerIds(currentRoundId, 3);
     const pairCounts = await getRecentPairCounts(currentRoundId, 3);
@@ -307,7 +307,7 @@ export default function GroupsScreen() {
 
     await loadGroups(currentRoundId);
     Alert.alert('Groups generated', `${bestAssignment.length} groups created`);
-  }, [activePlayers, currentRoundId]);
+  }
 
   const draggableRef = useRef<any>(null);
 

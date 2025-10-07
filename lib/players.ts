@@ -328,7 +328,7 @@ export async function getPlayersForRound(roundId: number | null): Promise<Player
   const database = await openDb();
   if (typeof database.getAllAsync === 'function') {
     if (roundId == null) {
-      const rows = await database.getAllAsync(`SELECT id, name, speedIndex, IFNULL(available, 1) as available FROM players;`);
+      const rows = await database.getAllAsync(`SELECT id, name, speedIndex, IFNULL(available, 1) as available FROM players WHERE available = 1;`);
       return (rows || []).map((r: any) => ({ id: r.id, name: r.name, speedIndex: Number(r.speedIndex), active: false, } as any)).map((p: any, i: number) => ({ ...p, available: !!rows[i].available }));
     }
     const rows = await database.getAllAsync(`SELECT p.id, p.name, p.speedIndex, IFNULL(rp.active, 0) as active, IFNULL(p.available, 1) as available FROM players p LEFT JOIN round_players rp ON p.id = rp.player_id AND rp.round_id = ?;`, [roundId]);
@@ -337,10 +337,12 @@ export async function getPlayersForRound(roundId: number | null): Promise<Player
   return [];
 }
 
-export async function getPlayers(): Promise<Player[]> {
+export async function getPlayers(onlyAvailable?: boolean): Promise<Player[]> {
   const database = await openDb();
   if (typeof database.getAllAsync === 'function') {
-    const rows = await database.getAllAsync(`SELECT id, name, speedIndex, IFNULL(available, 1) as available FROM players ORDER BY name;`);
+    const sql = !onlyAvailable ? `SELECT id, name, speedIndex, IFNULL(available, 1) as available FROM players ORDER BY name;` :
+    `SELECT id, name, speedIndex, IFNULL(available, 1) as available FROM players WHERE available = 1 ORDER BY name;`;
+    const rows = await database.getAllAsync(sql);
     return (rows || []).map((r: any) => ({ id: r.id, name: r.name, speedIndex: typeof r.speedIndex === 'number' ? r.speedIndex : Number(r.speedIndex), available: r.available === 1 }));
   }
   return [];
@@ -357,10 +359,15 @@ export async function getPlayerById(id: number): Promise<Player | null> {
   return null;
 }
 
-export async function updatePlayerById(id: number, fields: { name?: string; speedIndex?: number; available?: boolean }): Promise<void> {
+export async function updatePlayerById(
+  id: number,
+  fields: { name?: string; speedIndex?: number; available?: boolean }
+): Promise<void> {
   const database = await openDb();
+
   const sets: string[] = [];
   const params: any[] = [];
+
   if (fields.name !== undefined) {
     sets.push('name = ?');
     params.push(fields.name);
@@ -373,23 +380,26 @@ export async function updatePlayerById(id: number, fields: { name?: string; spee
     sets.push('available = ?');
     params.push(fields.available ? 1 : 0);
   }
-  if (!sets.length) return;
-  params.push(id);
+
+  if (sets.length === 0) return; // Nothing to update
+
+  // Add id to parameters for the WHERE clause
   const sql = `UPDATE players SET ${sets.join(', ')} WHERE id = ?;`;
-  if (typeof database.execAsync === 'function') {
-    // naive interpolation for limited value types
-    try {
-      await database.execAsync(sql.replace('?', String(params.slice(-1)[0])));
-      return;
-    } catch (e) {
-      // fall back to runAsync
-    }
-  }
+  params.push(id);
+
+  // Prefer using parameterized statements
   if (typeof database.runAsync === 'function') {
-    await database.runAsync(sql, ...params);
+    await database.runAsync(sql, params);
     return;
   }
-  return;
+
+  // If execAsync is supported and it takes raw SQL (less safe), use it carefully
+  if (typeof database.execAsync === 'function') {
+    // You could consider escaping values or validating more strictly here
+    throw new Error('execAsync not supported for parameterized queries. Use runAsync instead.');
+  }
+
+  throw new Error('No supported database method found.');
 }
 
 export async function deletePlayerById(id: number): Promise<void> {
