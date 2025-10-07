@@ -5,7 +5,7 @@ import { Alert, Button, FlatList, Switch, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { deletePlayerById, getPlayers, updatePlayerById } from '@/lib/players';
+import { deletePlayerById, getPlayers, updatePlayerById } from '@/lib/db-helper';
 
 export default function PlayersScreen() {
   const router = useRouter();
@@ -21,9 +21,15 @@ export default function PlayersScreen() {
     }
   }
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => {
+    void load();
+  }, []);
 
-  useFocusEffect(useCallback(() => { void load(); }, []));
+  useFocusEffect(
+    useCallback(() => {
+      void load();
+    }, []),
+  );
 
   const startEdit = (id?: number) => {
     if (typeof id === 'undefined') return;
@@ -60,22 +66,41 @@ export default function PlayersScreen() {
 
   return (
     <ThemedView style={{ flex: 1 }}>
-      <ThemedText type="title" style={{ padding: 12 }}>Players</ThemedText>
+      <ThemedText type="title" style={{ padding: 12 }}>
+        Players
+      </ThemedText>
 
       <FlatList
         data={players}
         keyExtractor={(item, i) => String(item.id ?? i)}
-                ListHeaderComponent={() => (
-          <ThemedView style={{ padding: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderColor: '#ddd' }}>
+        ListHeaderComponent={() => (
+          <ThemedView
+            style={{
+              padding: 8,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              borderBottomWidth: 1,
+              borderColor: '#ddd',
+            }}
+          >
             <ThemedText style={{ fontWeight: '700' }}>Name</ThemedText>
             <ThemedText style={{ fontWeight: '700' }}>Available</ThemedText>
             <ThemedText style={{ fontWeight: '700' }}>Edit</ThemedText>
             <ThemedText style={{ fontWeight: '700' }}>Delete</ThemedText>
           </ThemedView>
         )}
-
         renderItem={({ item }) => (
-          <View style={{ padding: 12, borderBottomWidth: 1, borderColor: '#eee', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <View
+            style={{
+              padding: 12,
+              borderBottomWidth: 1,
+              borderColor: '#eee',
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
             <View>
               <ThemedText>{item.name}</ThemedText>
               <ThemedText style={{ color: '#666' }}>{`Speed: ${item.speedIndex}`}</ThemedText>

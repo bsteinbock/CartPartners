@@ -1,5 +1,5 @@
-import type { Player } from '@/lib/players';
-import { getPlayers } from '@/lib/players';
+import type { Player } from '@/lib/db-helper';
+import { getPlayers } from '@/lib/db-helper';
 import { useCallback, useEffect, useState } from 'react';
 
 export default function useAvailablePlayers() {

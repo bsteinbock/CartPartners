@@ -1,6 +1,18 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { addPlayersToGroup, createGroupForRound, deleteGroupById, deleteGroupsForRound, getGroupsForRound, getPlayersForRound, getRecentActivePlayerIds, getRecentPairCounts, getRoundSummaries, setActiveRound, updateGroupPlayers } from '@/lib/players';
+import {
+  addPlayersToGroup,
+  createGroupForRound,
+  deleteGroupById,
+  deleteGroupsForRound,
+  getGroupsForRound,
+  getPlayersForRound,
+  getRecentActivePlayerIds,
+  getRecentPairCounts,
+  getRoundSummaries,
+  setActiveRound,
+  updateGroupPlayers,
+} from '@/lib/db-helper';
 import * as Clipboard from 'expo-clipboard';
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Button, FlatList, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -27,7 +39,9 @@ export default function GroupsScreen() {
   const loadActivePlayers = async (roundId: number | null) => {
     const p = await getPlayersForRound(roundId ?? null);
     // filter only active
-    const active = (p || []).filter((pp) => pp.active).map((pp) => ({ id: pp.id, name: pp.name, speedIndex: pp.speedIndex }));
+    const active = (p || [])
+      .filter((pp) => pp.active)
+      .map((pp) => ({ id: pp.id, name: pp.name, speedIndex: pp.speedIndex }));
     setActivePlayers(active);
   };
 
@@ -48,9 +62,13 @@ export default function GroupsScreen() {
       body += `<h2>Group ${g.id}</h2>`;
       body += '<table><thead><tr><th>Cart</th><th>Slot</th><th>Player</th><th>Speed</th></tr></thead><tbody>';
       // sort players by cart_index then slot_index
-      const playersSorted = (g.players || []).slice().sort((a: any, b: any) => (a.cart_index - b.cart_index) || (a.slot_index - b.slot_index));
+      const playersSorted = (g.players || [])
+        .slice()
+        .sort((a: any, b: any) => a.cart_index - b.cart_index || a.slot_index - b.slot_index);
       for (const p of playersSorted) {
-        body += `<tr><td>${p.cart_index}</td><td>${p.slot_index}</td><td>${p.name}</td><td>${p.speedIndex ?? (p.speed_index ?? '')}</td></tr>`;
+        body += `<tr><td>${p.cart_index}</td><td>${p.slot_index}</td><td>${p.name}</td><td>${
+          p.speedIndex ?? p.speed_index ?? ''
+        }</td></tr>`;
       }
       body += '</tbody></table>';
     }
@@ -61,24 +79,41 @@ export default function GroupsScreen() {
     if (!currentRoundId) return Alert.alert('No round selected');
     if (!groups || groups.length === 0) return Alert.alert('No groups to export for this round');
     const round = rounds.find((r) => r.id === currentRoundId);
-    const html = buildHtmlForGroups(groups, currentRoundId, round ? new Date(round.date).toLocaleString() : undefined);
+    const html = buildHtmlForGroups(
+      groups,
+      currentRoundId,
+      round ? new Date(round.date).toLocaleString() : undefined,
+    );
     try {
       await Clipboard.setStringAsync(html);
-      Alert.alert('Copied to clipboard', 'The HTML for the current groups has been copied to the clipboard. You can paste it into an email or document.', [
-        { text: 'OK' },
-        { text: 'Open Email', onPress: () => {
-          const subject = encodeURIComponent(`Cart Partners - Round ${currentRoundId} Groups`);
-          const body = encodeURIComponent('The HTML for the groups is on the clipboard. Paste it into the email body (long-press and paste).');
-          const url = `mailto:?subject=${subject}&body=${body}`;
-          Linking.openURL(url).catch(() => { Alert.alert('Could not open mail app'); });
-        } }
-      ]);
+      Alert.alert(
+        'Copied to clipboard',
+        'The HTML for the current groups has been copied to the clipboard. You can paste it into an email or document.',
+        [
+          { text: 'OK' },
+          {
+            text: 'Open Email',
+            onPress: () => {
+              const subject = encodeURIComponent(`Cart Partners - Round ${currentRoundId} Groups`);
+              const body = encodeURIComponent(
+                'The HTML for the groups is on the clipboard. Paste it into the email body (long-press and paste).',
+              );
+              const url = `mailto:?subject=${subject}&body=${body}`;
+              Linking.openURL(url).catch(() => {
+                Alert.alert('Could not open mail app');
+              });
+            },
+          },
+        ],
+      );
     } catch (e) {
       Alert.alert('Error', 'Failed to copy HTML to clipboard');
     }
   };
 
-  useEffect(() => { void loadRounds(); }, []);
+  useEffect(() => {
+    void loadRounds();
+  }, []);
 
   useEffect(() => {
     void loadActivePlayers(currentRoundId);
@@ -95,7 +130,12 @@ export default function GroupsScreen() {
   // - Avoid players used in the last N rounds where possible
   // - Balance groups by sum of speedIndex
   // - Create groups of 4 when possible, allow groups of 3 when needed
-  async function generateGroups (opts?: { randomize?: boolean; overwrite?: boolean; trials?: number; localIters?: number }) {
+  async function generateGroups(opts?: {
+    randomize?: boolean;
+    overwrite?: boolean;
+    trials?: number;
+    localIters?: number;
+  }) {
     if (!currentRoundId) return Alert.alert('No round selected');
     const { activeIds, recentIds } = await getRecentActivePlayerIds(currentRoundId, 3);
     const pairCounts = await getRecentPairCounts(currentRoundId, 3);
@@ -140,7 +180,12 @@ export default function GroupsScreen() {
       }
 
       // same greedy-with-balance assignment per trial
-      pool.sort((a, b) => ((recentIds.includes(a.id) ? 1000 : 0) + a.speedIndex) - ((recentIds.includes(b.id) ? 1000 : 0) + b.speedIndex));
+      pool.sort(
+        (a, b) =>
+          (recentIds.includes(a.id) ? 1000 : 0) +
+          a.speedIndex -
+          ((recentIds.includes(b.id) ? 1000 : 0) + b.speedIndex),
+      );
       const minGroupSize = pool.length < 6 ? 3 : 4;
       const estimatedGroups = Math.max(1, Math.floor(pool.length / minGroupSize));
       const groupsArr: Candidate[][] = [];
@@ -184,11 +229,13 @@ export default function GroupsScreen() {
         }
       }
 
-      let candidate = groupsArr.filter((g) => g.length >= 1).filter((g) => g.length >= Math.min(3, Math.max(1, Math.ceil(pool.length / estimatedGroups))));
+      let candidate = groupsArr
+        .filter((g) => g.length >= 1)
+        .filter((g) => g.length >= Math.min(3, Math.max(1, Math.ceil(pool.length / estimatedGroups))));
       if (!candidate.length) continue;
 
-  // small local optimization: try random swaps and accept if objective improves (hill-climb), repeat a few times
-  const localIters = opts?.localIters ?? localItersState;
+      // small local optimization: try random swaps and accept if objective improves (hill-climb), repeat a few times
+      const localIters = opts?.localIters ?? localItersState;
       let cand = candidate.map((g) => g.slice());
       let candScore = computeObjective(cand);
       for (let li = 0; li < localIters; li++) {
@@ -249,7 +296,7 @@ export default function GroupsScreen() {
               const a = Math.min(grp[i].id, grp[j].id);
               const b = Math.max(grp[i].id, grp[j].id);
               const key = `${a}:${b}`;
-              penalty += (pairCounts[key] || 0);
+              penalty += pairCounts[key] || 0;
             }
           }
         }
@@ -259,7 +306,7 @@ export default function GroupsScreen() {
       let fallback = groupsArr.map((g) => g.slice()).filter((g) => g.length > 0);
       let bestFallback = fallback.map((g) => g.slice());
       let bestFallbackScore = computePairPenalty(bestFallback);
-      const fallbackIters = Math.max(50, (opts?.localIters ?? localItersState));
+      const fallbackIters = Math.max(50, opts?.localIters ?? localItersState);
       for (let it = 0; it < fallbackIters; it++) {
         // pick two groups and swap random members
         const g1 = Math.floor(Math.random() * fallback.length);
@@ -326,7 +373,9 @@ export default function GroupsScreen() {
           // package not installed; we'll gracefully fall back to non-draggable UI
         }
       })();
-      return () => { mounted = false; };
+      return () => {
+        mounted = false;
+      };
     }, []);
 
     const saveOrder = async (order?: any[]) => {
@@ -342,15 +391,37 @@ export default function GroupsScreen() {
     };
 
     return (
-  <View style={[styles.groupCard, { backgroundColor: '#fff', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 }]}>
+      <View
+        style={[
+          styles.groupCard,
+          {
+            backgroundColor: '#fff',
+            shadowColor: '#000',
+            shadowOpacity: 0.05,
+            shadowRadius: 4,
+            elevation: 2,
+          },
+        ]}
+      >
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <Text style={{ fontWeight: '600' }}>Group {item.id}</Text>
-          <Button title="Delete" color="#d00" onPress={async () => {
-            Alert.alert('Delete group', `Delete group ${item.id}?`, [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Delete', style: 'destructive', onPress: async () => { await deleteGroupById(item.id); await loadGroups(currentRoundId); } }
-            ]);
-          }} />
+          <Button
+            title="Delete"
+            color="#d00"
+            onPress={async () => {
+              Alert.alert('Delete group', `Delete group ${item.id}?`, [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Delete',
+                  style: 'destructive',
+                  onPress: async () => {
+                    await deleteGroupById(item.id);
+                    await loadGroups(currentRoundId);
+                  },
+                },
+              ]);
+            }}
+          />
         </View>
         {DraggableFlatList ? (
           // dynamic DraggableFlatList (if package installed)
@@ -359,9 +430,29 @@ export default function GroupsScreen() {
             keyExtractor={(d: any) => `${d.player_id}-${d.cart_index}-${d.slot_index}`}
             onDragEnd={({ data }: any) => setLocalOrder(data)}
             renderItem={({ item: d, drag, isActive }: any) => (
-              <Pressable onLongPress={drag} style={{ padding: 8, borderBottomWidth: 1, backgroundColor: isActive ? '#eef' : 'transparent', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Pressable
+                onLongPress={drag}
+                style={{
+                  padding: 8,
+                  borderBottomWidth: 1,
+                  backgroundColor: isActive ? '#eef' : 'transparent',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}
+              >
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <View style={{ width: 28, height: 28, backgroundColor: '#f0f0f0', borderRadius: 6, alignItems: 'center', justifyContent: 'center', marginRight: 8 }}>
+                  <View
+                    style={{
+                      width: 28,
+                      height: 28,
+                      backgroundColor: '#f0f0f0',
+                      borderRadius: 6,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginRight: 8,
+                    }}
+                  >
                     <Text style={{ fontSize: 12 }}>≡</Text>
                   </View>
                   <Text>{`${d.name} (cart ${d.cart_index} slot ${d.slot_index})`}</Text>
@@ -372,7 +463,10 @@ export default function GroupsScreen() {
           />
         ) : (
           localOrder.map((p: any, idx: number) => (
-            <View key={`${p.player_id}-${p.cart_index}-${p.slot_index}`} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View
+              key={`${p.player_id}-${p.cart_index}-${p.slot_index}`}
+              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+            >
               <Text>{`Cart ${p.cart_index} Slot ${p.slot_index}: ${p.name}`}</Text>
             </View>
           ))
@@ -397,8 +491,18 @@ export default function GroupsScreen() {
           data={rounds}
           keyExtractor={(r: any) => String(r.id)}
           renderItem={({ item }: any) => (
-            <Pressable style={{ padding: 8, marginRight: 8, borderRadius: 6, backgroundColor: currentRoundId === item.id ? '#0066cc' : '#eee' }} onPress={() => selectRound(item.id)}>
-              <Text style={{ color: currentRoundId === item.id ? 'white' : '#222' }}>{`${item.id} • ${new Date(item.date).toLocaleString()} (${item.activeCount ?? 0} active)`}</Text>
+            <Pressable
+              style={{
+                padding: 8,
+                marginRight: 8,
+                borderRadius: 6,
+                backgroundColor: currentRoundId === item.id ? '#0066cc' : '#eee',
+              }}
+              onPress={() => selectRound(item.id)}
+            >
+              <Text style={{ color: currentRoundId === item.id ? 'white' : '#222' }}>{`${
+                item.id
+              } • ${new Date(item.date).toLocaleString()} (${item.activeCount ?? 0} active)`}</Text>
             </Pressable>
           )}
         />
@@ -408,7 +512,9 @@ export default function GroupsScreen() {
         <Text style={{ marginBottom: 8 }}>Active players: {activePlayers.length}</Text>
         <View style={{ marginBottom: 8 }}>
           <Pressable onPress={() => setOverwriteOnGenerate((s) => !s)} style={{ padding: 8 }}>
-            <Text>{overwriteOnGenerate ? '✅ Overwrite existing groups' : '◻️ Overwrite existing groups'}</Text>
+            <Text>
+              {overwriteOnGenerate ? '✅ Overwrite existing groups' : '◻️ Overwrite existing groups'}
+            </Text>
           </Pressable>
         </View>
         <View style={{ marginBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
@@ -422,34 +528,95 @@ export default function GroupsScreen() {
           <Button title="+" onPress={() => setLocalItersState((t) => t + 10)} />
         </View>
         <View style={{ flexDirection: 'row', gap: 8 }}>
-          <Button title="Generate Groups" onPress={() => { void (async () => {
-            if (overwriteOnGenerate) {
-              Alert.alert('Overwrite groups', 'This will delete existing groups for this round before generating. Continue?', [
+          <Button
+            title="Generate Groups"
+            onPress={() => {
+              void (async () => {
+                if (overwriteOnGenerate) {
+                  Alert.alert(
+                    'Overwrite groups',
+                    'This will delete existing groups for this round before generating. Continue?',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      {
+                        text: 'OK',
+                        onPress: async () => {
+                          await generateGroups({
+                            overwrite: true,
+                            trials: trialsState,
+                            localIters: localItersState,
+                          });
+                        },
+                      },
+                    ],
+                  );
+                } else {
+                  await generateGroups({
+                    overwrite: false,
+                    trials: trialsState,
+                    localIters: localItersState,
+                  });
+                }
+              })();
+            }}
+          />
+          <Button
+            title="Shuffle & Generate"
+            onPress={() => {
+              void (async () => {
+                if (overwriteOnGenerate) {
+                  Alert.alert(
+                    'Overwrite groups',
+                    'This will delete existing groups for this round before generating. Continue?',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      {
+                        text: 'OK',
+                        onPress: async () => {
+                          await generateGroups({
+                            randomize: true,
+                            overwrite: true,
+                            trials: trialsState,
+                            localIters: localItersState,
+                          });
+                        },
+                      },
+                    ],
+                  );
+                } else {
+                  await generateGroups({
+                    randomize: true,
+                    overwrite: false,
+                    trials: trialsState,
+                    localIters: localItersState,
+                  });
+                }
+              })();
+            }}
+          />
+          <Button
+            title="Clear Groups"
+            onPress={async () => {
+              if (!currentRoundId) return;
+              Alert.alert('Confirm', 'Delete all groups for this round?', [
                 { text: 'Cancel', style: 'cancel' },
-                { text: 'OK', onPress: async () => { await generateGroups({ overwrite: true, trials: trialsState, localIters: localItersState }); } }
+                {
+                  text: 'Delete',
+                  style: 'destructive',
+                  onPress: async () => {
+                    await deleteGroupsForRound(currentRoundId);
+                    await loadGroups(currentRoundId);
+                  },
+                },
               ]);
-            } else {
-              await generateGroups({ overwrite: false, trials: trialsState, localIters: localItersState });
-            }
-          })(); }} />
-          <Button title="Shuffle & Generate" onPress={() => { void (async () => {
-            if (overwriteOnGenerate) {
-              Alert.alert('Overwrite groups', 'This will delete existing groups for this round before generating. Continue?', [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'OK', onPress: async () => { await generateGroups({ randomize: true, overwrite: true, trials: trialsState, localIters: localItersState }); } }
-              ]);
-            } else {
-              await generateGroups({ randomize: true, overwrite: false, trials: trialsState, localIters: localItersState });
-            }
-          })(); }} />
-          <Button title="Clear Groups" onPress={async () => {
-            if (!currentRoundId) return;
-            Alert.alert('Confirm', 'Delete all groups for this round?', [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Delete', style: 'destructive', onPress: async () => { await deleteGroupsForRound(currentRoundId); await loadGroups(currentRoundId); } }
-            ]);
-          }} />
-          <Button title="Export HTML" onPress={() => { void exportHtml(); }} />
+            }}
+          />
+          <Button
+            title="Export HTML"
+            onPress={() => {
+              void exportHtml();
+            }}
+          />
         </View>
       </View>
 

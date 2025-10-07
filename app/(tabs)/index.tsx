@@ -5,13 +5,26 @@ import { Alert, Button, FlatList, Pressable, ScrollView, StyleSheet, Switch, Tex
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { addPlayer, createRound, deletePlayerById, getActiveRound, getPlayersForRound, getRoundSummaries, initDb, PlayerWithActive, setActiveRound, setPlayerActiveForRound, setRoundStatus } from '@/lib/players';
+import {
+  addPlayer,
+  createRound,
+  getActiveRound,
+  getPlayersForRound,
+  getRoundSummaries,
+  initDb,
+  PlayerWithActive,
+  setActiveRound,
+  setPlayerActiveForRound,
+  setRoundStatus,
+} from '@/lib/db-helper';
 
 export default function HomeScreen() {
   const router = useRouter();
   const [players, setPlayers] = useState<PlayerWithActive[]>([]);
   const [currentRoundId, setCurrentRoundId] = useState<number | null>(null);
-  const [rounds, setRounds] = useState<import('@/lib/players').RoundSummary[] | import('@/lib/players').Round[]>([]);
+  const [rounds, setRounds] = useState<
+    import('@/lib/db-helper').RoundSummary[] | import('@/lib/db-helper').Round[]
+  >([]);
 
   useEffect(() => {
     let mounted = true;
@@ -20,9 +33,9 @@ export default function HomeScreen() {
         await initDb();
         // create a new pending round to act as "current round"
         // load rounds and active round
-  const r = await getRoundSummaries();
+        const r = await getRoundSummaries();
         const active = await getActiveRound();
-  if (mounted) setRounds(r as any);
+        if (mounted) setRounds(r as any);
         if (active == null) {
           // create a new pending round if none
           const roundId = await createRound('pending');
@@ -49,7 +62,7 @@ export default function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       void loadData();
-    }, [currentRoundId])
+    }, [currentRoundId]),
   );
 
   const seed = async () => {
@@ -83,36 +96,42 @@ export default function HomeScreen() {
   const createAndSelectRound = async () => {
     // Ask whether to copy active players from last round
     Alert.alert('New round', 'Create an empty round or copy active players from the most recent round?', [
-      { text: 'Empty', onPress: async () => {
-  const id = await createRound('pending');
-  await setActiveRound(id ?? null);
-  setCurrentRoundId(id ?? null);
-  await refreshRounds();
-  const p = await getPlayersForRound(id ?? null);
-        setPlayers(p);
-      }},
-      { text: 'Copy from last', onPress: async () => {
-        const id = await createRound('pending');
-        const last = (rounds && (rounds as any)[0]) ? (rounds as any)[0].id : null;
-        if (last != null) {
-          // import here
-          try {
-            // import helper lazily to avoid circular issues
-            const mod = await import('@/lib/players');
-            if (mod.copyActivePlayersToRound) {
-              if (typeof id !== 'undefined') await mod.copyActivePlayersToRound(last, id);
+      {
+        text: 'Empty',
+        onPress: async () => {
+          const id = await createRound('pending');
+          await setActiveRound(id ?? null);
+          setCurrentRoundId(id ?? null);
+          await refreshRounds();
+          const p = await getPlayersForRound(id ?? null);
+          setPlayers(p);
+        },
+      },
+      {
+        text: 'Copy from last',
+        onPress: async () => {
+          const id = await createRound('pending');
+          const last = rounds && (rounds as any)[0] ? (rounds as any)[0].id : null;
+          if (last != null) {
+            // import here
+            try {
+              // import helper lazily to avoid circular issues
+              const mod = await import('@/lib/db-helper');
+              if (mod.copyActivePlayersToRound) {
+                if (typeof id !== 'undefined') await mod.copyActivePlayersToRound(last, id);
+              }
+            } catch (e) {
+              console.warn('Copy failed', e);
             }
-          } catch (e) {
-            console.warn('Copy failed', e);
           }
-        }
-        await setActiveRound(id ?? null);
-        setCurrentRoundId(id ?? null);
-        await refreshRounds();
-        const p = await getPlayersForRound(id ?? null);
-        setPlayers(p);
-      }},
-      { text: 'Cancel', style: 'cancel' }
+          await setActiveRound(id ?? null);
+          setCurrentRoundId(id ?? null);
+          await refreshRounds();
+          const p = await getPlayersForRound(id ?? null);
+          setPlayers(p);
+        },
+      },
+      { text: 'Cancel', style: 'cancel' },
     ]);
   };
 
@@ -146,36 +165,24 @@ export default function HomeScreen() {
     router.push('/player/new');
   };
 
-  const confirmDelete = (player: PlayerWithActive) => {
-    Alert.alert('Delete player', `Delete ${player.name}?`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => handleDelete(player) },
-    ]);
-  };
-
-  const handleDelete = async (player: PlayerWithActive) => {
-    try {
-      if (!player.id) return;
-      await deletePlayerById(player.id);
-      const p = await getPlayersForRound(currentRoundId);
-      setPlayers(p);
-    } catch (e) {
-      console.warn('Delete failed', e);
-    }
-  };
-
   return (
     <ThemedView style={{ flex: 1 }}>
       <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
+        <ThemedText type="title">Set Line-up</ThemedText>
       </ThemedView>
 
       {/* Round picker */}
       <View style={{ paddingHorizontal: 12, paddingVertical: 8 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-          <Text style={{ fontWeight: '600' }}>Rounds</Text>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 8,
+          }}
+        >
+          <ThemedText style={{ fontWeight: '600' }}>Select Active Round</ThemedText>
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            <Button title="Add Player" onPress={addNewPlayer} />
             <Button title="New Round" onPress={createAndSelectRound} />
           </View>
         </View>
@@ -188,47 +195,93 @@ export default function HomeScreen() {
                 onLongPress={() => {
                   Alert.alert('Round actions', `Round ${r.id}`, [
                     { text: 'Cancel', style: 'cancel' },
-                    { text: 'Mark completed', onPress: async () => { await setRoundStatus(r.id, 'completed'); await refreshRounds(); } },
-                    { text: 'Mark canceled', onPress: async () => { await setRoundStatus(r.id, 'canceled'); await refreshRounds(); } },
+                    {
+                      text: 'Mark completed',
+                      onPress: async () => {
+                        await setRoundStatus(r.id, 'completed');
+                        await refreshRounds();
+                      },
+                    },
+                    {
+                      text: 'Mark canceled',
+                      onPress: async () => {
+                        await setRoundStatus(r.id, 'canceled');
+                        await refreshRounds();
+                      },
+                    },
                   ]);
                 }}
-                style={{ padding: 8, marginRight: 8, borderRadius: 6, backgroundColor: currentRoundId === r.id ? '#0066cc' : '#eee' }}
+                style={{
+                  padding: 8,
+                  marginRight: 8,
+                  borderRadius: 6,
+                  backgroundColor: currentRoundId === r.id ? '#0066cc' : '#eee',
+                }}
               >
-                <Text style={{ color: currentRoundId === r.id ? 'white' : '#222' }}>{`${r.id} • ${new Date(r.date).toLocaleString()} (${r.status}) — ${r.activeCount ?? 0} active`}</Text>
+                <Text style={{ color: currentRoundId === r.id ? 'white' : '#222' }}>{`${r.id} • ${new Date(
+                  r.date,
+                ).toLocaleDateString()} (${r.status})`}</Text>
               </Pressable>
             ))}
           </ScrollView>
         </View>
       </View>
 
-      <View style={styles.stepContainer}>
-        <Button title="Seed sample players" onPress={seed} />
-      </View>
+      {players.length === 0 && (
+        <View style={styles.stepContainer}>
+          <Button title="Seed sample players" onPress={seed} />
+        </View>
+      )}
 
       <View style={{ paddingHorizontal: 12, paddingBottom: 8 }}>
-        <Text>{`Players: ${players.length} — Active: ${players.filter(p => p.active).length}`}</Text>
+        <Text>{`Players: ${players.length} — Active: ${players.filter((p) => p.active).length}`}</Text>
       </View>
 
       <FlatList
         data={players}
         keyExtractor={(item) => String(item.id)}
         ListHeaderComponent={() => (
-          <ThemedView style={{ padding: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderColor: '#ddd' }}>
+          <ThemedView
+            style={{
+              padding: 8,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              borderBottomWidth: 1,
+              borderColor: '#ddd',
+            }}
+          >
             <ThemedText style={{ fontWeight: '700' }}>Name</ThemedText>
             <ThemedText style={{ fontWeight: '700' }}>Active</ThemedText>
           </ThemedView>
         )}
         ListFooterComponent={() => (
           <View style={{ padding: 8, borderTopWidth: 1, borderColor: '#eee' }}>
-            <Text style={{ fontWeight: '600' }}>{`Active players: ${players.filter(p => p.active).length}`}</Text>
+            <ThemedText style={{ fontWeight: '600' }}>{`Active players: ${
+              players.filter((p) => p.active).length
+            }`}</ThemedText>
           </View>
         )}
         renderItem={({ item }) => (
-          <ThemedView style={{ padding: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <ThemedView
+            style={{
+              padding: 8,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
             <>
-              <ThemedText>{item.name} — {item.speedIndex}</ThemedText>
+              <ThemedText>
+                {item.name} — {item.speedIndex}
+              </ThemedText>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Switch value={!!item.active} onValueChange={(_val) => { void toggleActive(item); }} />
+                <Switch
+                  value={!!item.active}
+                  onValueChange={(_val) => {
+                    void toggleActive(item);
+                  }}
+                />
               </View>
             </>
           </ThemedView>
@@ -243,6 +296,7 @@ const styles = StyleSheet.create({
   titleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
   },
   stepContainer: {

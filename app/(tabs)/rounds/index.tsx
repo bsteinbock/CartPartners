@@ -5,7 +5,7 @@ import { Alert, Button, FlatList, Pressable, StyleSheet, Text, View } from 'reac
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { createRound, getRoundSummaries, initDb, setRoundStatus } from '@/lib/players';
+import { createRound, getRoundSummaries, initDb, setRoundStatus } from '@/lib/db-helper';
 
 export default function RoundsScreen() {
   const router = useRouter();
@@ -23,7 +23,9 @@ export default function RoundsScreen() {
       }
     }
     setup();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   useFocusEffect(
@@ -32,7 +34,7 @@ export default function RoundsScreen() {
         const r = await getRoundSummaries();
         setRounds(r as any);
       })();
-    }, [])
+    }, []),
   );
 
   const createAndOpen = async () => {
@@ -41,7 +43,8 @@ export default function RoundsScreen() {
   };
 
   const openEdit = (r: any) => {
-    if (r && typeof r.id !== 'undefined') router.push({ pathname: '/(tabs)/rounds', params: { id: String(r.id) } });
+    if (r && typeof r.id !== 'undefined')
+      router.push({ pathname: '/(tabs)/rounds', params: { id: String(r.id) } });
   };
 
   return (
@@ -58,14 +61,34 @@ export default function RoundsScreen() {
         data={rounds}
         keyExtractor={(item) => String(item.id)}
         renderItem={({ item }) => (
-          <Pressable onPress={() => openEdit(item)} onLongPress={() => {
-            Alert.alert('Round actions', `Round ${item.id}`, [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Mark completed', onPress: async () => { await setRoundStatus(item.id, 'completed'); const r = await getRoundSummaries(); setRounds(r as any); } },
-              { text: 'Mark canceled', onPress: async () => { await setRoundStatus(item.id, 'canceled'); const r = await getRoundSummaries(); setRounds(r as any); } },
-            ]);
-          }} style={{ padding: 12, borderBottomWidth: 1, borderColor: '#eee' }}>
-            <Text>{`${item.id} • ${new Date(item.date).toLocaleString()} (${item.status}) — ${item.activeCount ?? 0} active`}</Text>
+          <Pressable
+            onPress={() => openEdit(item)}
+            onLongPress={() => {
+              Alert.alert('Round actions', `Round ${item.id}`, [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Mark completed',
+                  onPress: async () => {
+                    await setRoundStatus(item.id, 'completed');
+                    const r = await getRoundSummaries();
+                    setRounds(r as any);
+                  },
+                },
+                {
+                  text: 'Mark canceled',
+                  onPress: async () => {
+                    await setRoundStatus(item.id, 'canceled');
+                    const r = await getRoundSummaries();
+                    setRounds(r as any);
+                  },
+                },
+              ]);
+            }}
+            style={{ padding: 12, borderBottomWidth: 1, borderColor: '#eee' }}
+          >
+            <Text>{`${item.id} • ${new Date(item.date).toLocaleString()} (${item.status}) — ${
+              item.activeCount ?? 0
+            } active`}</Text>
           </Pressable>
         )}
       />

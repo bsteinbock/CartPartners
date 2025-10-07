@@ -1,6 +1,6 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { addPlayer, updatePlayerById } from '@/lib/players';
+import { addPlayer, updatePlayerById } from '@/lib/db-helper';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Button, Keyboard, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -32,7 +32,7 @@ export default function PlayerEditScreen() {
         try {
           const numericId = Number(id);
           if (Number.isFinite(numericId)) {
-            const p = await (await import('@/lib/players')).getPlayerById(numericId);
+            const p = await (await import('@/lib/db-helper')).getPlayerById(numericId);
             if (p) {
               setName(p.name);
               setSpeedIndex(String(p.speedIndex));
@@ -82,10 +82,21 @@ export default function PlayerEditScreen() {
 
       <View style={{ marginTop: 12 }}>
         <Text style={styles.label}>Name</Text>
-        <TextInput ref={nameRef} style={styles.input} value={name} onChangeText={setName} returnKeyType="next" />
+        <TextInput
+          ref={nameRef}
+          style={styles.input}
+          value={name}
+          onChangeText={setName}
+          returnKeyType="next"
+        />
 
         <Text style={styles.label}>Speed Index</Text>
-        <TextInput style={styles.input} value={speedIndex} onChangeText={setSpeedIndex} keyboardType="numeric" />
+        <TextInput
+          style={styles.input}
+          value={speedIndex}
+          onChangeText={setSpeedIndex}
+          keyboardType="numeric"
+        />
 
         <Text style={styles.label}>Available</Text>
         <View style={{ marginBottom: 12 }}>
@@ -95,7 +106,9 @@ export default function PlayerEditScreen() {
         {errors.length > 0 && (
           <View style={{ marginTop: 8 }}>
             {errors.map((e, i) => (
-              <Text key={i} style={{ color: 'red' }}>{e}</Text>
+              <Text key={i} style={{ color: 'red' }}>
+                {e}
+              </Text>
             ))}
           </View>
         )}

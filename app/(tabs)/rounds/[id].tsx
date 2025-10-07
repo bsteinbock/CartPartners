@@ -4,7 +4,7 @@ import { Alert, Button, StyleSheet, Text, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { deleteGroupsForRound, getRoundSummaries, setRoundStatus } from '@/lib/players';
+import { deleteGroupsForRound, getRoundSummaries, setRoundStatus } from '@/lib/db-helper';
 
 type Params = { id: string };
 
@@ -21,7 +21,9 @@ export default function RoundEdit() {
       const found = (sums as any).find((r: any) => String(r.id) === String(id));
       if (mounted) setRound(found || null);
     })();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [id]);
 
   if (!round) {
@@ -42,7 +44,14 @@ export default function RoundEdit() {
   const removeGroups = async () => {
     Alert.alert('Delete groups', 'Delete all groups for this round?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: async () => { await deleteGroupsForRound(round.id); router.back(); } }
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          await deleteGroupsForRound(round.id);
+          router.back();
+        },
+      },
     ]);
   };
 
