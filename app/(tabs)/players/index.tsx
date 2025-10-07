@@ -33,7 +33,11 @@ export default function PlayersScreen() {
 
   const startEdit = (id?: number) => {
     if (typeof id === 'undefined') return;
-    router.push(`/player/${id}`);
+    router.push(`/players/${id}`);
+  };
+
+  const addPlayer = () => {
+    router.push({ pathname: `/players/[id]`, params: { id: 'new' } });
   };
 
   const confirmDelete = (p: any) => {
@@ -66,10 +70,12 @@ export default function PlayersScreen() {
 
   return (
     <ThemedView style={{ flex: 1 }}>
-      <ThemedText type="title" style={{ padding: 12 }}>
-        Players
-      </ThemedText>
-
+      <View
+        style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 10 }}
+      >
+        <ThemedText type="title">Players</ThemedText>
+        <Button title="Add" onPress={addPlayer} />
+      </View>
       <FlatList
         data={players}
         keyExtractor={(item, i) => String(item.id ?? i)}

@@ -83,12 +83,12 @@ export default function HomeScreen() {
   // navigation router available for edit/add player screens
   // startEdit will navigate to the edit screen
   const startEdit = (player: PlayerWithActive) => {
-    router.push(`/player/${player.id}`);
+    router.push(`/players/${player.id}`);
   };
 
   // Add player navigation
   const addNewPlayer = () => {
-    router.push('/player/new');
+    router.push('/players/add');
   };
 
   return (
