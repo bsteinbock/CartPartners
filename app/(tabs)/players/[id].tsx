@@ -1,7 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedTextInput } from '@/components/themed-textinput';
 import { ThemedView } from '@/components/themed-view';
-import { addPlayer, updatePlayerById } from '@/lib/db-helper';
+import { addPlayer, getPlayerById, updatePlayerById } from '@/lib/db-helper';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Button, Keyboard, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
@@ -16,7 +16,7 @@ export default function PlayerEditScreen() {
   const isNew = id === 'new' || !id;
 
   const [name, setName] = useState('');
-  const [speedIndex, setSpeedIndex] = useState('0');
+  const [speedIndex, setSpeedIndex] = useState('3');
   const [available, setAvailable] = useState(true);
   const [errors, setErrors] = useState<string[]>([]);
 
@@ -33,7 +33,7 @@ export default function PlayerEditScreen() {
         try {
           const numericId = Number(id);
           if (Number.isFinite(numericId)) {
-            const p = await (await import('@/lib/db-helper')).getPlayerById(numericId);
+            const p = await getPlayerById(numericId);
             if (p) {
               setName(p.name);
               setSpeedIndex(String(p.speedIndex));
