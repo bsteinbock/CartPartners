@@ -12,6 +12,7 @@
     "gids",
     "IFNULL",
     "lookback",
-    "paperplane"
+    "paperplane",
+    "textinput"
   ]
 }

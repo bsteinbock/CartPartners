@@ -4,7 +4,7 @@ import { ThemedView } from '@/components/themed-view';
 import { addPlayer, updatePlayerById } from '@/lib/db-helper';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert, Button, Keyboard, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Button, Keyboard, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 
 type Params = {
   id: string; // 'new' or numeric id
@@ -98,12 +98,12 @@ export default function PlayerEditScreen() {
           onChangeText={setSpeedIndex}
           keyboardType="numeric"
         />
-
-        <ThemedText style={styles.label}>Available</ThemedText>
-        <View style={{ marginBottom: 12 }}>
-          <Button title={available ? 'Available' : 'Unavailable'} onPress={() => setAvailable((v) => !v)} />
-        </View>
-
+        {isNew && (
+          <View style={{ marginVertical: 12, flexDirection: 'row', alignItems: 'center' }}>
+            <Switch value={available} onValueChange={(value) => setAvailable(value)} />
+            <ThemedText style={{ marginLeft: 12 }}>{available ? 'Available' : 'Unavailable'}</ThemedText>
+          </View>
+        )}
         {errors.length > 0 && (
           <View style={{ marginTop: 8 }}>
             {errors.map((e, i) => (

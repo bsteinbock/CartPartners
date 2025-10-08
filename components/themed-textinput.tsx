@@ -5,16 +5,9 @@ import { useThemeColor } from '@/hooks/use-theme-color';
 export type ThemedTextInputProps = TextInputProps & {
   lightColor?: string;
   darkColor?: string;
-  type?: 'default' | 'title' | 'defaultSemiBold' | 'subtitle' | 'link';
 };
 
-export function ThemedTextInput({
-  style,
-  lightColor,
-  darkColor,
-  type = 'default',
-  ...rest
-}: ThemedTextInputProps) {
+export function ThemedTextInput({ style, lightColor, darkColor, ...rest }: ThemedTextInputProps) {
   const textColor = useThemeColor({ light: lightColor, dark: darkColor }, 'text');
   const borderColor = useThemeColor({}, 'border');
   const placeholderTextColor = useThemeColor({ light: '#999', dark: '#aaa' }, 'text');
@@ -23,12 +16,8 @@ export function ThemedTextInput({
     <TextInput
       style={[
         styles.input,
-        { color: textColor, borderColor },
-        type === 'default' ? styles.default : undefined,
-        type === 'title' ? styles.title : undefined,
-        type === 'defaultSemiBold' ? styles.defaultSemiBold : undefined,
-        type === 'subtitle' ? styles.subtitle : undefined,
-        type === 'link' ? styles.link : undefined,
+        { color: textColor, borderColor, justifyContent: 'center' },
+        styles.default,
         style,
       ]}
       placeholderTextColor={placeholderTextColor}
@@ -46,17 +35,14 @@ const styles = StyleSheet.create({
   },
   default: {
     fontSize: 16,
-    lineHeight: 24,
   },
   defaultSemiBold: {
     fontSize: 16,
-    lineHeight: 24,
     fontWeight: '600',
   },
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    lineHeight: 32,
   },
   subtitle: {
     fontSize: 20,
