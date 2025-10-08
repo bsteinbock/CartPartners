@@ -86,6 +86,7 @@ export default function PlayerEditScreen() {
         <ThemedTextInput
           ref={nameRef}
           style={styles.input}
+          placeholder="Enter Player Name"
           value={name}
           onChangeText={setName}
           returnKeyType="next"
