@@ -5,7 +5,7 @@ import { Button, FlatList, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { createRound, getRoundSummaries, initDb } from '@/lib/db-helper';
+import { getRoundSummaries, initDb } from '@/lib/db-helper';
 
 export default function RoundsScreen() {
   const router = useRouter();
@@ -38,9 +38,7 @@ export default function RoundsScreen() {
   );
 
   const createAndOpen = async () => {
-    const id = await createRound();
-    if (typeof id !== 'undefined')
-      router.push({ pathname: '/(tabs)/rounds/[id]', params: { id: String(id) } });
+    router.push({ pathname: '/(tabs)/rounds/[id]', params: { id: 'new' } });
   };
 
   const openEdit = (r: any) => {

@@ -45,7 +45,7 @@ export default function PlayerEditScreen() {
         }
       })();
     }
-  }, []);
+  }, [id]);
 
   const validate = () => {
     const errs: string[] = [];
@@ -108,9 +108,9 @@ export default function PlayerEditScreen() {
         {errors.length > 0 && (
           <View style={{ marginTop: 8 }}>
             {errors.map((e, i) => (
-              <Text key={i} style={{ color: 'red' }}>
+              <ThemedText key={i} style={{ color: 'red' }}>
                 {e}
-              </Text>
+              </ThemedText>
             ))}
           </View>
         )}

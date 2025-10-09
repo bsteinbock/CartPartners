@@ -51,26 +51,31 @@ export async function addPlayer(player: Omit<Player, 'id'>): Promise<number | un
   return res?.insertId ?? undefined;
 }
 
-export async function createRound(course: Round['course'] = 'TBD'): Promise<number | undefined> {
+export async function createRound(
+  course: Round['course'] = 'TBD',
+  date?: string,
+): Promise<number | undefined> {
   const database = await openDb();
-  const date = new Date().toISOString();
-  if (typeof database.runAsync === 'function') {
-    const res = await database.runAsync(`INSERT INTO rounds (date, course) VALUES (?, ?);`, date, course);
-    return res?.lastInsertRowId ?? undefined;
+  const playDate = date ?? new Date().toISOString();
+  const res = await database.runAsync(`INSERT INTO rounds (date, course) VALUES (?, ?);`, playDate, course);
+  return res?.lastInsertRowId ?? undefined;
+}
+
+export async function getRoundById(id: number): Promise<Round | null> {
+  const database = await openDb();
+  if (typeof database.getAllAsync === 'function') {
+    const rows = await database.getAllAsync(`SELECT id, date, course FROM rounds WHERE id = ? LIMIT 1;`, [
+      id,
+    ]);
+    if (!rows || rows.length === 0) return null;
+    const r = rows[0];
+    return {
+      id: r.id,
+      date: r.date,
+      course: r.course,
+    };
   }
-  if (typeof database.execAsync === 'function') {
-    await database.execAsync(`INSERT INTO rounds (date, course) VALUES ('${date}', '${course}');`);
-    try {
-      const rows =
-        typeof database.getAllAsync === 'function'
-          ? await database.getAllAsync(`SELECT last_insert_rowid() as id;`)
-          : [];
-      return rows && rows[0] && rows[0].id ? Number(rows[0].id) : undefined;
-    } catch (e) {
-      return undefined;
-    }
-  }
-  return undefined;
+  return null;
 }
 
 export async function getRounds(): Promise<Round[]> {
@@ -80,6 +85,37 @@ export async function getRounds(): Promise<Round[]> {
     return rows || [];
   }
   return [];
+}
+
+export async function updateRoundById(
+  id: number,
+  fields: Partial<Pick<Round, 'date' | 'course'>>,
+): Promise<void> {
+  const database = await openDb();
+
+  const sets: string[] = [];
+  const params: any[] = [];
+
+  if (fields.date !== undefined) {
+    sets.push('date = ?');
+    params.push(fields.date);
+  }
+  if (fields.course !== undefined) {
+    sets.push('course = ?');
+    params.push(fields.course);
+  }
+
+  if (sets.length === 0) return; // Nothing to update
+
+  const sql = `UPDATE rounds SET ${sets.join(', ')} WHERE id = ?;`;
+  params.push(id);
+
+  if (typeof database.runAsync === 'function') {
+    await database.runAsync(sql, params);
+    return;
+  }
+
+  throw new Error('No supported database method found for updating round.');
 }
 
 export type RoundSummary = Round & { numActivePlayers: number };
