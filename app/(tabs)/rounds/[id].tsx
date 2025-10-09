@@ -1,12 +1,23 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert, Button, Keyboard, Platform, StyleSheet, TextInput, View } from 'react-native';
+import {
+  Alert,
+  Button,
+  Keyboard,
+  Platform,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedTextInput } from '@/components/themed-textinput';
 import { ThemedView } from '@/components/themed-view';
 import { createRound, getRoundById, getRoundSummaries, updateRoundById } from '@/lib/db-helper';
-import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import { formatDate } from '@/lib/formatters';
+import { KeyboardAwareScrollView, KeyboardToolbar } from 'react-native-keyboard-controller';
+import DateTimePickerModal from 'react-native-modal-datetime-picker';
 
 type Params = {
   id: string; // 'new' or numeric id
@@ -20,8 +31,8 @@ export default function RoundEditScreen() {
   const [round, setRound] = useState<any | null>(null);
   const [course, setCourse] = useState('');
   const [date, setDate] = useState(new Date());
-  const [show, setShow] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
+  const [datePickerVisible, setDatePickerVisible] = useState(false);
 
   const courseRef = useRef<TextInput | null>(null);
   useEffect(() => {
@@ -47,12 +58,6 @@ export default function RoundEditScreen() {
       })();
     }
   }, [id]);
-
-  const onChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
-    const currentDate = selectedDate || date;
-    setShow(Platform.OS === 'ios'); // keep picker open on iOS
-    setDate(currentDate);
-  };
 
   const validate = () => {
     const errs: string[] = [];
@@ -84,64 +89,100 @@ export default function RoundEditScreen() {
     }
   };
 
-  const showDatepicker = () => {
-    setShow(true);
-  };
-
   const mark = async (status: any) => {
     const sums = await getRoundSummaries();
     const found = (sums as any).find((r: any) => r.id === round.id);
     setRound(found || null);
   };
 
+  const handleDateConfirm = (selectedDate: Date) => {
+    setDate(selectedDate);
+    hideDatePicker();
+  };
+
+  const showDatePicker = () => {
+    setDatePickerVisible(true);
+  };
+
+  const hideDatePicker = () => {
+    setDatePickerVisible(false);
+  };
+
+  const title = isNew ? 'Add round' : 'Edit round';
   return (
-    <ThemedView style={{ flex: 1, padding: 16 }}>
-      <ThemedText type="title">{isNew ? 'Add round' : 'Edit round'}</ThemedText>
-      <View style={{ marginTop: 12 }}>
-        <ThemedText style={styles.label}>Course</ThemedText>
-        <ThemedTextInput
-          ref={courseRef}
-          style={styles.input}
-          placeholder="Enter Course Name"
-          value={course}
-          onChangeText={setCourse}
-          returnKeyType="next"
-        />
-
-        <ThemedText style={styles.label}>Date</ThemedText>
-        <Button title="Show Date Picker" onPress={showDatepicker} />
-        {show && (
-          <>
-            <ThemedText style={styles.label}>DateTimePicker</ThemedText>
-            <DateTimePicker
-              value={date}
-              mode={'date'}
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              onChange={onChange}
+    <>
+      <Stack.Screen options={{ title, headerShown: true }} />
+      <KeyboardAwareScrollView
+        bottomOffset={62}
+        contentContainerStyle={[{ paddingBottom: Platform.OS === 'ios' ? 90 : 20 }]}
+      >
+        <ThemedView style={{ flex: 1, padding: 16 }}>
+          <ThemedText type="title">{isNew ? 'Add round' : 'Edit round'}</ThemedText>
+          <View style={{ marginTop: 12, minHeight: 100 }}>
+            <ThemedText style={styles.label}>Course</ThemedText>
+            <ThemedTextInput
+              ref={courseRef}
+              style={styles.input}
+              placeholder="Enter Course Name"
+              value={course}
+              onChangeText={setCourse}
+              returnKeyType="next"
             />
-          </>
-        )}
-      </View>
-      {errors.length > 0 && (
-        <View style={{ marginTop: 8 }}>
-          {errors.map((e, i) => (
-            <ThemedText key={i} style={{ color: 'red' }}>
-              {e}
-            </ThemedText>
-          ))}
-        </View>
-      )}
+            <View style={styles.dateContainer}>
+              <TouchableOpacity activeOpacity={1} onPress={showDatePicker}>
+                <ThemedText style={styles.label}>Date</ThemedText>
+                <ThemedTextInput
+                  readOnly={true}
+                  placeholder="Date"
+                  onPressIn={showDatePicker}
+                  value={date ? formatDate(date) : 'No date selected'}
+                />
+              </TouchableOpacity>
+              <DateTimePickerModal
+                style={{ alignSelf: 'stretch' }}
+                date={new Date(date)}
+                isVisible={datePickerVisible}
+                mode="date"
+                onConfirm={handleDateConfirm}
+                onCancel={hideDatePicker}
+              />
+            </View>
+          </View>
+          <View style={{ marginTop: 16 }}>
+            <Button title="Save" onPress={onSave} />
+            <View style={{ height: 8 }} />
+            <Button title="Cancel" onPress={() => router.back()} />
+          </View>
+        </ThemedView>
+      </KeyboardAwareScrollView>
 
-      <View style={{ marginTop: 16 }}>
-        <Button title="Save" onPress={onSave} />
-        <View style={{ height: 8 }} />
-        <Button title="Cancel" onPress={() => router.back()} />
-      </View>
-    </ThemedView>
+      {Platform.OS === 'ios' && <KeyboardToolbar />}
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  label: { marginBottom: 6 },
-  input: { borderWidth: 1, padding: 8, borderRadius: 6, marginBottom: 12 },
+  label: {
+    marginBottom: 6,
+  },
+  input: {
+    borderWidth: 1,
+    padding: 8,
+    borderRadius: 6,
+    marginBottom: 12,
+  },
+  dateContainer: {
+    width: '100%',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  dateInput: {
+    borderWidth: 1,
+    alignContent: 'stretch',
+    justifyContent: 'center',
+    borderRadius: 5,
+    paddingHorizontal: 8,
+    height: 40,
+    paddingVertical: 0,
+  },
 });
