@@ -1,23 +1,15 @@
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import {
-  Alert,
-  Button,
-  Keyboard,
-  Platform,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { Alert, Button, Keyboard, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedTextInput } from '@/components/themed-textinput';
 import { ThemedView } from '@/components/themed-view';
 import { createRound, getRoundById, getRoundSummaries, updateRoundById } from '@/lib/db-helper';
 import { formatDate } from '@/lib/formatters';
-import { KeyboardAwareScrollView, KeyboardToolbar } from 'react-native-keyboard-controller';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type Params = {
   id: string; // 'new' or numeric id
@@ -107,18 +99,14 @@ export default function RoundEditScreen() {
   const hideDatePicker = () => {
     setDatePickerVisible(false);
   };
-
+  const insets = useSafeAreaInsets();
   const title = isNew ? 'Add round' : 'Edit round';
   return (
     <>
-      <Stack.Screen options={{ title, headerShown: true }} />
-      <KeyboardAwareScrollView
-        bottomOffset={62}
-        contentContainerStyle={[{ paddingBottom: Platform.OS === 'ios' ? 90 : 20 }]}
-      >
+      <KeyboardAwareScrollView bottomOffset={35}>
         <ThemedView style={{ flex: 1, padding: 16 }}>
           <ThemedText type="title">{isNew ? 'Add round' : 'Edit round'}</ThemedText>
-          <View style={{ marginTop: 12, minHeight: 100 }}>
+          <View style={{ marginTop: 12 }}>
             <ThemedText style={styles.label}>Course</ThemedText>
             <ThemedTextInput
               ref={courseRef}
@@ -138,14 +126,6 @@ export default function RoundEditScreen() {
                   value={date ? formatDate(date) : 'No date selected'}
                 />
               </TouchableOpacity>
-              <DateTimePickerModal
-                style={{ alignSelf: 'stretch' }}
-                date={new Date(date)}
-                isVisible={datePickerVisible}
-                mode="date"
-                onConfirm={handleDateConfirm}
-                onCancel={hideDatePicker}
-              />
             </View>
           </View>
           <View style={{ marginTop: 16 }}>
@@ -156,7 +136,14 @@ export default function RoundEditScreen() {
         </ThemedView>
       </KeyboardAwareScrollView>
 
-      {Platform.OS === 'ios' && <KeyboardToolbar />}
+      <DateTimePickerModal
+        style={{ alignSelf: 'stretch' }}
+        date={new Date(date)}
+        isVisible={datePickerVisible}
+        mode="date"
+        onConfirm={handleDateConfirm}
+        onCancel={hideDatePicker}
+      />
     </>
   );
 }
