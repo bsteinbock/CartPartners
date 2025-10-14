@@ -1,22 +1,55 @@
 import { useFocusEffect } from '@react-navigation/native';
-import { useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Button, FlatList, StyleSheet, Switch, Text, View } from 'react-native';
+import { Button, FlatList, StyleSheet, Switch, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { addPlayer, getPlayersForRound, initDb, PlayerWithActive } from '@/lib/db-helper';
+import {
+  addPlayer,
+  getPlayersForRound,
+  getRoundById,
+  initDb,
+  PlayerWithActive,
+  Round,
+  setPlayerActiveForRound,
+} from '@/lib/db-helper';
+import { formatDate } from '@/lib/formatters';
 
-export default function HomeScreen() {
+type Params = {
+  id: string; // 'new' or numeric id
+};
+
+export default function LineupScreen() {
   const router = useRouter();
   const [players, setPlayers] = useState<PlayerWithActive[]>([]);
+  const [round, setRound] = useState<Round>();
+  const { id } = useLocalSearchParams() as Params;
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const numericId = Number(id);
+        if (Number.isFinite(numericId)) {
+          const p = await getRoundById(numericId);
+          if (p) {
+            setRound(p);
+          }
+        }
+      } catch (e) {
+        console.warn('Load player failed', e);
+      }
+    })();
+  }, [id]);
 
   useEffect(() => {
     let mounted = true;
     async function setup() {
       try {
         await initDb();
-        const p = await getPlayersForRound(null);
+        const numericId = Number(id);
+
+        const p = await getPlayersForRound(numericId);
         if (mounted) setPlayers(p);
       } catch (e) {
         console.warn('DB init/fetch failed', e);
@@ -69,15 +102,27 @@ export default function HomeScreen() {
     (player: PlayerWithActive) => {
       try {
         const updatedPlayers = players.map((p) => {
-          if (p.id === player.id) p.active = !p.active;
+          if (p.id === player.id) {
+            p.active = !p.active;
+          }
           return p;
         });
         setPlayers(updatedPlayers);
+
+        const pMatch = updatedPlayers.find((p) => p.id === player.id);
+        if (pMatch) {
+          (async () => {
+            const numericId = Number(id);
+            if (Number.isFinite(numericId)) {
+              await setPlayerActiveForRound(numericId, pMatch.id, pMatch.active);
+            }
+          })();
+        }
       } catch (e) {
         console.warn('Toggle failed', e);
       }
     },
-    [players],
+    [players, id],
   );
 
   // navigation router available for edit/add player screens
@@ -93,11 +138,7 @@ export default function HomeScreen() {
 
   return (
     <ThemedView style={{ flex: 1 }}>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Line-up</ThemedText>
-      </ThemedView>
-
-      {/* Round picker */}
+      <Stack.Screen options={{ headerShown: true, title: 'Line-up' }} />
       <View style={{ paddingHorizontal: 12, paddingVertical: 8 }}>
         <View
           style={{
@@ -107,9 +148,10 @@ export default function HomeScreen() {
             marginBottom: 8,
           }}
         >
-          <ThemedText style={{ fontWeight: '600' }}>Select Active Round</ThemedText>
+          <ThemedText style={{ fontWeight: '600' }}>{`${round?.course} (${formatDate(
+            round?.date,
+          )})`}</ThemedText>
         </View>
-        <View style={{ flexDirection: 'row' }}></View>
       </View>
 
       {players.length === 0 && (
@@ -119,7 +161,9 @@ export default function HomeScreen() {
       )}
 
       <View style={{ paddingHorizontal: 12, paddingBottom: 8 }}>
-        <Text>{`Players: ${players.length} — Active: ${players.filter((p) => p.active).length}`}</Text>
+        <ThemedText>{`Players: ${players.length} — Active: ${
+          players.filter((p) => p.active).length
+        }`}</ThemedText>
       </View>
 
       <FlatList

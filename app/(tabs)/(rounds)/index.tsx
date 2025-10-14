@@ -6,6 +6,7 @@ import { Button, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { getRoundSummaries, initDb } from '@/lib/db-helper';
+import { formatDate } from '@/lib/formatters';
 
 export default function RoundsScreen() {
   const router = useRouter();
@@ -38,22 +39,23 @@ export default function RoundsScreen() {
   );
 
   const createAndOpen = async () => {
-    router.push({ pathname: '/(tabs)/rounds/[id]', params: { id: 'new' } });
+    router.push({ pathname: '/edit-or-add', params: { id: 'new' } });
+  };
+
+  const setLineUp = (r: any) => {
+    if (r && typeof r.id !== 'undefined')
+      router.push({ pathname: '/[id]/lineup', params: { id: String(r.id) } });
   };
 
   const openEdit = (r: any) => {
     if (r && typeof r.id !== 'undefined')
-      router.push({ pathname: '/(tabs)/rounds/[id]', params: { id: String(r.id) } });
+      router.push({ pathname: '/edit-or-add', params: { id: String(r.id) } });
   };
 
   return (
     <ThemedView style={{ flex: 1 }}>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Rounds</ThemedText>
-      </ThemedView>
-
       <View style={{ padding: 12 }}>
-        <Button title="New Round" onPress={createAndOpen} />
+        <Button title="Add Round" onPress={createAndOpen} />
       </View>
 
       <FlatList
@@ -61,12 +63,14 @@ export default function RoundsScreen() {
         keyExtractor={(item) => String(item.id)}
         renderItem={({ item }) => (
           <Pressable
-            onPress={() => openEdit(item)}
+            onLongPress={() => openEdit(item)}
+            onPress={() => setLineUp(item)}
             style={{ padding: 12, borderBottomWidth: 1, borderColor: '#eee' }}
           >
-            <ThemedText>{`${new Date(item.date).toLocaleDateString()} (${item.course}) — ${
-              item.activeCount ?? 0
-            } players`}</ThemedText>
+            <>
+              <ThemedText>{`${item.course} (${formatDate(item.date)})`}</ThemedText>
+              <ThemedText type="small">{`${item.numActivePlayers ?? 0} players`}</ThemedText>
+            </>
           </Pressable>
         )}
       />

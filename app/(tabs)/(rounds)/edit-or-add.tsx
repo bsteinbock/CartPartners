@@ -1,4 +1,4 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Button, Keyboard, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
@@ -103,6 +103,8 @@ export default function RoundEditScreen() {
   const title = isNew ? 'Add round' : 'Edit round';
   return (
     <>
+      <Stack.Screen options={{ title: 'Rounds' }} />
+
       <KeyboardAwareScrollView bottomOffset={35}>
         <ThemedView style={{ flex: 1, padding: 16 }}>
           <ThemedText type="title">{isNew ? 'Add round' : 'Edit round'}</ThemedText>

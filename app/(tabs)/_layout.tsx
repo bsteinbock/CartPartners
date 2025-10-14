@@ -21,12 +21,14 @@ export default function TabLayout() {
         }}
       >
         <Tabs.Screen
-          name="index"
+          name="(rounds)"
           options={{
-            title: 'Home',
-            tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+            title: 'Rounds',
+            tabBarLabel: 'Rounds',
+            tabBarIcon: ({ color }) => <IconSymbol size={28} name="calendar" color={color} />,
           }}
         />
+
         <Tabs.Screen
           name="groups"
           options={{
@@ -39,14 +41,6 @@ export default function TabLayout() {
           options={{
             title: 'Players',
             tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.2.fill" color={color} />,
-          }}
-        />
-        <Tabs.Screen
-          name="rounds"
-          options={{
-            title: 'Rounds',
-            tabBarLabel: 'Rounds',
-            tabBarIcon: ({ color }) => <IconSymbol size={28} name="calendar" color={color} />,
           }}
         />
       </Tabs>
