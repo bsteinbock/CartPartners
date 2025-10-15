@@ -1,17 +1,28 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { getPlayersForRound, getRoundSummaries, Player } from '@/lib/db-helper';
+import BottomSheetContainer from '@/components/ui/BottomSheetContainer';
+import OptionList, { OptionEntry } from '@/components/ui/OptionList';
+import { OptionPickerItem } from '@/components/ui/OptionPickerItem';
+import { useThemeColor } from '@/hooks/use-theme-color';
+import { getPlayersForRound, getRoundSummaries, Player, Round } from '@/lib/db-helper';
+import { formatDate } from '@/lib/formatters';
 import { createCartGroupings, Group } from '@/lib/group-utils';
 import * as Clipboard from 'expo-clipboard';
+import { Stack } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, Button, FlatList, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Button, FlatList, Linking, StyleSheet } from 'react-native';
 
 export default function GroupsScreen() {
-  const [rounds, setRounds] = useState<any[]>([]);
+  const [rounds, setRounds] = useState<Round[]>([]);
   const [currentRoundId, setCurrentRoundId] = useState<number | null>(null);
   const [activePlayers, setActivePlayers] = useState<Player[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [overwriteOnGenerate, setOverwriteOnGenerate] = useState(false);
+  const [isRoundPickerVisible, setIsRoundPickerVisible] = useState<boolean>(false);
+  const [pickedRound, setPickedRound] = useState<OptionEntry | undefined>(undefined);
+  const [roundOptions, setRoundOptions] = useState<OptionEntry[]>([]);
+  const backgroundColor = useThemeColor({ light: undefined, dark: undefined }, 'background');
+  const borderColor = useThemeColor({ light: undefined, dark: undefined }, 'border');
 
   const loadRounds = async () => {
     const r = await getRoundSummaries();
@@ -19,6 +30,24 @@ export default function GroupsScreen() {
     if (r && r.length && currentRoundId == null) {
       setCurrentRoundId((r[0] as any).id);
     }
+  };
+
+  useEffect(() => {
+    const availableOptions = rounds.map((r) => {
+      return { label: `${r.course}(${formatDate(r.date)})`, value: r.id };
+    });
+    if (availableOptions.length === 0) {
+      availableOptions.push({ label: 'No rounds defined', value: 0 });
+      setRoundOptions(availableOptions);
+    } else {
+      availableOptions.sort((a, b) => a.label.localeCompare(b.label));
+      setRoundOptions([{ label: 'None', value: '' }, ...availableOptions]);
+    }
+  }, [rounds]);
+
+  const handleTemplateOptionChange = (option: OptionEntry) => {
+    setPickedRound(option);
+    setIsRoundPickerVisible(false);
   };
 
   const loadActivePlayers = async (roundId: number | null) => {
@@ -105,66 +134,46 @@ export default function GroupsScreen() {
 
   const renderGroup = ({ item }: { item: Group }) => {
     return (
-      <View
+      <ThemedView
         style={[
           styles.groupCard,
           {
-            backgroundColor: '#fff',
-            shadowColor: '#000',
+            backgroundColor: backgroundColor,
+            borderColor: borderColor,
+            shadowColor: borderColor,
             shadowOpacity: 0.05,
             shadowRadius: 4,
             elevation: 2,
           },
         ]}
       >
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text style={{ fontWeight: '600' }}> {`${item.players.map((p) => p.name).join(', ')}`}</Text>
-        </View>
-      </View>
+        <ThemedView style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <ThemedText style={{ fontWeight: '600' }}>
+            {`${item.players.map((p) => p.name).join(', ')}`}
+          </ThemedText>
+        </ThemedView>
+      </ThemedView>
     );
   };
 
   return (
     <ThemedView style={{ flex: 1 }}>
-      <View style={{ padding: 12 }}>
-        <ThemedText type="title">Groups</ThemedText>
-      </View>
+      <Stack.Screen options={{ headerShown: true, title: 'Cart Groups' }} />
+      <ThemedView style={{ paddingHorizontal: 12, paddingVertical: 12 }}>
+        <ThemedText style={{ marginBottom: 8 }}>Select Round</ThemedText>
 
-      <View style={{ paddingHorizontal: 12 }}>
-        <Text style={{ marginBottom: 8, fontWeight: '600' }}>Select Round</Text>
-        <FlatList
-          horizontal
-          data={rounds}
-          keyExtractor={(r: any) => String(r.id)}
-          renderItem={({ item }: any) => (
-            <Pressable
-              style={{
-                padding: 8,
-                marginRight: 8,
-                borderRadius: 6,
-                backgroundColor: currentRoundId === item.id ? '#0066cc' : '#eee',
-              }}
-              onPress={() => selectRound(item.id)}
-            >
-              <Text style={{ color: currentRoundId === item.id ? 'white' : '#222' }}>{`${
-                item.id
-              } • ${new Date(item.date).toLocaleString()} (${item.activeCount ?? 0} active)`}</Text>
-            </Pressable>
-          )}
+        <OptionPickerItem
+          containerStyle={{ backgroundColor: backgroundColor, height: 36 }}
+          optionLabel={pickedRound?.label}
+          placeholder="Select Round"
+          onPickerButtonPress={() => setIsRoundPickerVisible(true)}
         />
-      </View>
+      </ThemedView>
 
-      <View style={{ padding: 12 }}>
-        <Text style={{ marginBottom: 8 }}>Active players: {activePlayers.length}</Text>
-        <View style={{ marginBottom: 8 }}>
-          <Pressable onPress={() => setOverwriteOnGenerate((s) => !s)} style={{ padding: 8 }}>
-            <Text>
-              {overwriteOnGenerate ? '✅ Overwrite existing groups' : '◻️ Overwrite existing groups'}
-            </Text>
-          </Pressable>
-        </View>
+      <ThemedView style={{ padding: 12 }}>
+        <ThemedText style={{ marginBottom: 8 }}>Active players: {activePlayers.length}</ThemedText>
 
-        <View style={{ flexDirection: 'row', gap: 8 }}>
+        <ThemedView style={{ flexDirection: 'row', gap: 8 }}>
           <Button title="Generate Groups" onPress={() => setGroups(createCartGroupings(activePlayers, []))} />
           <Button
             title="Export HTML"
@@ -172,13 +181,27 @@ export default function GroupsScreen() {
               void exportHtml();
             }}
           />
-        </View>
-      </View>
+        </ThemedView>
+      </ThemedView>
 
-      <View style={{ padding: 12, flex: 1 }}>
-        <Text style={{ fontWeight: '600', marginBottom: 8 }}>Groups for this round</Text>
+      <ThemedView style={{ padding: 12, flex: 1 }}>
+        <ThemedText style={{ fontWeight: '600', marginBottom: 8 }}>Groups for this round</ThemedText>
         <FlatList data={groups} keyExtractor={(g, index) => String(index)} renderItem={renderGroup} />
-      </View>
+      </ThemedView>
+      {roundOptions && isRoundPickerVisible && (
+        <BottomSheetContainer
+          isVisible={isRoundPickerVisible}
+          title="Select Round"
+          modalHeight="70%"
+          onClose={() => setIsRoundPickerVisible(false)}
+        >
+          <OptionList
+            options={roundOptions}
+            onSelect={(option) => handleTemplateOptionChange(option)}
+            selectedOption={pickedRound}
+          />
+        </BottomSheetContainer>
+      )}
     </ThemedView>
   );
 }
