@@ -9,7 +9,6 @@ import { createRound, getRoundById, getRoundSummaries, updateRoundById } from '@
 import { formatDate } from '@/lib/formatters';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type Params = {
   id: string; // 'new' or numeric id
@@ -99,7 +98,6 @@ export default function RoundEditScreen() {
   const hideDatePicker = () => {
     setDatePickerVisible(false);
   };
-  const insets = useSafeAreaInsets();
   const title = isNew ? 'Add round' : 'Edit round';
   return (
     <>

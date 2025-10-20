@@ -1,8 +1,6 @@
-import { Player } from './db-helper';
+import { BasePlayer, CartGroup, Group } from './db-helper';
 
-export type Group = { players: Player[] };
-
-function getSpeedStdDev(players: Player[]): number {
+function getSpeedStdDev(players: BasePlayer[]): number {
   const speeds = players.map((p) => p.speedIndex);
   const mean = speeds.reduce((sum, val) => sum + val, 0) / speeds.length;
   const variance = speeds.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / speeds.length;
@@ -11,15 +9,15 @@ function getSpeedStdDev(players: Player[]): number {
 
 // In pickBestGroup, we now use speedIndex balance in scoring
 function pickBestGroup(
-  candidates: Player[],
+  candidates: BasePlayer[],
   size: number,
   pairFrequency: Map<string, number>,
-  recentGroups: Group[],
+  recentGroups: CartGroup[],
   speedWeight: number = 1, // <-- weighting for speed balance
-): Player[] {
+): BasePlayer[] {
   const combinations = getCombinations(candidates, size);
 
-  let bestGroup: Player[] = [];
+  let bestGroup: BasePlayer[] = [];
   let bestScore = Infinity;
 
   for (const group of combinations) {
@@ -57,10 +55,10 @@ function pickBestGroup(
   return bestGroup.length > 0 ? bestGroup : combinations[0];
 }
 
-export function createCartGroupings(activePlayers: Player[], recentGroups: Group[]): Group[] {
+export function createCartGroupings(activePlayers: BasePlayer[], recentGroups: CartGroup[]): Group[] {
   if (activePlayers.length === 0) return [];
 
-  const proposedGroups: Group[] = [];
+  const proposedGroups: CartGroup[] = [];
 
   // Step 1: Build a map of pair frequencies from recent groups
   const pairFrequency: Map<string, number> = new Map();
@@ -93,7 +91,7 @@ export function createCartGroupings(activePlayers: Player[], recentGroups: Group
     proposedGroups.push({ players: group });
   }
 
-  return proposedGroups;
+  return proposedGroups.map((g, index) => ({ slot_index: index, players: g.players }));
 }
 
 // Determines best group size based on how many players are left

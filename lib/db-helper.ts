@@ -1,19 +1,40 @@
 import * as SQLite from 'expo-sqlite';
-
-export type Player = {
+export type BasePlayer = {
   id: number;
   name: string;
   speedIndex: number;
-  available?: boolean;
 };
 
-export type PlayerWithActive = Player & { id: number; active: boolean };
+export type Player = BasePlayer & { available?: boolean };
+
+export type PlayerWithActive = Player & { active: boolean };
 
 export type Round = {
   id: number;
   date: string; // ISO
   course: string;
 };
+
+export type Group = {
+  slot_index: number;
+  players: BasePlayer[];
+};
+
+export type StoredGroup = Group & {
+  id: number;
+  round_id: number;
+  created_at: string;
+};
+
+export type CartGroup = {
+  players: BasePlayer[];
+};
+
+export function convertGroupsToCartGroups(groups: Group[]): CartGroup[] {
+  return groups.map((group) => ({
+    players: group.players,
+  }));
+}
 
 const DB_NAME = 'cart-partners.db';
 
@@ -34,7 +55,7 @@ CREATE TABLE IF NOT EXISTS players (id INTEGER PRIMARY KEY AUTOINCREMENT, name T
 CREATE TABLE IF NOT EXISTS rounds (id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT NOT NULL, course TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS round_players (round_id INTEGER NOT NULL, player_id INTEGER NOT NULL, active INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (round_id, player_id));
 CREATE TABLE IF NOT EXISTS groups (id INTEGER PRIMARY KEY AUTOINCREMENT, round_id INTEGER NOT NULL, slot_index INTEGER NOT NULL, created_at TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS group_players (group_id INTEGER NOT NULL, player_id INTEGER NOT NULL, PRIMARY KEY (group_id));
+CREATE TABLE IF NOT EXISTS group_players (group_id INTEGER NOT NULL, player_id INTEGER NOT NULL, PRIMARY KEY (group_id, player_id));
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT);
 `);
 }
@@ -184,10 +205,7 @@ export async function createGroupForRound(roundId: number, slot_index: number): 
   throw new Error('No suitable async DB API available to create group');
 }
 
-export async function addPlayersToGroup(
-  groupId: number,
-  players: { player_id: number; cart_index: number; slot_index: number }[],
-): Promise<void> {
+export async function addPlayersToGroup(groupId: number, players: { player_id: number }[]): Promise<void> {
   const database = await openDb();
   if (typeof database.withTransactionAsync === 'function') {
     await database.withTransactionAsync(async (txn: any) => {
@@ -218,23 +236,77 @@ export async function addPlayersToGroup(
   throw new Error('No suitable async DB API available to add players to group');
 }
 
-export type Group = {
-  id: number;
-  round_id: number;
-  slot_index: number;
-  created_at: string;
-  players: {
-    player_id: number;
-    name?: string;
-    speedIndex?: number;
-  }[];
-};
+export async function getGroupsForPreviousRound(roundId: number, maxRoundsToLookBack = 5): Promise<Group[]> {
+  const database = await openDb();
+  if (typeof database.getAllAsync === 'function') {
+    // Get the date of the current round
+    const curRows = await database.getAllAsync(`SELECT date FROM rounds WHERE id = ? LIMIT 1;`, [roundId]);
+    if (!curRows || curRows.length === 0) return [];
+
+    const currentDate = curRows[0].date;
+
+    // Find up to maxRoundsToLookBack previous rounds by date (strictly before current round's date)
+    const rounds = await database.getAllAsync(
+      `SELECT id FROM rounds WHERE date < ? ORDER BY date DESC LIMIT ?;`,
+      [currentDate, maxRoundsToLookBack],
+    );
+    if (!rounds || rounds.length === 0) return [];
+
+    const rids = rounds.map((r: any) => r.id);
+    const placeholders = rids.map(() => '?').join(',');
+
+    // Get groups for those rounds, ordered by round date (most recent first) and slot_index
+    const groupRows = await database.getAllAsync(
+      `SELECT g.id, g.round_id, g.slot_index, g.created_at FROM groups g JOIN rounds r ON g.round_id = r.id WHERE g.round_id IN (${placeholders}) ORDER BY r.date DESC, g.slot_index;`,
+      rids,
+    );
+    const groups: Group[] = (groupRows || []).map((r: any) => ({
+      id: r.id,
+      round_id: r.round_id,
+      slot_index: r.slot_index,
+      created_at: r.created_at,
+      players: [],
+    }));
+    if (!groups.length) return [];
+
+    const ids = groups.map((g) => g.id);
+    const placeholders2 = ids.map(() => '?').join(',');
+
+    const playerRows =
+      typeof database.getAllAsync === 'function'
+        ? await database.getAllAsync(
+            `SELECT gp.group_id, gp.player_id, p.name, p.speedIndex FROM group_players gp JOIN players p ON p.id = gp.player_id WHERE gp.group_id IN (${placeholders2}) ORDER BY gp.group_id;`,
+            ids,
+          )
+        : [];
+
+    for (const row of playerRows || []) {
+      const g = groups.find((gg) => gg.id === row.group_id);
+      if (g)
+        g.players.push({
+          id: row.player_id,
+          name: row.name,
+          speedIndex: typeof row.speedIndex === 'number' ? row.speedIndex : Number(row.speedIndex),
+        });
+    }
+
+    return groups;
+  }
+
+  // Fallback for execAsync-only DBs: attempt to exec and then try to fetch last results if getAllAsync exists.
+  if (typeof database.execAsync === 'function') {
+    await database.execAsync(`SELECT date FROM rounds WHERE id = ${roundId} LIMIT 1;`);
+    return [];
+  }
+
+  throw new Error('No suitable async DB API available to get previous round groups');
+}
 
 export async function getGroupsForRound(roundId: number): Promise<Group[]> {
   const database = await openDb();
   if (typeof database.getAllAsync === 'function') {
     const rows = await database.getAllAsync(
-      `SELECT id, round_id, slot_index, created_at FROM groups WHERE round_id = ? ORDER BY gp.slot_index;`,
+      `SELECT id, round_id, slot_index, created_at FROM groups WHERE round_id = ? ORDER BY slot_index;`,
       [roundId],
     );
     const groups: Group[] = (rows || []).map((r: any) => ({
@@ -258,7 +330,7 @@ export async function getGroupsForRound(roundId: number): Promise<Group[]> {
       const g = groups.find((gg) => gg.id === row.group_id);
       if (g)
         g.players.push({
-          player_id: row.player_id,
+          id: row.player_id,
           name: row.name,
           speedIndex: typeof row.speedIndex === 'number' ? row.speedIndex : Number(row.speedIndex),
         });
@@ -550,4 +622,95 @@ export async function deletePlayerById(id: number): Promise<void> {
   return;
 }
 
-// (name-based helper removed — use explicit ids)
+export async function setGroupsForRound(roundId: number, groups: Group[]): Promise<void> {
+  const database = await openDb();
+  const now = new Date().toISOString();
+
+  // Prefer transactional APIs when available
+  //if (typeof database.withTransactionAsync === 'function') {
+  //  await database.withTransactionAsync(async (txn: any) => {
+  //    await txn.execAsync(
+  //      `DELETE FROM group_players WHERE group_id IN (SELECT id FROM groups WHERE round_id = ?);`,
+  //      [roundId],
+  //    );
+  //    await txn.execAsync(`DELETE FROM groups WHERE round_id = ?;`, [roundId]);
+  //
+  //    for (const g of groups || []) {
+  //      const r = await txn.execAsync(
+  //        `INSERT INTO groups (round_id, slot_index, created_at) VALUES (?, ?, ?);`,
+  //        [roundId, g.slot_index, now],
+  //      );
+  //      const gid = (r && ((r as any).insertId ?? (r as any).lastInsertRowId)) as number | undefined;
+  //      if (gid) {
+  //        for (const p of g.players || []) {
+  //          await txn.execAsync(`INSERT INTO group_players (group_id, player_id) VALUES (?, ?);`, [
+  //            gid,
+  //            p.id,
+  //          ]);
+  //        }
+  //      }
+  //    }
+  //  });
+  //  return;
+  //}
+
+  // Use parameterized runAsync if available
+  if (typeof database.runAsync === 'function') {
+    await database.runAsync(
+      `DELETE FROM group_players WHERE group_id IN (SELECT id FROM groups WHERE round_id = ?);`,
+      roundId,
+    );
+    await database.runAsync(`DELETE FROM groups WHERE round_id = ?;`, roundId);
+
+    for (const g of groups || []) {
+      const r = await database.runAsync(
+        `INSERT INTO groups (round_id, slot_index, created_at) VALUES (?, ?, ?);`,
+        roundId,
+        g.slot_index,
+        now,
+      );
+      const gid = r?.lastInsertRowId ?? r?.insertId;
+      if (gid) {
+        for (const p of g.players || []) {
+          await database.runAsync(
+            `INSERT INTO group_players (group_id, player_id) VALUES (?, ?);`,
+            gid,
+            p.id,
+          );
+        }
+      }
+    }
+    return;
+  }
+
+  // Fallback to execAsync (raw SQL)
+  if (typeof database.execAsync === 'function') {
+    await database.execAsync(
+      `DELETE FROM group_players WHERE group_id IN (SELECT id FROM groups WHERE round_id = ${roundId});`,
+    );
+    await database.execAsync(`DELETE FROM groups WHERE round_id = ${roundId};`);
+
+    for (const g of groups || []) {
+      await database.execAsync(
+        `INSERT INTO groups (round_id, slot_index, created_at) VALUES (${roundId}, ${g.slot_index}, '${now}');`,
+      );
+
+      let gid: number | undefined;
+      if (typeof database.getAllAsync === 'function') {
+        const rows = await database.getAllAsync(`SELECT last_insert_rowid() as id;`);
+        gid = rows && rows[0] && rows[0].id ? Number(rows[0].id) : undefined;
+      }
+
+      if (gid) {
+        for (const p of g.players || []) {
+          await database.execAsync(
+            `INSERT INTO group_players (group_id, player_id) VALUES (${gid}, ${p.id});`,
+          );
+        }
+      }
+    }
+    return;
+  }
+
+  throw new Error('No suitable async DB API available to set groups for round');
+}

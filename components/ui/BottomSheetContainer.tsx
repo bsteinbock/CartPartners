@@ -2,7 +2,6 @@ import { useThemeColor } from '@/hooks/use-theme-color';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { PropsWithChildren } from 'react';
 import { DimensionValue, Modal, Pressable, StyleSheet, TouchableWithoutFeedback } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '../themed-text';
 import { ThemedView } from '../themed-view';
 
@@ -20,7 +19,6 @@ export default function BottomSheetContainer({
   title,
   modalHeight = '40%',
 }: Props) {
-  const { bottom, top } = useSafeAreaInsets();
   const background = useThemeColor({ light: undefined, dark: undefined }, 'background');
   const backgroundWithAlpha = useThemeColor({ light: undefined, dark: undefined }, 'backgroundWithAlpha');
   const borderColor = useThemeColor({ light: undefined, dark: undefined }, 'border');
@@ -35,7 +33,6 @@ export default function BottomSheetContainer({
           <ThemedView
             style={{
               flex: 1,
-              marginTop: top,
               backgroundColor: backgroundWithAlpha,
             }}
           >

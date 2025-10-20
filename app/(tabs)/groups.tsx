@@ -4,12 +4,22 @@ import BottomSheetContainer from '@/components/ui/BottomSheetContainer';
 import OptionList, { OptionEntry } from '@/components/ui/OptionList';
 import { OptionPickerItem } from '@/components/ui/OptionPickerItem';
 import { useThemeColor } from '@/hooks/use-theme-color';
-import { getPlayersForRound, getRoundSummaries, Player, Round } from '@/lib/db-helper';
+import {
+  CartGroup,
+  convertGroupsToCartGroups,
+  getGroupsForPreviousRound,
+  getGroupsForRound,
+  getPlayersForRound,
+  getRoundSummaries,
+  Group,
+  Player,
+  Round,
+  setGroupsForRound,
+} from '@/lib/db-helper';
 import { formatDate } from '@/lib/formatters';
-import { createCartGroupings, Group } from '@/lib/group-utils';
+import { createCartGroupings } from '@/lib/group-utils';
 import * as Clipboard from 'expo-clipboard';
-import { Stack } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Button, FlatList, Linking, StyleSheet } from 'react-native';
 
 export default function GroupsScreen() {
@@ -17,7 +27,7 @@ export default function GroupsScreen() {
   const [currentRoundId, setCurrentRoundId] = useState<number | null>(null);
   const [activePlayers, setActivePlayers] = useState<Player[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
-  const [overwriteOnGenerate, setOverwriteOnGenerate] = useState(false);
+  const [recentGroups, setRecentGroups] = useState<CartGroup[]>([]);
   const [isRoundPickerVisible, setIsRoundPickerVisible] = useState<boolean>(false);
   const [pickedRound, setPickedRound] = useState<OptionEntry | undefined>(undefined);
   const [roundOptions, setRoundOptions] = useState<OptionEntry[]>([]);
@@ -40,13 +50,16 @@ export default function GroupsScreen() {
       availableOptions.push({ label: 'No rounds defined', value: 0 });
       setRoundOptions(availableOptions);
     } else {
-      availableOptions.sort((a, b) => a.label.localeCompare(b.label));
-      setRoundOptions([{ label: 'None', value: '' }, ...availableOptions]);
+      const latestRound = availableOptions[0];
+      setPickedRound(latestRound);
+      setCurrentRoundId(latestRound.value);
+      setRoundOptions(availableOptions);
     }
   }, [rounds]);
 
-  const handleTemplateOptionChange = (option: OptionEntry) => {
+  const handleRoundOptionChange = (option: OptionEntry) => {
     setPickedRound(option);
+    setCurrentRoundId(option.value);
     setIsRoundPickerVisible(false);
   };
 
@@ -123,16 +136,57 @@ export default function GroupsScreen() {
     void loadRounds();
   }, []);
 
+  const loadGroupsForRound = async (roundId: number) => {
+    const groups = await getGroupsForRound(roundId);
+    setGroups(groups);
+  };
+
   useEffect(() => {
     void loadActivePlayers(currentRoundId);
-    //void loadGroups(currentRoundId);
+    if (currentRoundId !== null) loadGroupsForRound(currentRoundId);
+  }, [currentRoundId]);
+
+  // Load recent groups when the current round changes
+  useEffect(() => {
+    let mounted = true;
+    const loadRecent = async () => {
+      if (currentRoundId == null) {
+        if (mounted) setRecentGroups([]);
+        return;
+      }
+      try {
+        const previousGroups = await getGroupsForPreviousRound(currentRoundId);
+        if (mounted) {
+          const recentCartGroups = convertGroupsToCartGroups(previousGroups);
+          setRecentGroups(recentCartGroups);
+        }
+      } catch (e) {
+        if (mounted) setRecentGroups([]);
+      }
+    };
+    void loadRecent();
+    return () => {
+      mounted = false;
+    };
   }, [currentRoundId]);
 
   const selectRound = async (id: number) => {
     setCurrentRoundId(id);
   };
 
-  const renderGroup = ({ item }: { item: Group }) => {
+  const handleGenerateGroupings = useCallback(async () => {
+    const newGroupings = createCartGroupings(activePlayers, recentGroups);
+    if (currentRoundId !== null) {
+      try {
+        await setGroupsForRound(currentRoundId, newGroupings);
+        setGroups(newGroupings);
+      } catch (e) {
+        Alert.alert('Error', `Failed to generate groups. ${e}`);
+      }
+    }
+  }, [activePlayers]);
+
+  const renderGroup = ({ item }: { item: CartGroup }) => {
     return (
       <ThemedView
         style={[
@@ -158,7 +212,6 @@ export default function GroupsScreen() {
 
   return (
     <ThemedView style={{ flex: 1 }}>
-      <Stack.Screen options={{ headerShown: true, title: 'Cart Groups' }} />
       <ThemedView style={{ paddingHorizontal: 12, paddingVertical: 12 }}>
         <ThemedText style={{ marginBottom: 8 }}>Select Round</ThemedText>
 
@@ -174,7 +227,14 @@ export default function GroupsScreen() {
         <ThemedText style={{ marginBottom: 8 }}>Active players: {activePlayers.length}</ThemedText>
 
         <ThemedView style={{ flexDirection: 'row', gap: 8 }}>
-          <Button title="Generate Groups" onPress={() => setGroups(createCartGroupings(activePlayers, []))} />
+          <Button title="Generate Groups" onPress={handleGenerateGroupings} />
+        </ThemedView>
+      </ThemedView>
+
+      <ThemedView style={{ padding: 12, flex: 1 }}>
+        <ThemedText style={{ fontWeight: '600', marginBottom: 8 }}>Groups for this round</ThemedText>
+        <FlatList data={groups} keyExtractor={(g, index) => String(index)} renderItem={renderGroup} />
+        <ThemedView style={{ flexDirection: 'row', gap: 8 }}>
           <Button
             title="Export HTML"
             onPress={() => {
@@ -182,11 +242,6 @@ export default function GroupsScreen() {
             }}
           />
         </ThemedView>
-      </ThemedView>
-
-      <ThemedView style={{ padding: 12, flex: 1 }}>
-        <ThemedText style={{ fontWeight: '600', marginBottom: 8 }}>Groups for this round</ThemedText>
-        <FlatList data={groups} keyExtractor={(g, index) => String(index)} renderItem={renderGroup} />
       </ThemedView>
       {roundOptions && isRoundPickerVisible && (
         <BottomSheetContainer
@@ -197,7 +252,7 @@ export default function GroupsScreen() {
         >
           <OptionList
             options={roundOptions}
-            onSelect={(option) => handleTemplateOptionChange(option)}
+            onSelect={(option) => handleRoundOptionChange(option)}
             selectedOption={pickedRound}
           />
         </BottomSheetContainer>
