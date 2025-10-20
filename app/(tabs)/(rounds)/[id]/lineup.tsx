@@ -27,19 +27,25 @@ export default function LineupScreen() {
   const { id } = useLocalSearchParams() as Params;
 
   useEffect(() => {
-    (async () => {
+    let mounted = true;
+
+    async function setup() {
       try {
         const numericId = Number(id);
         if (Number.isFinite(numericId)) {
           const p = await getRoundById(numericId);
           if (p) {
-            setRound(p);
+            if (mounted) setRound(p);
           }
         }
       } catch (e) {
         console.warn('Load player failed', e);
       }
-    })();
+    }
+    setup();
+    return () => {
+      mounted = false;
+    };
   }, [id]);
 
   useEffect(() => {
@@ -59,13 +65,14 @@ export default function LineupScreen() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [id]);
 
   // reload when returning to this screen (e.g., after navigating back from add/edit)
   useFocusEffect(
     useCallback(() => {
-      void loadData();
-    }, []),
+      const numericId = Number(id);
+      void loadData(numericId);
+    }, [id]),
   );
 
   const seed = async () => {
