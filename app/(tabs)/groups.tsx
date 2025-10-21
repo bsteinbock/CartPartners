@@ -20,7 +20,7 @@ import { formatDate } from '@/lib/formatters';
 import { createCartGroupings } from '@/lib/group-utils';
 import * as Clipboard from 'expo-clipboard';
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Button, FlatList, Linking, StyleSheet } from 'react-native';
+import { Alert, Button, FlatList, Linking, StyleSheet, TouchableOpacity } from 'react-native';
 
 export default function GroupsScreen() {
   const [rounds, setRounds] = useState<Round[]>([]);
@@ -31,6 +31,7 @@ export default function GroupsScreen() {
   const [isRoundPickerVisible, setIsRoundPickerVisible] = useState<boolean>(false);
   const [pickedRound, setPickedRound] = useState<OptionEntry | undefined>(undefined);
   const [roundOptions, setRoundOptions] = useState<OptionEntry[]>([]);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const backgroundColor = useThemeColor({ light: undefined, dark: undefined }, 'background');
   const borderColor = useThemeColor({ light: undefined, dark: undefined }, 'border');
 
@@ -184,31 +185,65 @@ export default function GroupsScreen() {
         Alert.alert('Error', `Failed to generate groups. ${e}`);
       }
     }
-  }, [activePlayers]);
+  }, [activePlayers, currentRoundId]);
 
-  const renderGroup = ({ item }: { item: CartGroup }) => {
+  const renderGroup = ({ item, index }: { item: CartGroup; index: number }) => {
     return (
-      <ThemedView
-        style={[
-          styles.groupCard,
-          {
-            backgroundColor: backgroundColor,
-            borderColor: borderColor,
-            shadowColor: borderColor,
-            shadowOpacity: 0.05,
-            shadowRadius: 4,
-            elevation: 2,
-          },
-        ]}
-      >
-        <ThemedView style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <ThemedText style={{ fontWeight: '600' }}>
-            {`${item.players.map((p) => p.name).join(', ')}`}
-          </ThemedText>
+      <TouchableOpacity onPress={() => setSelectedIndex(index)} activeOpacity={0.8}>
+        <ThemedView
+          style={[
+            styles.groupCard,
+            {
+              backgroundColor: backgroundColor,
+              borderColor: selectedIndex === index ? '#2f95eb' : borderColor,
+              shadowColor: borderColor,
+              shadowOpacity: 0.05,
+              shadowRadius: 4,
+              elevation: 2,
+            },
+          ]}
+        >
+          <ThemedView style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <ThemedText style={{ fontWeight: '600' }}>
+              {`${item.players.map((p) => p.name).join(', ')}`}
+            </ThemedText>
+          </ThemedView>
         </ThemedView>
-      </ThemedView>
+      </TouchableOpacity>
     );
   };
+
+  // Add effect to handle selection bounds
+  useEffect(() => {
+    if (selectedIndex != null && (selectedIndex < 0 || selectedIndex >= groups.length)) {
+      setSelectedIndex(null);
+    }
+  }, [groups, selectedIndex]);
+
+  const moveGroup = useCallback(
+    async (direction: 'up' | 'down') => {
+      if (selectedIndex === null) return;
+
+      const newIndex = direction === 'up' ? selectedIndex - 1 : selectedIndex + 1;
+      if (newIndex < 0 || newIndex >= groups.length) return;
+
+      const newGroups = [...groups];
+      const temp = newGroups[selectedIndex];
+      newGroups[selectedIndex] = newGroups[newIndex];
+      newGroups[selectedIndex].slot_index = selectedIndex;
+      newGroups[newIndex] = { ...temp, slot_index: newIndex };
+      if (currentRoundId) {
+        try {
+          await setGroupsForRound(currentRoundId, newGroups);
+          setGroups(newGroups);
+          setSelectedIndex(newIndex);
+        } catch (e) {
+          Alert.alert('Error', `Failed to generate groups. ${e}`);
+        }
+      }
+    },
+    [currentRoundId, selectedIndex, groups],
+  );
 
   return (
     <ThemedView style={{ flex: 1 }}>
@@ -233,6 +268,21 @@ export default function GroupsScreen() {
 
       <ThemedView style={{ padding: 12, flex: 1 }}>
         <ThemedText style={{ fontWeight: '600', marginBottom: 8 }}>Groups for this round</ThemedText>
+
+        {/* Add controls */}
+        <ThemedView style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 8, gap: 8 }}>
+          <Button
+            title="Move Up"
+            onPress={() => moveGroup('up')}
+            disabled={selectedIndex === null || selectedIndex === 0}
+          />
+          <Button
+            title="Move Down"
+            onPress={() => moveGroup('down')}
+            disabled={selectedIndex === null || selectedIndex === groups.length - 1}
+          />
+        </ThemedView>
+
         <FlatList data={groups} keyExtractor={(g, index) => String(index)} renderItem={renderGroup} />
         <ThemedView style={{ flexDirection: 'row', gap: 8 }}>
           <Button
