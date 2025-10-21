@@ -99,7 +99,7 @@ export default function GroupsScreen() {
           onPress: () => {
             const subject = encodeURIComponent(`Cart Assignments - ${pickedRound?.label}`);
             const body = encodeURIComponent(summary);
-            const url = `mailto:?subject=${subject}&body=${body}`;
+            const url = `mailto:"Bill"<bill.steinbock@icloud.com>,"Bill-gmail"<bill.steinbock@gmail.com>?subject=${subject}&body=${body}`;
             Linking.openURL(url).catch(() => {
               Alert.alert('Could not open mail app');
             });
