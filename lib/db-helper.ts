@@ -3,6 +3,7 @@ export type BasePlayer = {
   id: number;
   name: string;
   speedIndex: number;
+  email?: string | null;
 };
 
 export type Player = BasePlayer & { available?: boolean };
@@ -51,23 +52,31 @@ export async function initDb(): Promise<void> {
   const db = await openDb();
   await db.execAsync(`
 PRAGMA journal_mode = WAL;
-CREATE TABLE IF NOT EXISTS players (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, speedIndex REAL NOT NULL, available INTEGER NOT NULL DEFAULT 1);
+CREATE TABLE IF NOT EXISTS players (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, speedIndex REAL NOT NULL, email TEXT, available INTEGER NOT NULL DEFAULT 1);
 CREATE TABLE IF NOT EXISTS rounds (id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT NOT NULL, course TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS round_players (round_id INTEGER NOT NULL, player_id INTEGER NOT NULL, active INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (round_id, player_id));
 CREATE TABLE IF NOT EXISTS groups (id INTEGER PRIMARY KEY AUTOINCREMENT, round_id INTEGER NOT NULL, slot_index INTEGER NOT NULL, created_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS group_players (group_id INTEGER NOT NULL, player_id INTEGER NOT NULL, PRIMARY KEY (group_id, player_id));
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT);
 `);
+  // If DB already existed without the email column, attempt to add it (ignore errors)
+  try {
+    // Some SQLite builds support IF NOT EXISTS, but add column may fail if already present — swallow errors.
+    await db.execAsync(`ALTER TABLE players ADD COLUMN email TEXT;`);
+  } catch (e) {
+    // ignore - column likely already exists
+  }
 }
 
 export async function addPlayer(player: Omit<Player, 'id'>): Promise<number | undefined> {
   const database = await openDb();
   const avail = player.available === undefined ? 1 : player.available ? 1 : 0;
   const res = await database.runAsync(
-    `INSERT INTO players (name, speedIndex, available) VALUES (?, ?, ?);`,
+    `INSERT INTO players (name, speedIndex, available, email) VALUES (?, ?, ?, ?);`,
     player.name,
     player.speedIndex,
     avail,
+    player.email ?? null,
   );
   return res?.insertId ?? undefined;
 }
@@ -275,7 +284,7 @@ export async function getGroupsForPreviousRound(roundId: number, maxRoundsToLook
     const playerRows =
       typeof database.getAllAsync === 'function'
         ? await database.getAllAsync(
-            `SELECT gp.group_id, gp.player_id, p.name, p.speedIndex FROM group_players gp JOIN players p ON p.id = gp.player_id WHERE gp.group_id IN (${placeholders2}) ORDER BY gp.group_id;`,
+            `SELECT gp.group_id, gp.player_id, p.name, p.speedIndex, p.email FROM group_players gp JOIN players p ON p.id = gp.player_id WHERE gp.group_id IN (${placeholders2}) ORDER BY gp.group_id;`,
             ids,
           )
         : [];
@@ -287,6 +296,7 @@ export async function getGroupsForPreviousRound(roundId: number, maxRoundsToLook
           id: row.player_id,
           name: row.name,
           speedIndex: typeof row.speedIndex === 'number' ? row.speedIndex : Number(row.speedIndex),
+          email: row.email ?? null,
         });
     }
 
@@ -322,7 +332,7 @@ export async function getGroupsForRound(roundId: number): Promise<Group[]> {
     const rows2 =
       typeof database.getAllAsync === 'function'
         ? await database.getAllAsync(
-            `SELECT gp.group_id, gp.player_id, p.name, p.speedIndex FROM group_players gp JOIN players p ON p.id = gp.player_id WHERE gp.group_id IN (${placeholders}) ORDER BY gp.group_id;`,
+            `SELECT gp.group_id, gp.player_id, p.name, p.speedIndex, p.email FROM group_players gp JOIN players p ON p.id = gp.player_id WHERE gp.group_id IN (${placeholders}) ORDER BY gp.group_id;`,
             ids,
           )
         : [];
@@ -333,6 +343,7 @@ export async function getGroupsForRound(roundId: number): Promise<Group[]> {
           id: row.player_id,
           name: row.name,
           speedIndex: typeof row.speedIndex === 'number' ? row.speedIndex : Number(row.speedIndex),
+          email: row.email ?? null,
         });
     }
     return groups;
@@ -509,19 +520,35 @@ export async function getPlayersForRound(roundId: number | null): Promise<Player
   if (typeof database.getAllAsync === 'function') {
     if (roundId == null) {
       const rows = await database.getAllAsync(
-        `SELECT id, name, speedIndex, IFNULL(available, 1) as available FROM players WHERE available = 1;`,
+        `SELECT id, name, speedIndex, IFNULL(available, 1) as available, email FROM players WHERE available = 1;`,
       );
       return (rows || [])
-        .map((r: any) => ({ id: r.id, name: r.name, speedIndex: Number(r.speedIndex), active: false } as any))
+        .map(
+          (r: any) =>
+            ({
+              id: r.id,
+              name: r.name,
+              speedIndex: Number(r.speedIndex),
+              active: false,
+              email: r.email ?? null,
+            } as any),
+        )
         .map((p: any, i: number) => ({ ...p, available: !!rows[i].available }));
     }
     const rows = await database.getAllAsync(
-      `SELECT p.id, p.name, p.speedIndex, IFNULL(rp.active, 0) as active, IFNULL(p.available, 1) as available FROM players p LEFT JOIN round_players rp ON p.id = rp.player_id AND rp.round_id = ?;`,
+      `SELECT p.id, p.name, p.speedIndex, IFNULL(rp.active, 0) as active, IFNULL(p.available, 1) as available, p.email FROM players p LEFT JOIN round_players rp ON p.id = rp.player_id AND rp.round_id = ?;`,
       [roundId],
     );
     return (rows || [])
       .map(
-        (r: any) => ({ id: r.id, name: r.name, speedIndex: Number(r.speedIndex), active: !!r.active } as any),
+        (r: any) =>
+          ({
+            id: r.id,
+            name: r.name,
+            speedIndex: Number(r.speedIndex),
+            active: !!r.active,
+            email: r.email ?? null,
+          } as any),
       )
       .map((p: any, i: number) => ({ ...p, available: !!rows[i].available }));
   }
@@ -532,14 +559,15 @@ export async function getPlayers(onlyAvailable?: boolean): Promise<Player[]> {
   const database = await openDb();
   if (typeof database.getAllAsync === 'function') {
     const sql = !onlyAvailable
-      ? `SELECT id, name, speedIndex, IFNULL(available, 1) as available FROM players ORDER BY name;`
-      : `SELECT id, name, speedIndex, IFNULL(available, 1) as available FROM players WHERE available = 1 ORDER BY name;`;
+      ? `SELECT id, name, speedIndex, IFNULL(available, 1) as available, email FROM players ORDER BY name;`
+      : `SELECT id, name, speedIndex, IFNULL(available, 1) as available, email FROM players WHERE available = 1 ORDER BY name;`;
     const rows = await database.getAllAsync(sql);
     return (rows || []).map((r: any) => ({
       id: r.id,
       name: r.name,
       speedIndex: typeof r.speedIndex === 'number' ? r.speedIndex : Number(r.speedIndex),
       available: r.available === 1,
+      email: r.email ?? null,
     }));
   }
   return [];
@@ -549,7 +577,7 @@ export async function getPlayerById(id: number): Promise<Player | null> {
   const database = await openDb();
   if (typeof database.getAllAsync === 'function') {
     const rows = await database.getAllAsync(
-      `SELECT id, name, speedIndex, IFNULL(available, 1) as available FROM players WHERE id = ? LIMIT 1;`,
+      `SELECT id, name, speedIndex, IFNULL(available, 1) as available, email FROM players WHERE id = ? LIMIT 1;`,
       [id],
     );
     if (!rows || !rows.length) return null;
@@ -559,6 +587,7 @@ export async function getPlayerById(id: number): Promise<Player | null> {
       name: r.name,
       speedIndex: typeof r.speedIndex === 'number' ? r.speedIndex : Number(r.speedIndex),
       available: r.available === 1,
+      email: r.email ?? null,
     };
   }
   return null;
@@ -584,6 +613,10 @@ export async function updatePlayerById(
   if (fields.available !== undefined) {
     sets.push('available = ?');
     params.push(fields.available ? 1 : 0);
+  }
+  if ((fields as any).email !== undefined) {
+    sets.push('email = ?');
+    params.push((fields as any).email);
   }
 
   if (sets.length === 0) return; // Nothing to update

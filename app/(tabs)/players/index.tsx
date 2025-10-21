@@ -112,6 +112,7 @@ export default function PlayersScreen() {
             <View>
               <ThemedText>{item.name}</ThemedText>
               <ThemedText style={{ color: '#666' }}>{`Speed: ${item.speedIndex}`}</ThemedText>
+              <ThemedText style={{ color: '#666' }}>{`Email: ${item.email ?? 'not specified'}`}</ThemedText>
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <Switch value={!!item.available} onValueChange={() => toggleAvailable(item)} />

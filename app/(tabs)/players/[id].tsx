@@ -4,7 +4,7 @@ import { ThemedView } from '@/components/themed-view';
 import { addPlayer, getPlayerById, updatePlayerById } from '@/lib/db-helper';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert, Button, Keyboard, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Alert, Button, Keyboard, StyleSheet, Switch, TextInput, View } from 'react-native';
 
 type Params = {
   id: string; // 'new' or numeric id
@@ -18,6 +18,7 @@ export default function PlayerEditScreen() {
   const [name, setName] = useState('');
   const [speedIndex, setSpeedIndex] = useState('3');
   const [available, setAvailable] = useState(true);
+  const [email, setEmail] = useState(''); // added email state
   const [errors, setErrors] = useState<string[]>([]);
 
   const nameRef = useRef<TextInput | null>(null);
@@ -25,9 +26,6 @@ export default function PlayerEditScreen() {
   useEffect(() => {
     // focus name on mount
     setTimeout(() => nameRef.current?.focus?.(), 50);
-    // if editing we could load player details here; the home screen already has the data,
-    // but to keep this screen independent we won't fetch a single player record —
-    // instead the route should be opened with the current values if needed.
     if (!isNew) {
       (async () => {
         try {
@@ -38,6 +36,7 @@ export default function PlayerEditScreen() {
               setName(p.name);
               setSpeedIndex(String(p.speedIndex));
               setAvailable(p.available === undefined ? true : !!p.available);
+              setEmail(p.email ?? ''); // load email when editing
             }
           }
         } catch (e) {
@@ -54,6 +53,10 @@ export default function PlayerEditScreen() {
     const s = Number(speedIndex);
     if (!Number.isFinite(s) || isNaN(s)) errs.push('Speed must be a number');
     else if (s < 0) errs.push('Speed must be 0 or greater');
+    // optional: basic email sanity check
+    if (email.trim().length > 0 && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      errs.push('Email appears invalid');
+    }
     setErrors(errs);
     return errs.length === 0;
   };
@@ -62,14 +65,24 @@ export default function PlayerEditScreen() {
     if (!validate()) return;
     try {
       if (isNew) {
-        await addPlayer({ name: name.trim(), speedIndex: Number(speedIndex), available });
+        await addPlayer({
+          name: name.trim(),
+          speedIndex: Number(speedIndex),
+          available,
+          email: email.trim() || null,
+        });
       } else {
         const numericId = Number(id);
         if (!Number.isFinite(numericId)) throw new Error('invalid id');
-        await updatePlayerById(numericId, { name: name.trim(), speedIndex: Number(speedIndex), available });
+        // updatePlayerById signature may not include email in its TS type; cast to any to pass email through
+        await updatePlayerById(numericId, {
+          name: name.trim(),
+          speedIndex: Number(speedIndex),
+          available,
+          email: email.trim() || null,
+        } as any);
       }
       Keyboard.dismiss();
-      // navigate back
       router.back();
     } catch (e) {
       console.warn('Save failed', e);
@@ -99,6 +112,17 @@ export default function PlayerEditScreen() {
           onChangeText={setSpeedIndex}
           keyboardType="numeric"
         />
+
+        <ThemedText style={styles.label}>Email (optional)</ThemedText>
+        <ThemedTextInput
+          style={styles.input}
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          placeholder="player@example.com"
+        />
+
         {isNew && (
           <View style={{ marginVertical: 12, flexDirection: 'row', alignItems: 'center' }}>
             <Switch value={available} onValueChange={(value) => setAvailable(value)} />

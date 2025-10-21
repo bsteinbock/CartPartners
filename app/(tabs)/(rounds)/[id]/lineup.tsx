@@ -59,22 +59,26 @@ export default function LineupScreen() {
 
   const seed = async () => {
     try {
-      await addPlayer({ name: 'Garry', speedIndex: 1 });
-      await addPlayer({ name: 'Carl', speedIndex: 1 });
-      await addPlayer({ name: 'Bill', speedIndex: 1 });
-      await addPlayer({ name: 'Ed', speedIndex: 1 });
-      await addPlayer({ name: 'Joe Gates', speedIndex: 1 });
-      await addPlayer({ name: 'Joe H', speedIndex: 1 });
-      await addPlayer({ name: 'Ron W', speedIndex: 1 });
-      await addPlayer({ name: 'Richard', speedIndex: 1 });
-      await addPlayer({ name: 'Greg', speedIndex: 2 });
-      await addPlayer({ name: 'Larry L', speedIndex: 2 });
-      await addPlayer({ name: 'Larry K', speedIndex: 2 });
-      await addPlayer({ name: 'Ben Finn', speedIndex: 3 });
-      await addPlayer({ name: 'Dave', speedIndex: 3 });
-      await addPlayer({ name: 'Huff', speedIndex: 4 });
-      await addPlayer({ name: 'Brad', speedIndex: 4 });
-      await addPlayer({ name: 'Jack', speedIndex: 5 });
+      await addPlayer({ name: 'Garry', speedIndex: 1, email: 'minter5@outlook.com' });
+      await addPlayer({ name: 'Carl', speedIndex: 1, email: 'Carlofky@gmail.com' });
+      await addPlayer({ name: 'Bill', speedIndex: 1, email: 'bill.steinbock@icloud.com' });
+      await addPlayer({ name: 'Ed', speedIndex: 1, email: 'e.mathison@att.net' });
+      await addPlayer({ name: 'Joe Gates', speedIndex: 1, email: 'mrjoegates@gmail.com' });
+      await addPlayer({ name: 'Joe H', speedIndex: 1, email: 'jhenehan57@gmail.com' });
+      await addPlayer({ name: 'Ron W', speedIndex: 1, email: 'ron.wibbels@gmail.com' });
+      await addPlayer({ name: 'Richard', speedIndex: 1, email: 'richarray@gmail.com' });
+      await addPlayer({ name: 'Greg', speedIndex: 2, email: 'gregweber@twc.com' });
+      await addPlayer({ name: 'Larry L', speedIndex: 2, email: 'larryalee13@gmail.com' });
+      await addPlayer({ name: 'Larry K', speedIndex: 2, email: 'lekelley1@gmail.com' });
+      await addPlayer({ name: 'Ben Finn', speedIndex: 3, email: 'ben.finn1950@gmail.com' });
+      await addPlayer({ name: 'Dave', speedIndex: 3, email: 'kybred48@yahoo.com' });
+      await addPlayer({ name: 'Huff', speedIndex: 4, email: 'starwars48@msn.com' });
+      await addPlayer({ name: 'Brad', speedIndex: 4, email: 'Bniedert@gmail.com' });
+      await addPlayer({ name: 'Jack', speedIndex: 5, email: 'jgorbett@aol.com' });
+      await addPlayer({ name: 'Jerry', speedIndex: 5, email: 'jlcarr39@att.net' });
+      await addPlayer({ name: 'Clark', speedIndex: 2, email: 'cottrell@twc.com' });
+      await addPlayer({ name: 'Mike Connelly', speedIndex: 1, email: 'mike.connelly.louisville@gmail.com' });
+      await addPlayer({ name: 'Mike Morris', speedIndex: 1, email: 'mtmorris146@gmail.com' });
       const p = await getPlayersForRound(null);
       setPlayers(p);
     } catch (e) {
@@ -109,6 +113,25 @@ export default function LineupScreen() {
         }
       } catch (e) {
         console.warn('Toggle failed', e);
+      }
+    },
+    [players, id],
+  );
+
+  // Toggle all players active state (header switch)
+  const toggleAllPlayers = useCallback(
+    async (value: boolean) => {
+      try {
+        const updated = players.map((p) => ({ ...p, active: value }));
+        setPlayers(updated);
+
+        const numericId = Number(id);
+        if (Number.isFinite(numericId)) {
+          // persist changes for each player for this round
+          await Promise.all(updated.map((p) => setPlayerActiveForRound(numericId, p.id, p.active)));
+        }
+      } catch (e) {
+        console.warn('Toggle all failed', e);
       }
     },
     [players, id],
@@ -158,21 +181,26 @@ export default function LineupScreen() {
       <FlatList
         data={players}
         keyExtractor={(item) => String(item.id)}
-        ListHeaderComponent={() => (
-          <ThemedView
-            style={{
-              padding: 8,
-              flexDirection: 'row',
-              alignItems: 'center',
-              borderBottomWidth: 1,
-              borderColor: '#ddd',
-              gap: 30,
-            }}
-          >
-            <ThemedText style={{ fontWeight: '700' }}>Active</ThemedText>
-            <ThemedText style={{ fontWeight: '700' }}>Name</ThemedText>
-          </ThemedView>
-        )}
+        ListHeaderComponent={() => {
+          const allActive = players.length > 0 && players.every((p) => !!p.active);
+          return (
+            <ThemedView
+              style={{
+                padding: 8,
+                flexDirection: 'row',
+                alignItems: 'center',
+                borderBottomWidth: 1,
+                borderColor: '#ddd',
+                gap: 30,
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Switch value={allActive} onValueChange={toggleAllPlayers} disabled={players.length === 0} />
+              </View>
+              <ThemedText style={{ fontWeight: '700' }}>Player</ThemedText>
+            </ThemedView>
+          );
+        }}
         renderItem={({ item }) => (
           <ThemedView
             style={{
