@@ -9,7 +9,6 @@ import {
   addPlayer,
   getPlayersForRound,
   getRoundById,
-  initDb,
   PlayerWithActive,
   Round,
   setPlayerActiveForRound,
@@ -33,32 +32,15 @@ export default function LineupScreen() {
       try {
         const numericId = Number(id);
         if (Number.isFinite(numericId)) {
-          const p = await getRoundById(numericId);
-          if (p) {
-            if (mounted) setRound(p);
+          const r = await getRoundById(numericId);
+          if (r) {
+            if (mounted) setRound(r);
           }
+          const p = await getPlayersForRound(numericId);
+          if (mounted) setPlayers(p);
         }
       } catch (e) {
         console.warn('Load player failed', e);
-      }
-    }
-    setup();
-    return () => {
-      mounted = false;
-    };
-  }, [id]);
-
-  useEffect(() => {
-    let mounted = true;
-    async function setup() {
-      try {
-        await initDb();
-        const numericId = Number(id);
-
-        const p = await getPlayersForRound(numericId);
-        if (mounted) setPlayers(p);
-      } catch (e) {
-        console.warn('DB init/fetch failed', e);
       }
     }
     setup();

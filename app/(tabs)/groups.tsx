@@ -73,63 +73,41 @@ export default function GroupsScreen() {
     setActivePlayers(active);
   };
 
-  const buildHtmlForGroups = (groupsToExport: any[], roundId: number | null, roundDate?: string) => {
-    const title = `Groups for round ${roundId ?? ''}`;
-    const header = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><style>body{font-family:Arial,Helvetica,sans-serif;padding:12px;color:#111}h1{font-size:18px}table{border-collapse:collapse;margin-bottom:12px}td,th{border:1px solid #ddd;padding:8px}th{background:#f6f6f6}</style></head><body>`;
-    const footer = '</body></html>';
-    let body = `<h1>${title}</h1>`;
-    if (roundDate) body += `<div><strong>Date:</strong> ${roundDate}</div>`;
-    body += `<div><strong>Generated:</strong> ${new Date().toLocaleString()}</div>`;
-    for (const g of groupsToExport) {
-      body += `<h2>Group ${g.id}</h2>`;
-      body += '<table><thead><tr><th>Cart</th><th>Slot</th><th>Player</th><th>Speed</th></tr></thead><tbody>';
-      // sort players by cart_index then slot_index
-      const playersSorted = (g.players || [])
-        .slice()
-        .sort((a: any, b: any) => a.cart_index - b.cart_index || a.slot_index - b.slot_index);
-      for (const p of playersSorted) {
-        body += `<tr><td>${p.cart_index}</td><td>${p.slot_index}</td><td>${p.name}</td><td>${
-          p.speedIndex ?? p.speed_index ?? ''
-        }</td></tr>`;
-      }
-      body += '</tbody></table>';
-    }
-    return header + body + footer;
+  const buildGroupSummary = (groupsToExport: any[]) => {
+    let summary = '';
+    groupsToExport.forEach((group, index) => {
+      const playerNames = (group.players || []).map((p: any) => p.name).join(', ');
+      summary += `Group ${index + 1}: ${playerNames}\n`;
+    });
+
+    return summary;
   };
 
-  const exportHtml = async () => {
+  const exportToEmail = async () => {
     if (!currentRoundId) return Alert.alert('No round selected');
     if (!groups || groups.length === 0) return Alert.alert('No groups to export for this round');
+
     const round = rounds.find((r) => r.id === currentRoundId);
-    const html = buildHtmlForGroups(
-      groups,
-      currentRoundId,
-      round ? new Date(round.date).toLocaleString() : undefined,
-    );
+    const summary = buildGroupSummary(groups);
+
     try {
-      await Clipboard.setStringAsync(html);
-      Alert.alert(
-        'Copied to clipboard',
-        'The HTML for the current groups has been copied to the clipboard. You can paste it into an email or document.',
-        [
-          { text: 'OK' },
-          {
-            text: 'Open Email',
-            onPress: () => {
-              const subject = encodeURIComponent(`Cart Partners - Round ${currentRoundId} Groups`);
-              const body = encodeURIComponent(
-                'The HTML for the groups is on the clipboard. Paste it into the email body (long-press and paste).',
-              );
-              const url = `mailto:?subject=${subject}&body=${body}`;
-              Linking.openURL(url).catch(() => {
-                Alert.alert('Could not open mail app');
-              });
-            },
+      await Clipboard.setStringAsync(summary);
+      Alert.alert('Copied to clipboard', 'The group summary has been copied to the clipboard.', [
+        { text: 'OK' },
+        {
+          text: 'Open Email',
+          onPress: () => {
+            const subject = encodeURIComponent(`Cart Assignments - ${pickedRound?.label}`);
+            const body = encodeURIComponent(summary);
+            const url = `mailto:?subject=${subject}&body=${body}`;
+            Linking.openURL(url).catch(() => {
+              Alert.alert('Could not open mail app');
+            });
           },
-        ],
-      );
+        },
+      ]);
     } catch (e) {
-      Alert.alert('Error', 'Failed to copy HTML to clipboard');
+      Alert.alert('Error', 'Failed to copy summary to clipboard');
     }
   };
 
@@ -216,7 +194,7 @@ export default function GroupsScreen() {
   // Add effect to handle selection bounds
   useEffect(() => {
     if (selectedIndex != null && (selectedIndex < 0 || selectedIndex >= groups.length)) {
-      setSelectedIndex(null);
+      setSelectedIndex(groups.length ? 0 : null);
     }
   }, [groups, selectedIndex]);
 
@@ -286,9 +264,9 @@ export default function GroupsScreen() {
         <FlatList data={groups} keyExtractor={(g, index) => String(index)} renderItem={renderGroup} />
         <ThemedView style={{ flexDirection: 'row', gap: 8 }}>
           <Button
-            title="Export HTML"
+            title="Export to Email"
             onPress={() => {
-              void exportHtml();
+              void exportToEmail();
             }}
           />
         </ThemedView>
