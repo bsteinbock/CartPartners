@@ -83,12 +83,38 @@ export default function GroupsScreen() {
     return summary;
   };
 
+  const buildEmailAddresses = (groupsToExport: any[]) => {
+    const entries: string[] = [];
+
+    for (const group of groupsToExport || []) {
+      for (const p of group.players || []) {
+        const email = p?.email?.toString().trim();
+        const name = (p?.name ?? '').toString().trim();
+        if (email) {
+          entries.push(`"${name}"<${email}>`);
+        }
+      }
+    }
+
+    // remove duplicates by email
+    const seen = new Set<string>();
+    const unique = entries.filter((e) => {
+      const m = e.match(/<([^>]+)>$/);
+      const key = m ? m[1] : e;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    return unique.join(', ');
+  };
+
   const exportToEmail = async () => {
     if (!currentRoundId) return Alert.alert('No round selected');
     if (!groups || groups.length === 0) return Alert.alert('No groups to export for this round');
 
-    const round = rounds.find((r) => r.id === currentRoundId);
     const summary = buildGroupSummary(groups);
+    const addresses = buildEmailAddresses(groups);
 
     try {
       await Clipboard.setStringAsync(summary);
@@ -99,7 +125,7 @@ export default function GroupsScreen() {
           onPress: () => {
             const subject = encodeURIComponent(`Cart Assignments - ${pickedRound?.label}`);
             const body = encodeURIComponent(summary);
-            const url = `mailto:"Bill"<bill.steinbock@icloud.com>,"Bill-gmail"<bill.steinbock@gmail.com>?subject=${subject}&body=${body}`;
+            const url = `mailto:${addresses}?subject=${subject}&body=${body}`;
             Linking.openURL(url).catch(() => {
               Alert.alert('Could not open mail app');
             });

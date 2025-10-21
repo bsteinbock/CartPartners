@@ -73,7 +73,7 @@ export default function PlayersScreen() {
       <View
         style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 10 }}
       >
-        <ThemedText type="title">Players</ThemedText>
+        <ThemedText type="subtitle">Players</ThemedText>
         <Button title="Add" onPress={addPlayer} />
       </View>
       <FlatList
