@@ -1,6 +1,6 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert, Button, Keyboard, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Button, Keyboard, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedTextInput } from '@/components/themed-textinput';
@@ -25,7 +25,7 @@ export default function RoundEditScreen() {
   const [errors, setErrors] = useState<string[]>([]);
   const [datePickerVisible, setDatePickerVisible] = useState(false);
 
-  const courseRef = useRef<TextInput | null>(null);
+  const courseRef = useRef<any>(null);
   useEffect(() => {
     // focus name on mount
     setTimeout(() => courseRef.current?.focus?.(), 50);

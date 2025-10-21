@@ -21,7 +21,7 @@ export default function PlayerEditScreen() {
   const [email, setEmail] = useState(''); // added email state
   const [errors, setErrors] = useState<string[]>([]);
 
-  const nameRef = useRef<TextInput | null>(null);
+  const nameRef = useRef<any>(null);
 
   useEffect(() => {
     // focus name on mount

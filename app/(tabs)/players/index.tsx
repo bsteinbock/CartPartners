@@ -41,7 +41,7 @@ export default function PlayersScreen() {
   };
 
   const confirmDelete = (p: any) => {
-    Alert.alert('Delete player', `Delete ${p.name}?`, [
+    Alert.alert('Delete player', `Delete ${p.name}?. You cannot recover a deleted player.`, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: () => handleDelete(p) },
     ]);

@@ -59,13 +59,13 @@ CREATE TABLE IF NOT EXISTS groups (id INTEGER PRIMARY KEY AUTOINCREMENT, round_i
 CREATE TABLE IF NOT EXISTS group_players (group_id INTEGER NOT NULL, player_id INTEGER NOT NULL, PRIMARY KEY (group_id, player_id));
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT);
 `);
-  // If DB already existed without the email column, attempt to add it (ignore errors)
-  try {
-    // Some SQLite builds support IF NOT EXISTS, but add column may fail if already present — swallow errors.
-    await db.execAsync(`ALTER TABLE players ADD COLUMN email TEXT;`);
-  } catch (e) {
-    // ignore - column likely already exists
-  }
+  // Example schema migration
+  // try {
+  //   // Some SQLite builds support IF NOT EXISTS, but add column may fail if already present — swallow errors.
+  //   await db.execAsync(`ALTER TABLE players ADD COLUMN email TEXT;`);
+  // } catch (e) {
+  //   // ignore - column likely already exists
+  // }
 }
 
 export async function addPlayer(player: Omit<Player, 'id'>): Promise<number | undefined> {
@@ -174,77 +174,6 @@ export async function copyActivePlayersToRound(sourceRoundId: number, targetRoun
 }
 
 // --- Groups helpers ---
-export async function createGroupForRound(roundId: number, slot_index: number): Promise<number | undefined> {
-  const database = await openDb();
-  const date = new Date().toISOString();
-  if (typeof database.runAsync === 'function') {
-    const res = await database.runAsync(
-      `INSERT INTO groups (round_id, slot_index, created_at) VALUES (?, ?, ?);`,
-      roundId,
-      slot_index,
-      date,
-    );
-    return res?.lastInsertRowId ?? undefined;
-  }
-  if (typeof database.withTransactionAsync === 'function') {
-    let insertId: number | undefined = undefined;
-    await database.withTransactionAsync(async (txn: any) => {
-      const r = await txn.execAsync(
-        `INSERT INTO groups (round_id, slot_index, created_at) VALUES (?, ?, ?);`,
-        [roundId, slot_index, date],
-      );
-      if (r && (r as any).insertId) insertId = (r as any).insertId;
-    });
-    if (insertId) return insertId;
-  }
-  if (typeof database.execAsync === 'function') {
-    await database.execAsync(
-      `INSERT INTO groups (round_id, slot_index, created_at) VALUES (${roundId}, ${slot_index}, '${date}');`,
-    );
-    try {
-      const rows =
-        typeof database.getAllAsync === 'function'
-          ? await database.getAllAsync(`SELECT last_insert_rowid() as id;`)
-          : [];
-      return rows && rows[0] && rows[0].id ? Number(rows[0].id) : undefined;
-    } catch (e) {
-      return undefined;
-    }
-  }
-  throw new Error('No suitable async DB API available to create group');
-}
-
-export async function addPlayersToGroup(groupId: number, players: { player_id: number }[]): Promise<void> {
-  const database = await openDb();
-  if (typeof database.withTransactionAsync === 'function') {
-    await database.withTransactionAsync(async (txn: any) => {
-      for (const p of players) {
-        await txn.execAsync(`INSERT OR REPLACE INTO group_players (group_id, player_id) VALUES (?, ?);`, [
-          groupId,
-          p.player_id,
-        ]);
-      }
-    });
-    return;
-  }
-  if (typeof database.runAsync === 'function') {
-    for (const p of players) {
-      await database.runAsync(
-        `INSERT OR REPLACE INTO group_players (group_id, player_id) VALUES (?, ?);`,
-        groupId,
-        p.player_id,
-      );
-    }
-    return;
-  }
-  if (typeof database.execAsync === 'function') {
-    const vals = players.map((p) => `(${groupId}, ${p.player_id})`).join(',');
-    await database.execAsync(`INSERT OR REPLACE INTO group_players (group_id, player_id) VALUES ${vals};`);
-    return;
-  }
-  throw new Error('No suitable async DB API available to add players to group');
-}
-
 export async function getGroupsForPreviousRound(roundId: number, maxRoundsToLookBack = 5): Promise<Group[]> {
   const database = await openDb();
   if (typeof database.getAllAsync === 'function') {
@@ -252,12 +181,12 @@ export async function getGroupsForPreviousRound(roundId: number, maxRoundsToLook
     const curRows = await database.getAllAsync(`SELECT date FROM rounds WHERE id = ? LIMIT 1;`, [roundId]);
     if (!curRows || curRows.length === 0) return [];
 
-    const currentDate = curRows[0].date;
+    const dateOfRound = curRows[0].date;
 
     // Find up to maxRoundsToLookBack previous rounds by date (strictly before current round's date)
     const rounds = await database.getAllAsync(
       `SELECT id FROM rounds WHERE date < ? ORDER BY date DESC LIMIT ?;`,
-      [currentDate, maxRoundsToLookBack],
+      [dateOfRound, maxRoundsToLookBack],
     );
     if (!rounds || rounds.length === 0) return [];
 
@@ -269,7 +198,7 @@ export async function getGroupsForPreviousRound(roundId: number, maxRoundsToLook
       `SELECT g.id, g.round_id, g.slot_index, g.created_at FROM groups g JOIN rounds r ON g.round_id = r.id WHERE g.round_id IN (${placeholders}) ORDER BY r.date DESC, g.slot_index;`,
       rids,
     );
-    const groups: Group[] = (groupRows || []).map((r: any) => ({
+    const groups: StoredGroup[] = (groupRows || []).map((r: any) => ({
       id: r.id,
       round_id: r.round_id,
       slot_index: r.slot_index,
@@ -319,7 +248,7 @@ export async function getGroupsForRound(roundId: number): Promise<Group[]> {
       `SELECT id, round_id, slot_index, created_at FROM groups WHERE round_id = ? ORDER BY slot_index;`,
       [roundId],
     );
-    const groups: Group[] = (rows || []).map((r: any) => ({
+    const groups: StoredGroup[] = (rows || []).map((r: any) => ({
       id: r.id,
       round_id: r.round_id,
       slot_index: r.slot_index,
@@ -390,103 +319,6 @@ export async function deleteGroupsForRound(roundId: number): Promise<void> {
     return;
   }
   throw new Error('No suitable async DB API available to delete groups for round');
-}
-
-export async function updateGroupPlayers(groupId: number, players: { player_id: number }[]): Promise<void> {
-  const database = await openDb();
-  if (typeof database.withTransactionAsync === 'function') {
-    await database.withTransactionAsync(async (txn: any) => {
-      await txn.execAsync(`DELETE FROM group_players WHERE group_id = ?;`, [groupId]);
-      for (const p of players) {
-        await txn.execAsync(`INSERT INTO group_players (group_id, player_id) VALUES (?, ?);`, [
-          groupId,
-          p.player_id,
-        ]);
-      }
-    });
-    return;
-  }
-  if (typeof database.runAsync === 'function') {
-    await database.runAsync(`DELETE FROM group_players WHERE group_id = ?;`, groupId);
-    for (const p of players) {
-      await database.runAsync(
-        `INSERT INTO group_players (group_id, player_id) VALUES (?, ?);`,
-        groupId,
-        p.player_id,
-      );
-    }
-    return;
-  }
-  if (typeof database.execAsync === 'function') {
-    await database.execAsync(`DELETE FROM group_players WHERE group_id = ${groupId};`);
-    const vals = players.map((p) => `(${groupId}, ${p.player_id})`).join(',');
-    if (vals.length)
-      await database.execAsync(`INSERT INTO group_players (group_id, player_id) VALUES ${vals};`);
-    return;
-  }
-  throw new Error('No suitable async DB API available to update group players');
-}
-
-export async function getRecentActivePlayerIds(
-  roundId: number,
-  lookbackRounds = 3,
-): Promise<{ activeIds: number[]; recentIds: number[] }> {
-  const database = await openDb();
-  if (typeof database.getAllAsync === 'function') {
-    const rows = await database.getAllAsync(
-      `SELECT player_id FROM round_players WHERE round_id = ? AND active = 1;`,
-      [roundId],
-    );
-    const activeIds = (rows || []).map((r: any) => r.player_id);
-    const rounds = await database.getAllAsync(
-      `SELECT id FROM rounds WHERE id < ? ORDER BY id DESC LIMIT ?;`,
-      [roundId, lookbackRounds],
-    );
-    if (!rounds || !rounds.length) return { activeIds, recentIds: [] };
-    const rids = rounds.map((r: any) => r.id);
-    const placeholders = rids.map(() => '?').join(',');
-    const rows3 = await database.getAllAsync(
-      `SELECT DISTINCT player_id FROM round_players WHERE round_id IN (${placeholders}) AND active = 1;`,
-      rids,
-    );
-    const recentIds = (rows3 || []).map((r: any) => r.player_id);
-    return { activeIds, recentIds };
-  }
-  return { activeIds: [], recentIds: [] };
-}
-
-export async function getRecentPairCounts(
-  roundId: number,
-  lookbackRounds = 3,
-): Promise<Record<string, number>> {
-  const database = await openDb();
-  if (typeof database.getAllAsync === 'function') {
-    const rounds = await database.getAllAsync(
-      `SELECT id FROM rounds WHERE id < ? ORDER BY id DESC LIMIT ?;`,
-      [roundId, lookbackRounds],
-    );
-    if (!rounds || !rounds.length) return {};
-    const rids = rounds.map((r: any) => r.id);
-    const placeholders = rids.map(() => '?').join(',');
-    const gids = await database.getAllAsync(
-      `SELECT id FROM groups WHERE round_id IN (${placeholders});`,
-      rids,
-    );
-    if (!gids || !gids.length) return {};
-    const groupIds = gids.map((g: any) => g.id);
-    const placeholders2 = groupIds.map(() => '?').join(',');
-    const rows3 = await database.getAllAsync(
-      `SELECT gp1.player_id as a, gp2.player_id as b FROM group_players gp1 JOIN group_players gp2 ON gp1.group_id = gp2.group_id AND gp1.player_id < gp2.player_id WHERE gp1.group_id IN (${placeholders2});`,
-      groupIds,
-    );
-    const counts: Record<string, number> = {};
-    for (const row of rows3 || []) {
-      const key = `${row.a}:${row.b}`;
-      counts[key] = (counts[key] || 0) + 1;
-    }
-    return counts;
-  }
-  return {};
 }
 
 export async function setPlayerActiveForRound(
