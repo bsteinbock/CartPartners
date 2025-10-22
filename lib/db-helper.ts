@@ -491,34 +491,6 @@ export async function setGroupsForRound(roundId: number, groups: Group[]): Promi
   const database = await openDb();
   const now = new Date().toISOString();
 
-  // Prefer transactional APIs when available
-  //if (typeof database.withTransactionAsync === 'function') {
-  //  await database.withTransactionAsync(async (txn: any) => {
-  //    await txn.execAsync(
-  //      `DELETE FROM group_players WHERE group_id IN (SELECT id FROM groups WHERE round_id = ?);`,
-  //      [roundId],
-  //    );
-  //    await txn.execAsync(`DELETE FROM groups WHERE round_id = ?;`, [roundId]);
-  //
-  //    for (const g of groups || []) {
-  //      const r = await txn.execAsync(
-  //        `INSERT INTO groups (round_id, slot_index, created_at) VALUES (?, ?, ?);`,
-  //        [roundId, g.slot_index, now],
-  //      );
-  //      const gid = (r && ((r as any).insertId ?? (r as any).lastInsertRowId)) as number | undefined;
-  //      if (gid) {
-  //        for (const p of g.players || []) {
-  //          await txn.execAsync(`INSERT INTO group_players (group_id, player_id) VALUES (?, ?);`, [
-  //            gid,
-  //            p.id,
-  //          ]);
-  //        }
-  //      }
-  //    }
-  //  });
-  //  return;
-  //}
-
   // Use parameterized runAsync if available
   if (typeof database.runAsync === 'function') {
     await database.runAsync(
