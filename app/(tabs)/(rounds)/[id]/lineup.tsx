@@ -1,12 +1,11 @@
 import { useFocusEffect } from '@react-navigation/native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Button, FlatList, StyleSheet, Switch, View } from 'react-native';
+import { FlatList, StyleSheet, Switch, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import {
-  addPlayer,
   getPlayersForRound,
   getRoundById,
   PlayerWithActive,
@@ -56,35 +55,6 @@ export default function LineupScreen() {
       void loadData(numericId);
     }, [id]),
   );
-
-  const seed = async () => {
-    try {
-      await addPlayer({ name: 'Garry', speedIndex: 1, email: 'minter5@outlook.com' });
-      await addPlayer({ name: 'Carl', speedIndex: 1, email: 'Carlofky@gmail.com' });
-      await addPlayer({ name: 'Bill', speedIndex: 1, email: 'bill.steinbock@icloud.com' });
-      await addPlayer({ name: 'Ed', speedIndex: 1, email: 'e.mathison@att.net' });
-      await addPlayer({ name: 'Joe Gates', speedIndex: 1, email: 'mrjoegates@gmail.com' });
-      await addPlayer({ name: 'Joe H', speedIndex: 1, email: 'jhenehan57@gmail.com' });
-      await addPlayer({ name: 'Ron W', speedIndex: 1, email: 'ron.wibbels@gmail.com' });
-      await addPlayer({ name: 'Richard', speedIndex: 1, email: 'richarray@gmail.com' });
-      await addPlayer({ name: 'Greg', speedIndex: 2, email: 'gregweber@twc.com' });
-      await addPlayer({ name: 'Larry L', speedIndex: 2, email: 'larryalee13@gmail.com' });
-      await addPlayer({ name: 'Larry K', speedIndex: 2, email: 'lekelley1@gmail.com' });
-      await addPlayer({ name: 'Ben Finn', speedIndex: 3, email: 'ben.finn1950@gmail.com' });
-      await addPlayer({ name: 'Dave', speedIndex: 3, email: 'kybred48@yahoo.com' });
-      await addPlayer({ name: 'Huff', speedIndex: 4, email: 'starwars48@msn.com' });
-      await addPlayer({ name: 'Brad', speedIndex: 4, email: 'Bniedert@gmail.com' });
-      await addPlayer({ name: 'Jack', speedIndex: 5, email: 'jgorbett@aol.com' });
-      await addPlayer({ name: 'Jerry', speedIndex: 5, email: 'jlcarr39@att.net' });
-      await addPlayer({ name: 'Clark', speedIndex: 2, email: 'cottrell@twc.com' });
-      await addPlayer({ name: 'Mike Connelly', speedIndex: 1, email: 'mike.connelly.louisville@gmail.com' });
-      await addPlayer({ name: 'Mike Morris', speedIndex: 1, email: 'mtmorris146@gmail.com' });
-      const p = await getPlayersForRound(null);
-      setPlayers(p);
-    } catch (e) {
-      console.warn('Seed failed', e);
-    }
-  };
 
   const loadData = async (roundId?: number | null) => {
     const p = await getPlayersForRound(null);
@@ -166,64 +136,70 @@ export default function LineupScreen() {
         </View>
       </View>
 
-      {players.length === 0 && (
+      {players.length === 0 ? (
         <View style={styles.stepContainer}>
-          <Button title="Seed sample players" onPress={seed} />
+          <ThemedText>No players available. Go to Players Tab to add players to get started.</ThemedText>
         </View>
-      )}
+      ) : (
+        <>
+          <View style={{ paddingHorizontal: 12, paddingBottom: 8 }}>
+            <ThemedText>{`Players: ${players.length} — Active: ${
+              players.filter((p) => p.active).length
+            }`}</ThemedText>
+          </View>
 
-      <View style={{ paddingHorizontal: 12, paddingBottom: 8 }}>
-        <ThemedText>{`Players: ${players.length} — Active: ${
-          players.filter((p) => p.active).length
-        }`}</ThemedText>
-      </View>
-
-      <FlatList
-        data={players}
-        keyExtractor={(item) => String(item.id)}
-        ListHeaderComponent={() => {
-          const allActive = players.length > 0 && players.every((p) => !!p.active);
-          return (
-            <ThemedView
-              style={{
-                padding: 8,
-                flexDirection: 'row',
-                alignItems: 'center',
-                borderBottomWidth: 1,
-                borderColor: '#ddd',
-                gap: 30,
-              }}
-            >
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Switch value={allActive} onValueChange={toggleAllPlayers} disabled={players.length === 0} />
-              </View>
-              <ThemedText style={{ fontWeight: '700' }}>Player</ThemedText>
-            </ThemedView>
-          );
-        }}
-        renderItem={({ item }) => (
-          <ThemedView
-            style={{
-              padding: 8,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}
-          >
-            <>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Switch
-                  value={!!item.active}
-                  onValueChange={(_val) => {
-                    void toggleActive(item);
+          <FlatList
+            data={players}
+            keyExtractor={(item) => String(item.id)}
+            ListHeaderComponent={() => {
+              const allActive = players.length > 0 && players.every((p) => !!p.active);
+              return (
+                <ThemedView
+                  style={{
+                    padding: 8,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    borderBottomWidth: 1,
+                    borderColor: '#ddd',
+                    gap: 30,
                   }}
-                />
-                <ThemedText style={{ marginLeft: 30 }}>{item.name}</ThemedText>
-              </View>
-            </>
-          </ThemedView>
-        )}
-      />
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Switch
+                      value={allActive}
+                      onValueChange={toggleAllPlayers}
+                      disabled={players.length === 0}
+                    />
+                  </View>
+                  <ThemedText style={{ fontWeight: '700' }}>Player</ThemedText>
+                </ThemedView>
+              );
+            }}
+            renderItem={({ item }) => (
+              <ThemedView
+                style={{
+                  padding: 8,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}
+              >
+                <>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Switch
+                      value={!!item.active}
+                      onValueChange={(_val) => {
+                        void toggleActive(item);
+                      }}
+                    />
+                    <ThemedText style={{ marginLeft: 30 }}>{item.name}</ThemedText>
+                  </View>
+                </>
+              </ThemedView>
+            )}
+          />
+        </>
+      )}
       {/* navigation to player add/edit screen */}
     </ThemedView>
   );

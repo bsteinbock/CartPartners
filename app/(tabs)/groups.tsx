@@ -18,6 +18,7 @@ import {
 } from '@/lib/db-helper';
 import { formatDate } from '@/lib/formatters';
 import { createCartGroupings } from '@/lib/group-utils';
+import { useFocusEffect } from '@react-navigation/native';
 import * as Clipboard from 'expo-clipboard';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Button, FlatList, Linking, StyleSheet, TouchableOpacity } from 'react-native';
@@ -43,6 +44,12 @@ export default function GroupsScreen() {
     }
   };
 
+  // Replace the existing useEffect with useFocusEffect
+  useFocusEffect(
+    useCallback(() => {
+      void loadRounds();
+    }, []),
+  );
   useEffect(() => {
     const availableOptions = rounds.map((r) => {
       return { label: `${r.course}(${formatDate(r.date)})`, value: r.id };
@@ -57,7 +64,6 @@ export default function GroupsScreen() {
       setRoundOptions(availableOptions);
     }
   }, [rounds]);
-
   const handleRoundOptionChange = (option: OptionEntry) => {
     setPickedRound(option);
     setCurrentRoundId(option.value);
@@ -136,10 +142,6 @@ export default function GroupsScreen() {
       Alert.alert('Error', 'Failed to copy summary to clipboard');
     }
   };
-
-  useEffect(() => {
-    void loadRounds();
-  }, []);
 
   const loadGroupsForRound = async (roundId: number) => {
     const groups = await getGroupsForRound(roundId);

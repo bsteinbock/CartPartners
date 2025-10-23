@@ -1,11 +1,17 @@
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Button, FlatList, Switch, View } from 'react-native';
+import { Alert, Button, FlatList, StyleSheet, Switch, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { deletePlayerById, getPlayers, updatePlayerById } from '@/lib/db-helper';
+import {
+  addPlayer,
+  deletePlayerById,
+  getPlayers,
+  getPlayersForRound,
+  updatePlayerById,
+} from '@/lib/db-helper';
 
 export default function PlayersScreen() {
   const router = useRouter();
@@ -31,12 +37,41 @@ export default function PlayersScreen() {
     }, []),
   );
 
+  const seed = async () => {
+    try {
+      await addPlayer({ name: 'Garry', speedIndex: 1, email: 'minter5@outlook.com' });
+      await addPlayer({ name: 'Carl', speedIndex: 1, email: 'Carlofky@gmail.com' });
+      await addPlayer({ name: 'Bill', speedIndex: 1, email: 'bill.steinbock@icloud.com' });
+      await addPlayer({ name: 'Ed', speedIndex: 1, email: 'e.mathison@att.net' });
+      await addPlayer({ name: 'Joe Gates', speedIndex: 1, email: 'mrjoegates@gmail.com' });
+      await addPlayer({ name: 'Joe H', speedIndex: 1, email: 'jhenehan57@gmail.com' });
+      await addPlayer({ name: 'Ron W', speedIndex: 1, email: 'ron.wibbels@gmail.com' });
+      await addPlayer({ name: 'Richard', speedIndex: 1, email: 'richarray@gmail.com' });
+      await addPlayer({ name: 'Greg', speedIndex: 2, email: 'gregweber@twc.com' });
+      await addPlayer({ name: 'Larry L', speedIndex: 2, email: 'larryalee13@gmail.com' });
+      await addPlayer({ name: 'Larry K', speedIndex: 2, email: 'lekelley1@gmail.com' });
+      await addPlayer({ name: 'Ben Finn', speedIndex: 3, email: 'ben.finn1950@gmail.com' });
+      await addPlayer({ name: 'Dave', speedIndex: 3, email: 'kybred48@yahoo.com' });
+      await addPlayer({ name: 'Huff', speedIndex: 4, email: 'starwars48@msn.com' });
+      await addPlayer({ name: 'Brad', speedIndex: 4, email: 'Bniedert@gmail.com' });
+      await addPlayer({ name: 'Jack', speedIndex: 5, email: 'jgorbett@aol.com' });
+      await addPlayer({ name: 'Jerry', speedIndex: 5, email: 'jlcarr39@att.net' });
+      await addPlayer({ name: 'Clark', speedIndex: 2, email: 'cottrell@twc.com' });
+      await addPlayer({ name: 'Mike Connelly', speedIndex: 1, email: 'mike.connelly.louisville@gmail.com' });
+      await addPlayer({ name: 'Mike Morris', speedIndex: 1, email: 'mtmorris146@gmail.com' });
+      const p = await getPlayersForRound(null);
+      setPlayers(p);
+    } catch (e) {
+      console.warn('Seed failed', e);
+    }
+  };
+
   const startEdit = (id?: number) => {
     if (typeof id === 'undefined') return;
     router.push(`/players/${id}`);
   };
 
-  const addPlayer = () => {
+  const addNewPlayer = () => {
     router.push({ pathname: `/players/[id]`, params: { id: 'new' } });
   };
 
@@ -74,8 +109,14 @@ export default function PlayersScreen() {
         style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 10 }}
       >
         <ThemedText type="subtitle">Players</ThemedText>
-        <Button title="Add" onPress={addPlayer} />
+        <Button title="Add" onPress={addNewPlayer} />
       </View>
+      {players.length === 0 && (
+        <View style={styles.stepContainer}>
+          <Button title="Seed sample players" onPress={seed} />
+        </View>
+      )}
+
       <FlatList
         data={players}
         keyExtractor={(item, i) => String(item.id ?? i)}
@@ -125,3 +166,10 @@ export default function PlayersScreen() {
     </ThemedView>
   );
 }
+
+const styles = StyleSheet.create({
+  stepContainer: {
+    gap: 8,
+    marginBottom: 8,
+  },
+});
