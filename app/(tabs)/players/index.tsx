@@ -1,7 +1,7 @@
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Button, FlatList, StyleSheet, Switch, View } from 'react-native';
+import { Alert, Button, FlatList, Pressable, StyleSheet, Switch, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -135,8 +135,6 @@ export default function PlayersScreen() {
             <ThemedText style={{ fontWeight: '700', textAlign: 'right', flex: 1, paddingRight: 20 }}>
               Available
             </ThemedText>
-            <ThemedText style={{ fontWeight: '700', width: 50 }}></ThemedText>
-            {false && <ThemedText style={{ fontWeight: '700' }}>Delete</ThemedText>}
           </ThemedView>
         )}
         renderItem={({ item }) => (
@@ -150,15 +148,19 @@ export default function PlayersScreen() {
               justifyContent: 'space-between',
             }}
           >
-            <View>
-              <ThemedText>{item.name}</ThemedText>
-              <ThemedText style={{ color: '#666' }}>{`Speed: ${item.speedIndex}`}</ThemedText>
-              <ThemedText style={{ color: '#666' }}>{`Email: ${item.email ?? 'not specified'}`}</ThemedText>
+            <View style={{ flex: 1, marginRight: 12 }}>
+              <Pressable onPress={() => startEdit(item.id)}>
+                <View>
+                  <ThemedText>{item.name}</ThemedText>
+                  <ThemedText style={{ color: '#666' }}>{`Speed: ${item.speedIndex}`}</ThemedText>
+                  <ThemedText numberOfLines={2} style={{ color: '#666' }}>{`Email: ${
+                    item.email ?? 'not specified'
+                  }`}</ThemedText>
+                </View>
+              </Pressable>
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <View style={{ alignItems: 'center' }}>
               <Switch value={!!item.available} onValueChange={() => toggleAvailable(item)} />
-              <Button title="Edit" onPress={() => startEdit(item.id)} />
-              {false && <Button title="Delete" color="#d00" onPress={() => confirmDelete(item)} />}
             </View>
           </View>
         )}
