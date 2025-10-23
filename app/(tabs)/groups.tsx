@@ -35,6 +35,7 @@ export default function GroupsScreen() {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const backgroundColor = useThemeColor({ light: undefined, dark: undefined }, 'background');
   const borderColor = useThemeColor({ light: undefined, dark: undefined }, 'border');
+  const textColor = useThemeColor({ light: undefined, dark: undefined }, 'text');
 
   const loadRounds = async () => {
     const r = await getRoundSummaries();
@@ -70,8 +71,8 @@ export default function GroupsScreen() {
     setIsRoundPickerVisible(false);
   };
 
-  const loadActivePlayers = async (roundId: number | null) => {
-    const p = await getPlayersForRound(roundId ?? null);
+  const loadActivePlayers = async (roundId: number) => {
+    const p = await getPlayersForRound(roundId);
     // filter only active
     const active = (p || [])
       .filter((pp) => pp.active)
@@ -149,8 +150,10 @@ export default function GroupsScreen() {
   };
 
   useEffect(() => {
-    void loadActivePlayers(currentRoundId);
-    if (currentRoundId !== null) loadGroupsForRound(currentRoundId);
+    if (currentRoundId !== null) {
+      void loadActivePlayers(currentRoundId);
+      loadGroupsForRound(currentRoundId);
+    }
   }, [currentRoundId]);
 
   // Load recent groups when the current round changes
@@ -210,7 +213,7 @@ export default function GroupsScreen() {
           ]}
         >
           <ThemedView style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <ThemedText style={{ fontWeight: '600' }}>
+            <ThemedText style={{ fontWeight: '600', color: selectedIndex === index ? '#2f95eb' : textColor }}>
               {`${item.players.map((p) => p.name).join(', ')}`}
             </ThemedText>
           </ThemedView>
