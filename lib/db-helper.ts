@@ -347,42 +347,52 @@ export async function setPlayerActiveForRound(
   throw new Error('No suitable async DB API available to set player active flag');
 }
 
-export async function getPlayersForRound(roundId: number | null): Promise<PlayerWithActive[]> {
+export async function getPlayersForRound(roundId: number): Promise<PlayerWithActive[]> {
   const database = await openDb();
+
+  let roundPlayers = [];
+  const rows = await database.getAllAsync(
+    `SELECT p.id, p.name, p.speedIndex, IFNULL(rp.active, 0) as active, IFNULL(p.available, 1) as available, p.email FROM players p LEFT JOIN round_players rp ON p.id = rp.player_id AND rp.round_id = ?;`,
+    [roundId],
+  );
+  roundPlayers = (rows || []).map(
+    (r: any) =>
+      ({
+        id: r.id,
+        name: r.name,
+        speedIndex: Number(r.speedIndex),
+        active: !!r.active,
+        email: r.email ?? null,
+      } as any),
+  );
+
+  let allAvailable: PlayerWithActive[] = [];
   if (typeof database.getAllAsync === 'function') {
-    if (roundId == null) {
-      const rows = await database.getAllAsync(
-        `SELECT id, name, speedIndex, IFNULL(available, 1) as available, email FROM players WHERE available = 1;`,
-      );
-      return (rows || [])
-        .map(
-          (r: any) =>
-            ({
-              id: r.id,
-              name: r.name,
-              speedIndex: Number(r.speedIndex),
-              active: false,
-              email: r.email ?? null,
-            } as any),
-        )
-        .map((p: any, i: number) => ({ ...p, available: !!rows[i].available }));
-    }
     const rows = await database.getAllAsync(
-      `SELECT p.id, p.name, p.speedIndex, IFNULL(rp.active, 0) as active, IFNULL(p.available, 1) as available, p.email FROM players p LEFT JOIN round_players rp ON p.id = rp.player_id AND rp.round_id = ?;`,
-      [roundId],
+      `SELECT id, name, speedIndex, IFNULL(available, 1) as available, email FROM players WHERE available = 1;`,
     );
-    return (rows || [])
-      .map(
-        (r: any) =>
-          ({
-            id: r.id,
-            name: r.name,
-            speedIndex: Number(r.speedIndex),
-            active: !!r.active,
-            email: r.email ?? null,
-          } as any),
-      )
-      .map((p: any, i: number) => ({ ...p, available: !!rows[i].available }));
+    allAvailable = (rows || []).map(
+      (r: any) =>
+        ({
+          id: r.id,
+          name: r.name,
+          speedIndex: Number(r.speedIndex),
+          active: false,
+          email: r.email ?? null,
+        } as PlayerWithActive),
+    );
+
+    if (roundPlayers.length > 0) {
+      // update the active property for any entry in allAvailable that is also in roundPlayers
+      allAvailable = allAvailable.map((p: PlayerWithActive) => {
+        const match = roundPlayers.find((rp: any) => rp.id === p.id);
+        if (match) {
+          p.active = match.active;
+        }
+        return p;
+      });
+    }
+    return allAvailable;
   }
   return [];
 }

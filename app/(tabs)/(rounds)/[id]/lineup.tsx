@@ -57,7 +57,7 @@ export default function LineupScreen() {
   );
 
   const loadData = async (roundId?: number | null) => {
-    const p = await getPlayersForRound(null);
+    const p = roundId ? await getPlayersForRound(roundId) : [];
     setPlayers(p);
   };
 
