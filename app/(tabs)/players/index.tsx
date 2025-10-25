@@ -5,13 +5,7 @@ import { Alert, Button, FlatList, Pressable, StyleSheet, Switch, View } from 're
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import {
-  addPlayer,
-  deletePlayerById,
-  getPlayers,
-  getPlayersForRound,
-  updatePlayerById,
-} from '@/lib/db-helper';
+import { addPlayer, deletePlayerById, getPlayers, updatePlayerById } from '@/lib/db-helper';
 
 export default function PlayersScreen() {
   const router = useRouter();
@@ -59,7 +53,7 @@ export default function PlayersScreen() {
       await addPlayer({ name: 'Clark', speedIndex: 2, email: 'cottrell@twc.com' });
       await addPlayer({ name: 'Mike Connelly', speedIndex: 1, email: 'mike.connelly.louisville@gmail.com' });
       await addPlayer({ name: 'Mike Morris', speedIndex: 1, email: 'mtmorris146@gmail.com' });
-      const p = await getPlayersForRound(null);
+      const p = await getPlayers();
       setPlayers(p);
     } catch (e) {
       console.warn('Seed failed', e);

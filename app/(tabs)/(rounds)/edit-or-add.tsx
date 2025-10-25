@@ -5,7 +5,7 @@ import { Alert, Button, Keyboard, StyleSheet, TouchableOpacity, View } from 'rea
 import { ThemedText } from '@/components/themed-text';
 import { ThemedTextInput } from '@/components/themed-textinput';
 import { ThemedView } from '@/components/themed-view';
-import { createRound, getRoundById, getRoundSummaries, updateRoundById } from '@/lib/db-helper';
+import { useDbStore } from '@/hooks/use-dbStore';
 import { formatDate } from '@/lib/formatters';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
@@ -18,8 +18,8 @@ export default function RoundEditScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams() as Params;
   const isNew = id === 'new' || !id;
+  const { rounds, addRound, updateRound } = useDbStore();
 
-  const [round, setRound] = useState<any | null>(null);
   const [course, setCourse] = useState('');
   const [date, setDate] = useState(new Date());
   const [errors, setErrors] = useState<string[]>([]);
@@ -33,20 +33,18 @@ export default function RoundEditScreen() {
     // but to keep this screen independent we won't fetch a single player record —
     // instead the route should be opened with the current values if needed.
     if (!isNew) {
-      (async () => {
-        try {
-          const numericId = Number(id);
-          if (Number.isFinite(numericId)) {
-            const p = await getRoundById(numericId);
-            if (p) {
-              setCourse(p.course);
-              setDate(new Date(p.date));
-            }
+      try {
+        const numericId = Number(id);
+        if (Number.isFinite(numericId)) {
+          const p = rounds.find((r) => r.id === numericId);
+          if (p) {
+            setCourse(p.course);
+            setDate(new Date(p.date));
           }
-        } catch (e) {
-          console.warn('Load player failed', e);
         }
-      })();
+      } catch (e) {
+        console.warn('Load round failed', e);
+      }
     }
   }, [id]);
 
@@ -62,11 +60,11 @@ export default function RoundEditScreen() {
     if (!validate()) return;
     try {
       if (isNew) {
-        await createRound(course.trim(), date.toISOString());
+        addRound(course.trim(), date.toISOString());
       } else {
         const numericId = Number(id);
         if (!Number.isFinite(numericId)) throw new Error('invalid id');
-        await updateRoundById(numericId, {
+        updateRound(numericId, {
           course: course.trim(),
           date: date.toISOString(),
         });
@@ -78,12 +76,6 @@ export default function RoundEditScreen() {
       console.warn('Save failed', e);
       Alert.alert('Save failed');
     }
-  };
-
-  const mark = async (status: any) => {
-    const sums = await getRoundSummaries();
-    const found = (sums as any).find((r: any) => r.id === round.id);
-    setRound(found || null);
   };
 
   const handleDateConfirm = (selectedDate: Date) => {

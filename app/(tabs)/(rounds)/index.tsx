@@ -1,42 +1,14 @@
-import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
 import { Button, FlatList, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { getRoundSummaries, initDb } from '@/lib/db-helper';
+import { useDbStore } from '@/hooks/use-dbStore';
 import { formatDate } from '@/lib/formatters';
 
 export default function RoundsScreen() {
   const router = useRouter();
-  const [rounds, setRounds] = useState<any[]>([]);
-
-  useEffect(() => {
-    let mounted = true;
-    async function setup() {
-      try {
-        await initDb();
-        const r = await getRoundSummaries();
-        if (mounted) setRounds(r as any);
-      } catch (e) {
-        console.warn('DB init/fetch failed', e);
-      }
-    }
-    setup();
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      void (async () => {
-        const r = await getRoundSummaries();
-        setRounds(r as any);
-      })();
-    }, []),
-  );
+  const { rounds, roundSummaries } = useDbStore();
 
   const createAndOpen = async () => {
     router.push({ pathname: '/edit-or-add', params: { id: 'new' } });
@@ -69,7 +41,9 @@ export default function RoundsScreen() {
           >
             <>
               <ThemedText>{`${item.course} (${formatDate(item.date)})`}</ThemedText>
-              <ThemedText type="small">{`${item.numActivePlayers ?? 0} players`}</ThemedText>
+              <ThemedText type="small">{`${
+                roundSummaries.find((s) => s.round_id === item.id)?.numPlayers ?? 0
+              } players`}</ThemedText>
             </>
           </Pressable>
         )}

@@ -5,6 +5,7 @@ import OptionList, { OptionEntry } from '@/components/ui/OptionList';
 import { OptionPickerItem } from '@/components/ui/OptionPickerItem';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import {
+  BasePlayer,
   CartGroup,
   convertGroupsToCartGroups,
   getGroupsForPreviousRound,
@@ -12,7 +13,6 @@ import {
   getPlayersForRound,
   getRoundSummaries,
   Group,
-  Player,
   Round,
   setGroupsForRound,
 } from '@/lib/db-helper';
@@ -26,7 +26,7 @@ import { Alert, Button, FlatList, Linking, StyleSheet, TouchableOpacity } from '
 export default function GroupsScreen() {
   const [rounds, setRounds] = useState<Round[]>([]);
   const [currentRoundId, setCurrentRoundId] = useState<number | null>(null);
-  const [activePlayers, setActivePlayers] = useState<Player[]>([]);
+  const [activePlayers, setActivePlayers] = useState<BasePlayer[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [recentGroups, setRecentGroups] = useState<CartGroup[]>([]);
   const [isRoundPickerVisible, setIsRoundPickerVisible] = useState<boolean>(false);
@@ -45,26 +45,30 @@ export default function GroupsScreen() {
     }
   };
 
-  // Replace the existing useEffect with useFocusEffect
   useFocusEffect(
     useCallback(() => {
       void loadRounds();
     }, []),
   );
-  useEffect(() => {
-    const availableOptions = rounds.map((r) => {
-      return { label: `${r.course}(${formatDate(r.date)})`, value: r.id };
-    });
-    if (availableOptions.length === 0) {
-      availableOptions.push({ label: 'No rounds defined', value: 0 });
-      setRoundOptions(availableOptions);
-    } else {
-      const latestRound = availableOptions[0];
-      setPickedRound(latestRound);
-      setCurrentRoundId(latestRound.value);
-      setRoundOptions(availableOptions);
-    }
-  }, [rounds]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const availableOptions = rounds.map((r) => {
+        // Add space between course and date for better formatting
+        return { label: `${r.course} (${formatDate(r.date)})`, value: r.id };
+      });
+      if (availableOptions.length === 0) {
+        availableOptions.push({ label: 'No rounds defined', value: 0 });
+        setRoundOptions(availableOptions);
+      } else {
+        const latestRound = availableOptions[0];
+        setPickedRound(latestRound);
+        setCurrentRoundId(latestRound.value);
+        setRoundOptions(availableOptions);
+      }
+    }, [rounds]),
+  );
+
   const handleRoundOptionChange = (option: OptionEntry) => {
     setPickedRound(option);
     setCurrentRoundId(option.value);
@@ -74,10 +78,10 @@ export default function GroupsScreen() {
   const loadActivePlayers = async (roundId: number) => {
     const p = await getPlayersForRound(roundId);
     // filter only active
-    const active = (p || [])
+    const active: BasePlayer[] = (p || [])
       .filter((pp) => pp.active)
       .map((pp) => ({ id: pp.id, name: pp.name, speedIndex: pp.speedIndex }));
-    setActivePlayers(active);
+    return active;
   };
 
   const buildGroupSummary = (groupsToExport: any[]) => {
@@ -146,14 +150,29 @@ export default function GroupsScreen() {
 
   const loadGroupsForRound = async (roundId: number) => {
     const groups = await getGroupsForRound(roundId);
+    if (!groups) {
+      setGroups([]);
+      return;
+    }
     setGroups(groups);
   };
 
   useEffect(() => {
     if (currentRoundId !== null) {
-      void loadActivePlayers(currentRoundId);
       loadGroupsForRound(currentRoundId);
     }
+  }, [currentRoundId]);
+
+  useEffect(() => {
+    const load = async () => {
+      if (currentRoundId !== null) {
+        const players = await loadActivePlayers(currentRoundId);
+        setActivePlayers(players);
+      } else {
+        setActivePlayers([]);
+      }
+    };
+    void load();
   }, [currentRoundId]);
 
   // Load recent groups when the current round changes
@@ -185,16 +204,26 @@ export default function GroupsScreen() {
   };
 
   const handleGenerateGroupings = useCallback(async () => {
-    const newGroupings = createCartGroupings(activePlayers, recentGroups);
-    if (currentRoundId !== null) {
-      try {
-        await setGroupsForRound(currentRoundId, newGroupings);
-        setGroups(newGroupings);
-      } catch (e) {
-        Alert.alert('Error', `Failed to generate groups. ${e}`);
-      }
+    if (activePlayers.length === 0) {
+      Alert.alert('No active players', 'Please select a round with active players to generate groups.');
+      return;
     }
-  }, [activePlayers, currentRoundId]);
+    if (currentRoundId === null) {
+      Alert.alert('No round selected', 'Please select a round to generate groups for.');
+      return;
+    }
+
+    try {
+      const players = await loadActivePlayers(currentRoundId);
+      const newGroupings = createCartGroupings(players, recentGroups);
+      await setGroupsForRound(currentRoundId, newGroupings);
+      setGroups(newGroupings);
+    } catch (e) {
+      Alert.alert('Error', `Failed to generate groups. ${e}`);
+    }
+  }, [activePlayers, currentRoundId, recentGroups]);
+
+  // Render each group in the FlatList
 
   const renderGroup = ({ item, index }: { item: CartGroup; index: number }) => {
     return (
@@ -258,7 +287,6 @@ export default function GroupsScreen() {
     <ThemedView style={{ flex: 1 }}>
       <ThemedView style={{ paddingHorizontal: 12, paddingVertical: 12 }}>
         <ThemedText style={{ marginBottom: 8 }}>Select Round</ThemedText>
-
         <OptionPickerItem
           containerStyle={{ backgroundColor: backgroundColor, height: 36 }}
           optionLabel={pickedRound?.label}
@@ -267,41 +295,51 @@ export default function GroupsScreen() {
         />
       </ThemedView>
 
-      <ThemedView style={{ padding: 12 }}>
-        <ThemedText style={{ marginBottom: 8 }}>Active players: {activePlayers.length}</ThemedText>
+      {currentRoundId && (
+        <>
+          <ThemedView style={{ padding: 12 }}>
+            <ThemedText style={{ marginBottom: 8 }}>Active players: {activePlayers.length}</ThemedText>
+            {activePlayers.length > 0 && (
+              <ThemedView style={{ flexDirection: 'row', gap: 8 }}>
+                <Button title="Generate Groups" onPress={handleGenerateGroupings} />
+              </ThemedView>
+            )}
+          </ThemedView>
 
-        <ThemedView style={{ flexDirection: 'row', gap: 8 }}>
-          <Button title="Generate Groups" onPress={handleGenerateGroupings} />
-        </ThemedView>
-      </ThemedView>
+          {groups.length > 0 && (
+            <>
+              <ThemedView style={{ padding: 12, flex: 1 }}>
+                <ThemedText style={{ fontWeight: '600', marginBottom: 8 }}>Groups for this round</ThemedText>
 
-      <ThemedView style={{ padding: 12, flex: 1 }}>
-        <ThemedText style={{ fontWeight: '600', marginBottom: 8 }}>Groups for this round</ThemedText>
+                <ThemedView
+                  style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 8, gap: 8 }}
+                >
+                  <Button
+                    title="Move Up"
+                    onPress={() => moveGroup('up')}
+                    disabled={selectedIndex === null || selectedIndex === 0}
+                  />
+                  <Button
+                    title="Move Down"
+                    onPress={() => moveGroup('down')}
+                    disabled={selectedIndex === null || selectedIndex === groups.length - 1}
+                  />
+                </ThemedView>
 
-        {/* Add controls */}
-        <ThemedView style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 8, gap: 8 }}>
-          <Button
-            title="Move Up"
-            onPress={() => moveGroup('up')}
-            disabled={selectedIndex === null || selectedIndex === 0}
-          />
-          <Button
-            title="Move Down"
-            onPress={() => moveGroup('down')}
-            disabled={selectedIndex === null || selectedIndex === groups.length - 1}
-          />
-        </ThemedView>
-
-        <FlatList data={groups} keyExtractor={(g, index) => String(index)} renderItem={renderGroup} />
-        <ThemedView style={{ flexDirection: 'row', gap: 8 }}>
-          <Button
-            title="Export to Email"
-            onPress={() => {
-              void exportToEmail();
-            }}
-          />
-        </ThemedView>
-      </ThemedView>
+                <FlatList data={groups} keyExtractor={(g, index) => String(index)} renderItem={renderGroup} />
+                <ThemedView style={{ flexDirection: 'row', gap: 8 }}>
+                  <Button
+                    title="Export to Email"
+                    onPress={() => {
+                      void exportToEmail();
+                    }}
+                  />
+                </ThemedView>
+              </ThemedView>
+            </>
+          )}
+        </>
+      )}
       {roundOptions && isRoundPickerVisible && (
         <BottomSheetContainer
           isVisible={isRoundPickerVisible}

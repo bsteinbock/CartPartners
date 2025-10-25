@@ -65,7 +65,7 @@ export const OptionPickerItem: React.FC<OptionPickerItemProps> = ({
   onPickerButtonPress,
   label,
   placeholder,
-  editable = true,
+  editable = false,
   containerStyle,
   inputStyle,
 }) => {

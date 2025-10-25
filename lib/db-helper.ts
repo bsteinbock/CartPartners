@@ -59,13 +59,13 @@ CREATE TABLE IF NOT EXISTS groups (id INTEGER PRIMARY KEY AUTOINCREMENT, round_i
 CREATE TABLE IF NOT EXISTS group_players (group_id INTEGER NOT NULL, player_id INTEGER NOT NULL, PRIMARY KEY (group_id, player_id));
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT);
 `);
-  // Example schema migration
-  // try {
-  //   // Some SQLite builds support IF NOT EXISTS, but add column may fail if already present — swallow errors.
-  //   await db.execAsync(`ALTER TABLE players ADD COLUMN email TEXT;`);
-  // } catch (e) {
-  //   // ignore - column likely already exists
-  // }
+  // schema migration
+  try {
+    // Some SQLite builds support IF NOT EXISTS, but add column may fail if already present — swallow errors.
+    await db.execAsync(`ALTER TABLE players ADD COLUMN email TEXT;`);
+  } catch (e) {
+    // ignore - column likely already exists
+  }
 }
 
 export async function addPlayer(player: Omit<Player, 'id'>): Promise<number | undefined> {

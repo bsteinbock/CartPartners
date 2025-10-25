@@ -1,122 +1,79 @@
-import { useFocusEffect } from '@react-navigation/native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FlatList, StyleSheet, Switch, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import {
-  getPlayersForRound,
-  getRoundById,
-  PlayerWithActive,
-  Round,
-  setPlayerActiveForRound,
-} from '@/lib/db-helper';
+import { useDbStore } from '@/hooks/use-dbStore';
 import { formatDate } from '@/lib/formatters';
 
 type Params = {
-  id: string; // 'new' or numeric id
+  id: string; // numeric id
 };
 
 export default function LineupScreen() {
   const router = useRouter();
-  const [players, setPlayers] = useState<PlayerWithActive[]>([]);
-  const [round, setRound] = useState<Round>();
   const { id } = useLocalSearchParams() as Params;
+  const roundId = Number(id);
+  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
+  const { players, rounds, roundPlayers, fetchPlayers, fetchRounds, fetchRoundPlayers, setRoundPlayers } =
+    useDbStore();
+
+  const [selectedPlayers, setSelectedPlayers] = useState<number[]>([]);
+
+  // Load data on mount
   useEffect(() => {
-    let mounted = true;
+    fetchPlayers();
+    fetchRounds();
+    fetchRoundPlayers();
+  }, []);
 
-    async function setup() {
-      try {
-        const numericId = Number(id);
-        if (Number.isFinite(numericId)) {
-          const r = await getRoundById(numericId);
-          if (r) {
-            if (mounted) setRound(r);
-          }
-          const p = await getPlayersForRound(numericId);
-          if (mounted) setPlayers(p);
-        }
-      } catch (e) {
-        console.warn('Load player failed', e);
-      }
-    }
-    setup();
-    return () => {
-      mounted = false;
-    };
-  }, [id]);
+  // refresh when data or round changes, update selectedPlayers
+  useEffect(() => {
+    const activePlayers = roundPlayers
+      .filter((rp) => rp.round_id === roundId && rp.active === 1)
+      .map((rp) => rp.player_id);
+    setSelectedPlayers(activePlayers);
+  }, [roundId, roundPlayers]);
 
-  // reload when returning to this screen (e.g., after navigating back from add/edit)
-  useFocusEffect(
-    useCallback(() => {
-      const numericId = Number(id);
-      void loadData(numericId);
-    }, [id]),
-  );
+  const round = rounds.find((r) => r.id === roundId);
 
-  const loadData = async (roundId?: number | null) => {
-    const p = roundId ? await getPlayersForRound(roundId) : [];
-    setPlayers(p);
+  // Debounced DB save helper - we debounce calls by 250 ms to prevent SQLite from being hammered
+  // if the user quickly taps multiple players in a row.
+  const persistSelection = (newSelection: number[]) => {
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(() => {
+      setRoundPlayers(roundId, newSelection);
+    }, 250);
   };
 
-  const toggleActive = useCallback(
-    (player: PlayerWithActive) => {
-      try {
-        const updatedPlayers = players.map((p) => {
-          if (p.id === player.id) {
-            p.active = !p.active;
-          }
-          return p;
-        });
-        setPlayers(updatedPlayers);
-
-        const pMatch = updatedPlayers.find((p) => p.id === player.id);
-        if (pMatch) {
-          (async () => {
-            const numericId = Number(id);
-            if (Number.isFinite(numericId)) {
-              await setPlayerActiveForRound(numericId, pMatch.id, pMatch.active);
-            }
-          })();
-        }
-      } catch (e) {
-        console.warn('Toggle failed', e);
-      }
-    },
-    [players, id],
-  );
-
-  // Toggle all players active state (header switch)
-  const toggleAllPlayers = useCallback(
-    async (value: boolean) => {
-      try {
-        const updated = players.map((p) => ({ ...p, active: value }));
-        setPlayers(updated);
-
-        const numericId = Number(id);
-        if (Number.isFinite(numericId)) {
-          // persist changes for each player for this round
-          await Promise.all(updated.map((p) => setPlayerActiveForRound(numericId, p.id, p.active)));
-        }
-      } catch (e) {
-        console.warn('Toggle all failed', e);
-      }
-    },
-    [players, id],
-  );
-
-  // navigation router available for edit/add player screens
-  // startEdit will navigate to the edit screen
-  const startEdit = (player: PlayerWithActive) => {
-    router.push(`/players/${player.id}`);
+  // Toggle a player's selection
+  const togglePlayer = (playerId: number) => {
+    setSelectedPlayers((prev) => {
+      const newSelection = prev.includes(playerId)
+        ? prev.filter((id) => id !== playerId)
+        : [...prev, playerId];
+      persistSelection(newSelection);
+      return newSelection;
+    });
   };
 
-  // Add player navigation
-  const addNewPlayer = () => {
-    router.push('/players/add');
+  // Select or clear all players
+  const toggleAllPlayers = () => {
+    const allIds = players.map((p) => p.id);
+    const newSelection = selectedPlayers.length ? [] : allIds;
+    setSelectedPlayers(newSelection);
+    persistSelection(newSelection);
   };
+
+  if (!round) {
+    return (
+      <ThemedView style={{ flex: 1 }}>
+        <ThemedText>Loading round...</ThemedText>
+      </ThemedView>
+    );
+  }
 
   return (
     <ThemedView style={{ flex: 1 }}>
@@ -143,9 +100,7 @@ export default function LineupScreen() {
       ) : (
         <>
           <View style={{ paddingHorizontal: 12, paddingBottom: 8 }}>
-            <ThemedText>{`Players: ${players.length} — Active: ${
-              players.filter((p) => p.active).length
-            }`}</ThemedText>
+            <ThemedText>{`Players: ${players.length} — Active: ${selectedPlayers.length}`}</ThemedText>
           </View>
 
           <FlatList
@@ -187,9 +142,9 @@ export default function LineupScreen() {
                 <>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                     <Switch
-                      value={!!item.active}
+                      value={selectedPlayers.includes(item.id)}
                       onValueChange={(_val) => {
-                        void toggleActive(item);
+                        void togglePlayer(item.id);
                       }}
                     />
                     <ThemedText style={{ marginLeft: 30 }}>{item.name}</ThemedText>
@@ -200,7 +155,6 @@ export default function LineupScreen() {
           />
         </>
       )}
-      {/* navigation to player add/edit screen */}
     </ThemedView>
   );
 }
