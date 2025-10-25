@@ -62,7 +62,8 @@ export default function LineupScreen() {
   // Select or clear all players
   const toggleAllPlayers = () => {
     const allIds = players.map((p) => p.id);
-    const newSelection = selectedPlayers.length ? [] : allIds;
+    const allSelected = allIds.every((id) => selectedPlayers.includes(id));
+    const newSelection = allSelected ? [] : allIds;
     setSelectedPlayers(newSelection);
     persistSelection(newSelection);
   };
@@ -107,7 +108,8 @@ export default function LineupScreen() {
             data={players}
             keyExtractor={(item) => String(item.id)}
             ListHeaderComponent={() => {
-              const allActive = players.length > 0 && players.every((p) => !!p.active);
+              const allSelected = players.length > 0 && players.every((p) => selectedPlayers.includes(p.id));
+
               return (
                 <ThemedView
                   style={{
@@ -121,7 +123,7 @@ export default function LineupScreen() {
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                     <Switch
-                      value={allActive}
+                      value={allSelected}
                       onValueChange={toggleAllPlayers}
                       disabled={players.length === 0}
                     />
