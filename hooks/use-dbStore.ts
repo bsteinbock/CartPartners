@@ -1,4 +1,4 @@
-// useDbStore.ts
+// use-DbStore.ts
 import * as SQLite from 'expo-sqlite';
 import { create } from 'zustand';
 
@@ -51,7 +51,7 @@ export function initDb() {
 }
 
 // ------------------- TYPES -------------------
-type Player = { id: number; name: string; speedIndex: number; email?: string; available: number };
+type Player = { id: number; name: string; speedIndex: number; email: string; available: number };
 type Round = { id: number; date: string; course: string };
 type Group = { id: number; round_id: number; slot_index: number; created_at: string };
 type RoundPlayer = { round_id: number; player_id: number; active: number };
@@ -67,11 +67,15 @@ type DbState = {
   fetchPlayers: () => void;
   fetchRounds: () => void;
   fetchGroups: () => void;
+
   fetchRoundPlayers: () => void;
   setRoundPlayers: (roundId: number, playerIds: number[]) => void;
 
-  addPlayer: (name: string, speedIndex: number) => void;
+  addPlayer: (name: string, email: string, speedIndex: number) => void;
+  addPlayers: (players: { name: string; speedIndex: number; email: string }[]) => void;
+  updatePlayer: (id: number, data: Partial<Omit<Player, 'id'>>) => void;
   deletePlayer: (id: number) => void;
+
   addGroup: (roundId: number, slotIndex: number) => void;
   addRound: (date: string, course: string) => void;
 
@@ -125,9 +129,14 @@ export const useDbStore = create<DbState>((set) => ({
   },
 
   // --- Simple Mutations ----------------------------------------------------
-  addPlayer: (name, speedIndex) => {
+  addPlayer: (name, email, speedIndex) => {
     const db = getDb();
-    db.runSync('INSERT INTO players (name, speedIndex, available) VALUES (?, ?, ?)', [name, speedIndex, 1]);
+    db.runSync('INSERT INTO players (name, email, speedIndex, available) VALUES (?, ?, ?, ?)', [
+      name,
+      email,
+      speedIndex,
+      1,
+    ]);
     const { fetchPlayers, fetchGroups, fetchRoundPlayers } = useDbStore.getState();
     fetchPlayers();
     fetchGroups();
@@ -140,6 +149,61 @@ export const useDbStore = create<DbState>((set) => ({
       db.runSync('DELETE FROM players WHERE id = ?', [id]);
       db.runSync('DELETE FROM round_players WHERE player_id = ?', [id]);
       db.runSync('DELETE FROM group_players WHERE player_id = ?', [id]);
+    });
+    const { fetchPlayers, fetchGroups, fetchRoundPlayers } = useDbStore.getState();
+    fetchPlayers();
+    fetchGroups();
+    fetchRoundPlayers();
+  },
+
+  // Update an existing player
+  updatePlayer: (id: number, data: Partial<Omit<Player, 'id'>>) => {
+    const db = getDb();
+
+    const updates: string[] = [];
+    const params: any[] = [];
+
+    if (data.name !== undefined) {
+      updates.push('name = ?');
+      params.push(data.name);
+    }
+    if (data.speedIndex !== undefined) {
+      updates.push('speedIndex = ?');
+      params.push(data.speedIndex);
+    }
+    if (data.email !== undefined) {
+      updates.push('email = ?');
+      params.push(data.email);
+    }
+    if (data.available !== undefined) {
+      updates.push('available = ?');
+      params.push(data.available);
+    }
+
+    if (updates.length === 0) return;
+
+    params.push(id);
+    const sql = `UPDATE players SET ${updates.join(', ')} WHERE id = ?;`;
+    db.runSync(sql, params);
+
+    const { fetchPlayers, fetchGroups, fetchRoundPlayers } = useDbStore.getState();
+    fetchPlayers();
+    fetchGroups();
+    fetchRoundPlayers();
+  },
+
+  // Add multiple players at once
+  addPlayers: (players: { name: string; speedIndex: number; email: string }[]) => {
+    const db = getDb();
+    db.withTransactionSync(() => {
+      for (const { name, speedIndex, email } of players) {
+        db.runSync('INSERT INTO players (name, speedIndex, email, available) VALUES (?, ?, ?, ?)', [
+          name,
+          speedIndex,
+          email,
+          1,
+        ]);
+      }
     });
     const { fetchPlayers, fetchGroups, fetchRoundPlayers } = useDbStore.getState();
     fetchPlayers();

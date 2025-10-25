@@ -9,6 +9,7 @@ import { addPlayer, deletePlayerById, getPlayers, updatePlayerById } from '@/lib
 
 export default function PlayersScreen() {
   const router = useRouter();
+
   const [players, setPlayers] = useState<any[]>([]);
 
   async function load() {

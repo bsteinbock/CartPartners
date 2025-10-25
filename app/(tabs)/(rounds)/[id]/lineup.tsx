@@ -15,7 +15,7 @@ export default function LineupScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams() as Params;
   const roundId = Number(id);
-  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { players, rounds, roundPlayers, fetchPlayers, fetchRounds, fetchRoundPlayers, setRoundPlayers } =
     useDbStore();
