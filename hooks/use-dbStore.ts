@@ -51,11 +51,11 @@ export function initDb() {
 }
 
 // ------------------- TYPES -------------------
-type Player = { id: number; name: string; speedIndex: number; email: string; available: number };
-type Round = { id: number; date: string; course: string };
-type Group = { id: number; round_id: number; slot_index: number; created_at: string };
-type RoundPlayer = { round_id: number; player_id: number; active: number };
-type RoundSummary = { round_id: number; numPlayers: number };
+export type Player = { id: number; name: string; speedIndex: number; email: string; available: number };
+export type Round = { id: number; date: string; course: string };
+export type Group = { id: number; round_id: number; slot_index: number; created_at: string };
+export type RoundPlayer = { round_id: number; player_id: number; active: number };
+export type RoundSummary = { round_id: number; numPlayers: number };
 
 type DbState = {
   players: Player[];

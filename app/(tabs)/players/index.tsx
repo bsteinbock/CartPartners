@@ -1,64 +1,38 @@
-import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
 import { Alert, Button, FlatList, Pressable, StyleSheet, Switch, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { addPlayer, deletePlayerById, getPlayers, updatePlayerById } from '@/lib/db-helper';
+import { Player, useDbStore } from '@/hooks/use-dbStore';
 
 export default function PlayersScreen() {
   const router = useRouter();
+  const { players, addPlayers, updatePlayer } = useDbStore();
 
-  const [players, setPlayers] = useState<any[]>([]);
-
-  async function load() {
-    try {
-      const rows = await getPlayers(false);
-      // getPlayers returns minimal info (name, speedIndex). We'll map to objects with id optionally absent.
-      setPlayers(rows as any[]);
-    } catch (e) {
-      console.warn('Load players failed', e);
-    }
-  }
-
-  useEffect(() => {
-    void load();
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      void load();
-    }, []),
-  );
-
-  const seed = async () => {
-    try {
-      await addPlayer({ name: 'Garry', speedIndex: 1, email: 'minter5@outlook.com' });
-      await addPlayer({ name: 'Carl', speedIndex: 1, email: 'Carlofky@gmail.com' });
-      await addPlayer({ name: 'Bill', speedIndex: 1, email: 'bill.steinbock@icloud.com' });
-      await addPlayer({ name: 'Ed', speedIndex: 1, email: 'e.mathison@att.net' });
-      await addPlayer({ name: 'Joe Gates', speedIndex: 1, email: 'mrjoegates@gmail.com' });
-      await addPlayer({ name: 'Joe H', speedIndex: 1, email: 'jhenehan57@gmail.com' });
-      await addPlayer({ name: 'Ron W', speedIndex: 1, email: 'ron.wibbels@gmail.com' });
-      await addPlayer({ name: 'Richard', speedIndex: 1, email: 'richarray@gmail.com' });
-      await addPlayer({ name: 'Greg', speedIndex: 2, email: 'gregweber@twc.com' });
-      await addPlayer({ name: 'Larry L', speedIndex: 2, email: 'larryalee13@gmail.com' });
-      await addPlayer({ name: 'Larry K', speedIndex: 2, email: 'lekelley1@gmail.com' });
-      await addPlayer({ name: 'Ben Finn', speedIndex: 3, email: 'ben.finn1950@gmail.com' });
-      await addPlayer({ name: 'Dave', speedIndex: 3, email: 'kybred48@yahoo.com' });
-      await addPlayer({ name: 'Huff', speedIndex: 4, email: 'starwars48@msn.com' });
-      await addPlayer({ name: 'Brad', speedIndex: 4, email: 'Bniedert@gmail.com' });
-      await addPlayer({ name: 'Jack', speedIndex: 5, email: 'jgorbett@aol.com' });
-      await addPlayer({ name: 'Jerry', speedIndex: 5, email: 'jlcarr39@att.net' });
-      await addPlayer({ name: 'Clark', speedIndex: 2, email: 'cottrell@twc.com' });
-      await addPlayer({ name: 'Mike Connelly', speedIndex: 1, email: 'mike.connelly.louisville@gmail.com' });
-      await addPlayer({ name: 'Mike Morris', speedIndex: 1, email: 'mtmorris146@gmail.com' });
-      const p = await getPlayers();
-      setPlayers(p);
-    } catch (e) {
-      console.warn('Seed failed', e);
-    }
+  const seed = () => {
+    const seedPlayers = [
+      { name: 'Garry', speedIndex: 1, email: 'minter5@outlook.com' },
+      { name: 'Carl', speedIndex: 1, email: 'Carlofky@gmail.com' },
+      { name: 'Bill', speedIndex: 1, email: 'bill.steinbock@icloud.com' },
+      { name: 'Ed', speedIndex: 1, email: 'e.mathison@att.net' },
+      { name: 'Joe Gates', speedIndex: 1, email: 'mrjoegates@gmail.com' },
+      { name: 'Joe H', speedIndex: 1, email: 'jhenehan57@gmail.com' },
+      { name: 'Ron W', speedIndex: 1, email: 'ron.wibbels@gmail.com' },
+      { name: 'Richard', speedIndex: 1, email: 'richarray@gmail.com' },
+      { name: 'Greg', speedIndex: 2, email: 'gregweber@twc.com' },
+      { name: 'Larry L', speedIndex: 2, email: 'larryalee13@gmail.com' },
+      { name: 'Larry K', speedIndex: 2, email: 'lekelley1@gmail.com' },
+      { name: 'Ben Finn', speedIndex: 3, email: 'ben.finn1950@gmail.com' },
+      { name: 'Dave', speedIndex: 3, email: 'kybred48@yahoo.com' },
+      { name: 'Huff', speedIndex: 4, email: 'starwars48@msn.com' },
+      { name: 'Brad', speedIndex: 4, email: 'Bniedert@gmail.com' },
+      { name: 'Jack', speedIndex: 5, email: 'jgorbett@aol.com' },
+      { name: 'Jerry', speedIndex: 5, email: 'jlcarr39@att.net' },
+      { name: 'Clark', speedIndex: 2, email: 'cottrell@twc.com' },
+      { name: 'Mike Connelly', speedIndex: 1, email: 'mike.connelly.louisville@gmail.com' },
+      { name: 'Mike Morris', speedIndex: 1, email: 'mtmorris146@gmail.com' },
+    ];
+    addPlayers(seedPlayers);
   };
 
   const startEdit = (id?: number) => {
@@ -70,28 +44,10 @@ export default function PlayersScreen() {
     router.push({ pathname: `/players/[id]`, params: { id: 'new' } });
   };
 
-  const confirmDelete = (p: any) => {
-    Alert.alert('Delete player', `Delete ${p.name}?. You cannot recover a deleted player.`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => handleDelete(p) },
-    ]);
-  };
-
-  const handleDelete = async (p: any) => {
+  const toggleAvailable = (p: Player) => {
     try {
       if (!p.id) return;
-      await deletePlayerById(p.id);
-      await load();
-    } catch (e) {
-      console.warn('Delete failed', e);
-    }
-  };
-
-  const toggleAvailable = async (p: any) => {
-    try {
-      if (!p.id) return;
-      await updatePlayerById(p.id, { available: !p.available });
-      await load();
+      updatePlayer(p.id, { available: p.available ? 0 : 1 });
     } catch (e) {
       console.warn('Toggle available failed', e);
       Alert.alert('Error', 'Failed to update availability');
