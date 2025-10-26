@@ -1,5 +1,7 @@
 import { useRouter } from 'expo-router';
 import { Alert, Button, FlatList, Pressable, StyleSheet, Switch, View } from 'react-native';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -54,14 +56,61 @@ export default function PlayersScreen() {
     }
   };
 
+  const exportToCSV = async () => {
+    if (!players || players.length === 0) {
+      Alert.alert('No data', 'There are no players to export.');
+      return;
+    }
+
+    try {
+      const header = ['Name', 'Speed Index', 'Email', 'Available'];
+      const rows = players.map((p) => [
+        `"${p.name}"`,
+        p.speedIndex,
+        `"${p.email ?? ''}"`,
+        p.available ? 'Yes' : 'No',
+      ]);
+
+      const csvString = [header.join(','), ...rows.map((r) => r.join(','))].join('\n');
+
+      const fileUri = FileSystem.documentDirectory + 'players.csv';
+      await FileSystem.writeAsStringAsync(fileUri, csvString, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
+
+      const canShare = await Sharing.isAvailableAsync();
+      if (!canShare) {
+        Alert.alert('Sharing not available', 'This device does not support sharing files.');
+        return;
+      }
+
+      await Sharing.shareAsync(fileUri, {
+        mimeType: 'text/csv',
+        dialogTitle: 'Share Players CSV',
+      });
+    } catch (err) {
+      console.error('Error exporting CSV', err);
+      Alert.alert('Error', 'Failed to export players.');
+    }
+  };
+
   return (
     <ThemedView style={{ flex: 1 }}>
       <View
-        style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 10 }}
+        style={{
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: 10,
+        }}
       >
         <ThemedText type="subtitle">Players</ThemedText>
-        <Button title="Add" onPress={addNewPlayer} />
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <Button title="Export CSV" onPress={exportToCSV} />
+          <Button title="Add" onPress={addNewPlayer} />
+        </View>
       </View>
+
       {players.length === 0 && (
         <View style={styles.stepContainer}>
           <Button title="Seed sample players" onPress={seed} />
