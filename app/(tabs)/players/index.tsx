@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { Alert, Button, FlatList, Pressable, StyleSheet, Switch, View } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
+import * as DocumentPicker from 'expo-document-picker';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -94,6 +95,71 @@ export default function PlayersScreen() {
     }
   };
 
+  const importFromCSV = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'text/csv',
+        copyToCacheDirectory: true,
+      });
+
+      if (result.canceled || !result.assets?.[0]?.uri) {
+        return;
+      }
+
+      const fileUri = result.assets[0].uri;
+      const fileContent = await FileSystem.readAsStringAsync(fileUri, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
+
+      // Split into lines and parse CSV
+      const lines = fileContent.trim().split('\n');
+      const header = lines[0].split(',').map((h) => h.trim().replace(/"/g, ''));
+      const nameIndex = header.findIndex((h) => h.toLowerCase() === 'name');
+      const speedIndexIdx = header.findIndex((h) => h.toLowerCase().includes('speed'));
+      const emailIndex = header.findIndex((h) => h.toLowerCase() === 'email');
+      const availableIndex = header.findIndex((h) => h.toLowerCase().includes('available'));
+
+      if (nameIndex === -1) {
+        Alert.alert('Invalid CSV', 'The CSV must contain a "Name" column.');
+        return;
+      }
+
+      let newPlayers: Player[] = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(',').map((v) => v.replace(/"/g, '').trim());
+        if (!cols[nameIndex]) continue;
+
+        const name = cols[nameIndex];
+        const speedIndex = parseInt(cols[speedIndexIdx]) || 1;
+        const email = cols[emailIndex] || '';
+        const available =
+          (cols[availableIndex] || '').toLowerCase().startsWith('y') ||
+          (cols[availableIndex] || '').toLowerCase() === 'true'
+            ? 1
+            : 0;
+
+        // Check if player exists by name (case-insensitive)
+        const existing = players.find((p) => p.name.trim().toLowerCase() === name.trim().toLowerCase());
+
+        if (existing && existing.id) {
+          await updatePlayer(existing.id, { speedIndex, email, available });
+        } else {
+          newPlayers.push({ name, speedIndex, email, available });
+        }
+      }
+
+      if (newPlayers.length > 0) {
+        addPlayers(newPlayers);
+      }
+
+      Alert.alert('Import complete', 'Players imported successfully!');
+    } catch (err) {
+      console.error('Import failed', err);
+      Alert.alert('Error', 'Failed to import players.');
+    }
+  };
+
   return (
     <ThemedView style={{ flex: 1 }}>
       <View
@@ -106,6 +172,7 @@ export default function PlayersScreen() {
       >
         <ThemedText type="subtitle">Players</ThemedText>
         <View style={{ flexDirection: 'row', gap: 8 }}>
+          <Button title="Import CSV" onPress={importFromCSV} />
           <Button title="Export CSV" onPress={exportToCSV} />
           <Button title="Add" onPress={addNewPlayer} />
         </View>
