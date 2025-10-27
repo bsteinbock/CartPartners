@@ -18,6 +18,7 @@ export function ThemedText({ style, lightColor, darkColor, type = 'default', ...
         type === 'small' ? styles.small : undefined,
         type === 'default' ? styles.default : undefined,
         type === 'title' ? styles.title : undefined,
+        type === 'xxl' ? styles.xxl : undefined,
         type === 'defaultSemiBold' ? styles.defaultSemiBold : undefined,
         type === 'subtitle' ? styles.subtitle : undefined,
         type === 'link' ? styles.link : undefined,
@@ -40,6 +41,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  xxl: {
     fontSize: 32,
     fontWeight: 'bold',
   },

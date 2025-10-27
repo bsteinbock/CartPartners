@@ -33,7 +33,6 @@ export function initDb() {
     CREATE TABLE IF NOT EXISTS round_players (
       round_id INTEGER NOT NULL,
       player_id INTEGER NOT NULL,
-      active INTEGER NOT NULL DEFAULT 1,
       PRIMARY KEY (round_id, player_id)
     );
     CREATE TABLE IF NOT EXISTS groups (
@@ -54,7 +53,7 @@ export function initDb() {
 export type Player = { id: number; name: string; speedIndex: number; email: string; available: number };
 export type Round = { id: number; date: string; course: string };
 export type Group = { id: number; round_id: number; slot_index: number; created_at: string };
-export type RoundPlayer = { round_id: number; player_id: number; active: number };
+export type RoundPlayer = { round_id: number; player_id: number };
 export type RoundSummary = { round_id: number; numPlayers: number };
 
 type DbState = {
@@ -82,7 +81,7 @@ type DbState = {
   updateRound: (id: number, data: Partial<Omit<Round, 'id'>>) => void;
 
   refreshAll: () => void;
-  generateGroupsForRound: (roundId: number) => void;
+  setGroupsForRound: (roundId: number, groupsList: number[][]) => void; // Add this line
 };
 
 // ------------------- STORE -------------------
@@ -288,53 +287,12 @@ export const useDbStore = create<DbState>((set) => ({
     fetchRoundPlayers();
   },
 
-  // --- ✨ Generate Groups for Round ------------------------------------------------
-  generateGroupsForRound: (roundId: number) => {
+  setGroupsForRound: (roundId: number, groupsList: number[][]) => {
     const db = getDb();
-    const recentRounds = db.getAllSync('SELECT id FROM rounds WHERE id < ? ORDER BY id DESC LIMIT 4;', [
-      roundId,
-    ]) as { id: number }[];
+    const createdAt = new Date().toISOString();
 
-    // 1️⃣ Get active players for this round
-    const activePlayers = db.getAllSync(
-      `
-    SELECT p.id, p.name FROM players p
-    JOIN round_players rp ON rp.player_id = p.id
-    WHERE rp.round_id = ? AND rp.active = 1;
-    `,
-      [roundId],
-    ) as { id: number; name: string }[];
-
-    if (activePlayers.length < 3) {
-      console.warn('Not enough active players to generate groups.');
-      return;
-    }
-
-    // 2️⃣ Build pair history from previous 4 rounds
-    const recentPairs = new Set<string>();
-    for (const { id } of recentRounds) {
-      const groupPlayers = db.getAllSync(
-        'SELECT group_id, player_id FROM group_players gp JOIN groups g ON gp.group_id = g.id WHERE g.round_id = ?;',
-        [id],
-      ) as { group_id: number; player_id: number }[];
-
-      const groupMap: Record<number, number[]> = {};
-      groupPlayers.forEach((gp) => {
-        groupMap[gp.group_id] = groupMap[gp.group_id] || [];
-        groupMap[gp.group_id].push(gp.player_id);
-      });
-
-      for (const g of Object.values(groupMap)) {
-        for (let i = 0; i < g.length; i++) {
-          for (let j = i + 1; j < g.length; j++) {
-            recentPairs.add([g[i], g[j]].sort().join('-'));
-          }
-        }
-      }
-    }
-
-    // 3️⃣ Remove existing groups for this round
     db.withTransactionSync(() => {
+      // 1. Clear existing groups for this round
       const oldGroups = db.getAllSync('SELECT id FROM groups WHERE round_id = ?;', [roundId]) as {
         id: number;
       }[];
@@ -342,58 +300,29 @@ export const useDbStore = create<DbState>((set) => ({
         db.runSync('DELETE FROM group_players WHERE group_id = ?;', [g.id]);
       }
       db.runSync('DELETE FROM groups WHERE round_id = ?;', [roundId]);
-    });
 
-    // 4️⃣ Shuffle players randomly
-    const shuffled = [...activePlayers].sort(() => Math.random() - 0.5);
-
-    // 5️⃣ Create groups (4 max, 3 min)
-    const groupSize = 4;
-    const minGroup = 3;
-    const groupsList: number[][] = [];
-
-    while (shuffled.length > 0) {
-      let group: number[] = [];
-      group.push(shuffled.shift()!.id);
-
-      while (group.length < groupSize && shuffled.length > 0) {
-        const best = shuffled.reduce(
-          (best, p) => {
-            const conflicts = group.filter((g) => recentPairs.has([p.id, g].sort().join('-'))).length;
-            return conflicts < best.conflicts ? { player: p, conflicts } : best;
-          },
-          { player: shuffled[0], conflicts: Infinity },
-        );
-        group.push(best.player.id);
-        shuffled.splice(shuffled.indexOf(best.player), 1);
-      }
-
-      // If last group is too small, merge
-      if (shuffled.length === 0 && group.length < minGroup && groupsList.length > 0) {
-        groupsList[groupsList.length - 1].push(...group);
-      } else {
-        groupsList.push(group);
-      }
-    }
-
-    // 6️⃣ Insert new groups
-    db.withTransactionSync(() => {
-      const createdAt = new Date().toISOString();
+      // 2. Create new groups
       for (let i = 0; i < groupsList.length; i++) {
+        // Insert group
         db.runSync('INSERT INTO groups (round_id, slot_index, created_at) VALUES (?, ?, ?);', [
           roundId,
           i,
           createdAt,
         ]);
+
+        // Get the new group's ID
         const [{ id: groupId }] = db.getAllSync('SELECT id FROM groups ORDER BY id DESC LIMIT 1;') as {
           id: number;
         }[];
-        for (const pid of groupsList[i]) {
-          db.runSync('INSERT INTO group_players (group_id, player_id) VALUES (?, ?);', [groupId, pid]);
+
+        // Insert players for this group
+        for (const playerId of groupsList[i]) {
+          db.runSync('INSERT INTO group_players (group_id, player_id) VALUES (?, ?);', [groupId, playerId]);
         }
       }
     });
 
+    // Refresh groups in store
     const { fetchGroups } = useDbStore.getState();
     fetchGroups();
   },

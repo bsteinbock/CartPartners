@@ -31,9 +31,7 @@ export default function LineupScreen() {
 
   // refresh when data or round changes, update selectedPlayers
   useEffect(() => {
-    const activePlayers = roundPlayers
-      .filter((rp) => rp.round_id === roundId && rp.active === 1)
-      .map((rp) => rp.player_id);
+    const activePlayers = roundPlayers.filter((rp) => rp.round_id === roundId).map((rp) => rp.player_id);
     setSelectedPlayers(activePlayers);
   }, [roundId, roundPlayers]);
 
@@ -78,7 +76,7 @@ export default function LineupScreen() {
 
   return (
     <ThemedView style={{ flex: 1 }}>
-      <Stack.Screen options={{ headerShown: true, title: 'Line-up' }} />
+      <Stack.Screen options={{ headerShown: true, title: 'Player Line-up' }} />
       <View style={{ paddingHorizontal: 12, paddingVertical: 8 }}>
         <View
           style={{
@@ -100,10 +98,6 @@ export default function LineupScreen() {
         </View>
       ) : (
         <>
-          <View style={{ paddingHorizontal: 12, paddingBottom: 8 }}>
-            <ThemedText>{`Players: ${players.length} — Active: ${selectedPlayers.length}`}</ThemedText>
-          </View>
-
           <FlatList
             data={players}
             keyExtractor={(item) => String(item.id)}
@@ -128,7 +122,9 @@ export default function LineupScreen() {
                       disabled={players.length === 0}
                     />
                   </View>
-                  <ThemedText style={{ fontWeight: '700' }}>Player</ThemedText>
+                  <ThemedText
+                    style={{ fontWeight: '700' }}
+                  >{`Player (${selectedPlayers.length} of ${players.length} Selected)`}</ThemedText>
                 </ThemedView>
               );
             }}

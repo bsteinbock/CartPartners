@@ -26,7 +26,15 @@ export default function RoundsScreen() {
 
   return (
     <ThemedView style={{ flex: 1 }}>
-      <View style={{ padding: 12 }}>
+      <View
+        style={{
+          paddingHorizontal: 12,
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}
+      >
+        <ThemedText type="title">Rounds</ThemedText>
         <Button title="Add Round" onPress={createAndOpen} />
       </View>
 

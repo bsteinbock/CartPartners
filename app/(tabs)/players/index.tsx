@@ -92,6 +92,8 @@ export default function PlayersScreen() {
     }
   };
 
+  const importFromCSV = async () => {};
+
   /* -------------------------------------------------------------
  const importFromCSV = async () => {
     try {
@@ -169,10 +171,10 @@ export default function PlayersScreen() {
           padding: 10,
         }}
       >
-        <ThemedText type="subtitle">Players</ThemedText>
+        <ThemedText type="title">Players</ThemedText>
         <View style={{ flexDirection: 'row', gap: 8 }}>
-          {/* <Button title="Import CSV" onPress={importFromCSV} /> */}
-          <Button title="Export CSV" onPress={exportToCSV} />
+          {players.length === 0 && <Button title="Import" onPress={importFromCSV} />}
+          {players.length > 0 && <Button title="Export" onPress={exportToCSV} />}
           <Button title="Add" onPress={addNewPlayer} />
         </View>
       </View>
