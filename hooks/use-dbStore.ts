@@ -55,6 +55,7 @@ export type Round = { id: number; date: string; course: string };
 export type Group = { id: number; round_id: number; slot_index: number; created_at: string };
 export type RoundPlayer = { round_id: number; player_id: number };
 export type RoundSummary = { round_id: number; numPlayers: number };
+export type GroupPlayers = { group_id: number; player_ids: number[] };
 
 type DbState = {
   players: Player[];
@@ -62,12 +63,14 @@ type DbState = {
   groups: Group[];
   roundPlayers: RoundPlayer[];
   roundSummaries: RoundSummary[];
+  groupPlayers: GroupPlayers[];
 
   fetchPlayers: () => void;
   fetchRounds: () => void;
   fetchGroups: () => void;
-
   fetchRoundPlayers: () => void;
+  fetchGroupPlayers: () => void;
+
   setRoundPlayers: (roundId: number, playerIds: number[]) => void;
 
   addPlayer: (name: string, email: string, speedIndex: number) => void;
@@ -91,6 +94,7 @@ export const useDbStore = create<DbState>((set) => ({
   groups: [],
   roundPlayers: [],
   roundSummaries: [],
+  groupPlayers: [],
 
   // --- Fetchers ------------------------------------------------------------
   fetchPlayers: () => {
@@ -125,6 +129,29 @@ export const useDbStore = create<DbState>((set) => ({
     }));
 
     set({ roundSummaries });
+  },
+  fetchGroupPlayers: () => {
+    const db = getDb();
+
+    // Get all groups first
+    const groups = db.getAllSync('SELECT id FROM groups ORDER BY slot_index;') as { id: number }[];
+
+    // For each group, get its players
+    const groupPlayers: GroupPlayers[] = [];
+
+    for (const group of groups) {
+      const players = db.getAllSync(
+        'SELECT player_id FROM group_players WHERE group_id = ? ORDER BY player_id;',
+        [group.id],
+      ) as { player_id: number }[];
+
+      groupPlayers.push({
+        group_id: group.id,
+        player_ids: players.map((p) => p.player_id),
+      });
+    }
+
+    set({ groupPlayers });
   },
 
   // --- Simple Mutations ----------------------------------------------------
@@ -280,11 +307,14 @@ export const useDbStore = create<DbState>((set) => ({
 
   // --- Refresh All ---------------------------------------------------------
   refreshAll: () => {
-    const { fetchPlayers, fetchRounds, fetchGroups, fetchRoundPlayers } = useDbStore.getState();
+    const { fetchPlayers, fetchRounds, fetchGroups, fetchRoundPlayers, fetchGroupPlayers } =
+      useDbStore.getState();
+
     fetchPlayers();
     fetchRounds();
     fetchGroups();
     fetchRoundPlayers();
+    fetchGroupPlayers();
   },
 
   setGroupsForRound: (roundId: number, groupsList: number[][]) => {
@@ -323,7 +353,8 @@ export const useDbStore = create<DbState>((set) => ({
     });
 
     // Refresh groups in store
-    const { fetchGroups } = useDbStore.getState();
+    const { fetchGroups, fetchGroupPlayers } = useDbStore.getState();
     fetchGroups();
+    fetchGroupPlayers();
   },
 }));

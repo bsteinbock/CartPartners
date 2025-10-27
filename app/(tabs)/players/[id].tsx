@@ -56,7 +56,9 @@ export default function PlayerDetailScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <ThemedText style={styles.title}>{isNew ? 'Add New Player' : 'Edit Player'}</ThemedText>
+      <ThemedText type="title" style={styles.title}>
+        {isNew ? 'Add New Player' : 'Edit Player'}
+      </ThemedText>
 
       <ThemedText style={styles.label}>Name</ThemedText>
       <ThemedTextInput style={styles.input} value={name} onChangeText={setName} placeholder="Player name" />
@@ -71,7 +73,7 @@ export default function PlayerDetailScreen() {
         keyboardType="email-address"
       />
 
-      <ThemedText style={styles.label}>Speed Index</ThemedText>
+      <ThemedText style={styles.label}>Speed Index (1-Fast/3-Med/5-Slow)</ThemedText>
       <ThemedTextInput
         style={styles.input}
         value={speedIndex}
@@ -94,9 +96,7 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginBottom: 24,
+    marginBottom: 12,
   },
   label: {
     fontSize: 16,
