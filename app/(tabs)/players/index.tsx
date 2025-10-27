@@ -1,8 +1,7 @@
+import { File, Paths } from 'expo-file-system';
 import { useRouter } from 'expo-router';
-import { Alert, Button, FlatList, Pressable, StyleSheet, Switch, View } from 'react-native';
-import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-import * as DocumentPicker from 'expo-document-picker';
+import { Alert, Button, FlatList, Pressable, StyleSheet, Switch, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -56,7 +55,6 @@ export default function PlayersScreen() {
       Alert.alert('Error', 'Failed to update availability');
     }
   };
-
   const exportToCSV = async () => {
     if (!players || players.length === 0) {
       Alert.alert('No data', 'There are no players to export.');
@@ -74,10 +72,9 @@ export default function PlayersScreen() {
 
       const csvString = [header.join(','), ...rows.map((r) => r.join(','))].join('\n');
 
-      const fileUri = FileSystem.documentDirectory + 'players.csv';
-      await FileSystem.writeAsStringAsync(fileUri, csvString, {
-        encoding: FileSystem.EncodingType.UTF8,
-      });
+      const file = new File(Paths.cache, 'players.csv');
+      file.create({ overwrite: true });
+      file.write(csvString);
 
       const canShare = await Sharing.isAvailableAsync();
       if (!canShare) {
@@ -85,7 +82,7 @@ export default function PlayersScreen() {
         return;
       }
 
-      await Sharing.shareAsync(fileUri, {
+      await Sharing.shareAsync(file.uri, {
         mimeType: 'text/csv',
         dialogTitle: 'Share Players CSV',
       });
@@ -95,7 +92,8 @@ export default function PlayersScreen() {
     }
   };
 
-  const importFromCSV = async () => {
+  /* -------------------------------------------------------------
+ const importFromCSV = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: 'text/csv',
@@ -159,6 +157,7 @@ export default function PlayersScreen() {
       Alert.alert('Error', 'Failed to import players.');
     }
   };
+------------------------*/
 
   return (
     <ThemedView style={{ flex: 1 }}>
@@ -172,7 +171,7 @@ export default function PlayersScreen() {
       >
         <ThemedText type="subtitle">Players</ThemedText>
         <View style={{ flexDirection: 'row', gap: 8 }}>
-          <Button title="Import CSV" onPress={importFromCSV} />
+          {/* <Button title="Import CSV" onPress={importFromCSV} /> */}
           <Button title="Export CSV" onPress={exportToCSV} />
           <Button title="Add" onPress={addNewPlayer} />
         </View>
