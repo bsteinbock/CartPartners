@@ -65,6 +65,8 @@ type DbState = {
   roundSummaries: RoundSummary[];
   groupPlayers: GroupPlayers[];
 
+  currentRoundId: number | null;
+
   fetchPlayers: () => void;
   fetchRounds: () => void;
   fetchGroups: () => void;
@@ -86,16 +88,21 @@ type DbState = {
   refreshAll: () => void;
   setGroupsForRound: (roundId: number, groupsList: number[][]) => void;
   swapGroupSlots: (groupId1: number, slotIndex1: number, groupId2: number, slotIndex2: number) => void;
+
+  setCurrentRoundId: (id: number | null) => void;
 };
 
 // ------------------- STORE -------------------
-export const useDbStore = create<DbState>((set) => ({
+export const useDbStore = create<DbState>((set, get) => ({
   players: [],
   rounds: [],
   groups: [],
   roundPlayers: [],
   roundSummaries: [],
   groupPlayers: [],
+  currentRoundId: null,
+
+  setCurrentRoundId: (id: number | null) => set({ currentRoundId: id }),
 
   // --- Fetchers ------------------------------------------------------------
   fetchPlayers: () => {
@@ -106,7 +113,11 @@ export const useDbStore = create<DbState>((set) => ({
   fetchRounds: () => {
     const db = getDb();
     const rows = db.getAllSync('SELECT * FROM rounds ORDER BY date DESC;') as Round[];
-    set({ rounds: rows });
+    set({
+      rounds: rows,
+      // Set currentRoundId to most recent round if not already set
+      currentRoundId: get().currentRoundId ?? (rows.length > 0 ? rows[0].id : null),
+    });
   },
   fetchGroups: () => {
     const db = getDb();

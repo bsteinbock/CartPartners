@@ -22,13 +22,6 @@ export default function LineupScreen() {
 
   const [selectedPlayers, setSelectedPlayers] = useState<number[]>([]);
 
-  // Load data on mount
-  useEffect(() => {
-    fetchPlayers();
-    fetchRounds();
-    fetchRoundPlayers();
-  }, []);
-
   // refresh when data or round changes, update selectedPlayers
   useEffect(() => {
     const activePlayers = roundPlayers.filter((rp) => rp.round_id === roundId).map((rp) => rp.player_id);

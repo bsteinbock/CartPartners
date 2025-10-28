@@ -28,6 +28,13 @@ export default function TabLayout() {
             tabBarIcon: ({ color }) => <IconSymbol size={28} name="calendar" color={color} />,
           }}
         />
+        <Tabs.Screen
+          name="lineup"
+          options={{
+            title: 'Line-up',
+            tabBarIcon: ({ color }) => <IconSymbol size={28} name="figure.golf" color={color} />,
+          }}
+        />
 
         <Tabs.Screen
           name="groups"

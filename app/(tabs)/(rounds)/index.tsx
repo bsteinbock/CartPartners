@@ -8,20 +8,23 @@ import { formatDate } from '@/lib/formatters';
 
 export default function RoundsScreen() {
   const router = useRouter();
-  const { rounds, roundSummaries } = useDbStore();
+  const { rounds, roundSummaries, setCurrentRoundId } = useDbStore();
 
   const createAndOpen = async () => {
     router.push({ pathname: '/edit-or-add', params: { id: 'new' } });
   };
 
   const setLineUp = (r: any) => {
-    if (r && typeof r.id !== 'undefined')
-      router.push({ pathname: '/[id]/lineup', params: { id: String(r.id) } });
+    if (r && typeof r.id !== 'undefined') {
+      setCurrentRoundId(r.id);
+      router.replace({ pathname: '/lineup' });
+    }
   };
 
   const openEdit = (r: any) => {
-    if (r && typeof r.id !== 'undefined')
+    if (r && typeof r.id !== 'undefined') {
       router.push({ pathname: '/edit-or-add', params: { id: String(r.id) } });
+    }
   };
 
   return (

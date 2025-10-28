@@ -1,0 +1,206 @@
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+import BottomSheetContainer from '@/components/ui/BottomSheetContainer';
+import OptionList, { OptionEntry } from '@/components/ui/OptionList';
+import { OptionPickerItem } from '@/components/ui/OptionPickerItem';
+import { useDbStore } from '@/hooks/use-dbStore';
+import { useThemeColor } from '@/hooks/use-theme-color';
+import { formatDate } from '@/lib/formatters';
+import React, { useEffect, useRef, useState } from 'react';
+import { FlatList, StyleSheet, Switch } from 'react-native';
+
+export default function LineupScreen() {
+  const {
+    rounds,
+    groups,
+    groupPlayers,
+    players,
+    roundPlayers,
+    setGroupsForRound,
+    swapGroupSlots,
+    setRoundPlayers,
+    setCurrentRoundId,
+    currentRoundId,
+  } = useDbStore();
+  const [currentRoundPlayerIds, setCurrentRoundPlayerIds] = useState<number[]>([]);
+  const [isRoundPickerVisible, setIsRoundPickerVisible] = useState<boolean>(false);
+  const [showMismatchPlayerWarning, setShowMismatchPlayerWarning] = useState<boolean>(false);
+  const [pickedRound, setPickedRound] = useState<OptionEntry | undefined>(undefined);
+  const [roundOptions, setRoundOptions] = useState<OptionEntry[]>([]);
+  const [selectedGroupIndex, setSelectedGroupIndex] = useState<number | null>(null);
+  const backgroundColor = useThemeColor({ light: undefined, dark: undefined }, 'background');
+  const borderColor = useThemeColor({ light: undefined, dark: undefined }, 'border');
+  const textColor = useThemeColor({ light: undefined, dark: undefined }, 'text');
+  const errorText = useThemeColor({ light: undefined, dark: undefined }, 'errorText');
+  const iconButton = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
+  const iconButtonDisabled = useThemeColor({ light: undefined, dark: undefined }, 'iconButtonDisabled');
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [selectedPlayers, setSelectedPlayers] = useState<number[]>([]);
+
+  useEffect(() => {
+    const activePlayers = roundPlayers
+      .filter((rp) => rp.round_id === currentRoundId)
+      .map((rp) => rp.player_id);
+    setSelectedPlayers(activePlayers);
+  }, [currentRoundId, roundPlayers]);
+
+  useEffect(() => {
+    const availableOptions = rounds.map((r) => ({
+      label: `${r.course} (${formatDate(r.date)})`,
+      value: r.id,
+    }));
+    if (availableOptions.length === 0) {
+      setRoundOptions([]);
+    } else {
+      const latestRound = availableOptions.find((o) => o.value === currentRoundId) ?? availableOptions[0];
+      setPickedRound(latestRound);
+      setRoundOptions(availableOptions);
+    }
+  }, [rounds]);
+
+  useEffect(() => {
+    const latestRound = roundOptions.find((o) => o.value === currentRoundId) ?? roundOptions[0];
+    setPickedRound(latestRound);
+  }, [currentRoundId, roundOptions]);
+
+  const handleRoundOptionChange = (option: OptionEntry) => {
+    setPickedRound(option);
+    setCurrentRoundId(option.value);
+    setIsRoundPickerVisible(false);
+  };
+
+  // Debounced DB save helper - we debounce calls by 250 ms to prevent SQLite from being hammered
+  // if the user quickly taps multiple players in a row.
+  const persistSelection = (newSelection: number[]) => {
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(() => {
+      if (currentRoundId) setRoundPlayers(currentRoundId, newSelection);
+    }, 100);
+  };
+
+  // Toggle a player's selection
+  const togglePlayer = (playerId: number) => {
+    setSelectedPlayers((prev) => {
+      const newSelection = prev.includes(playerId)
+        ? prev.filter((id) => id !== playerId)
+        : [...prev, playerId];
+      persistSelection(newSelection);
+      return newSelection;
+    });
+  };
+
+  // Select or clear all players
+  const toggleAllPlayers = () => {
+    const allIds = players.map((p) => p.id);
+    const allSelected = allIds.every((id) => selectedPlayers.includes(id));
+    const newSelection = allSelected ? [] : allIds;
+    setSelectedPlayers(newSelection);
+    persistSelection(newSelection);
+  };
+
+  return (
+    <ThemedView style={{ flex: 1 }}>
+      <ThemedView style={{ flex: 1, paddingHorizontal: 12, paddingVertical: 12 }}>
+        <ThemedText type="title">Player Line-up</ThemedText>
+        {rounds.length === 0 ? (
+          <ThemedText type="defaultSemiBold" style={{ color: errorText, padding: 10 }}>
+            At least one Rounds must be defined before a line-up of players can be set.
+          </ThemedText>
+        ) : (
+          <>
+            <ThemedText style={{ marginTop: 16, marginBottom: 8 }}>Select Round</ThemedText>
+            <OptionPickerItem
+              containerStyle={{ backgroundColor: backgroundColor, height: 36 }}
+              optionLabel={pickedRound?.label}
+              placeholder="Select Round"
+              onPickerButtonPress={() => setIsRoundPickerVisible(true)}
+            />
+            {players.length === 0 ? (
+              <ThemedView style={styles.stepContainer}>
+                <ThemedText>
+                  No players available. Go to Players Tab to add players to get started.
+                </ThemedText>
+              </ThemedView>
+            ) : (
+              <ThemedView>
+                <FlatList
+                  data={players}
+                  keyExtractor={(item) => String(item.id)}
+                  ListHeaderComponent={() => {
+                    const allSelected =
+                      players.length > 0 && players.every((p) => selectedPlayers.includes(p.id));
+                    const playerLabel = `Player (${selectedPlayers.length} of ${players.length} Selected)`;
+                    return (
+                      <ThemedView
+                        style={{
+                          padding: 8,
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          borderBottomWidth: 1,
+                          borderColor: '#ddd',
+                          gap: 30,
+                        }}
+                      >
+                        <ThemedView style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                          <Switch
+                            value={allSelected}
+                            onValueChange={toggleAllPlayers}
+                            disabled={players.length === 0}
+                          />
+                        </ThemedView>
+                        <ThemedText style={{ fontWeight: '700' }}>{playerLabel}</ThemedText>
+                      </ThemedView>
+                    );
+                  }}
+                  renderItem={({ item }) => (
+                    <ThemedView
+                      style={{
+                        padding: 8,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                      }}
+                    >
+                      <ThemedView style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Switch
+                          value={selectedPlayers.includes(item.id)}
+                          onValueChange={(_val) => {
+                            void togglePlayer(item.id);
+                          }}
+                        />
+                        <ThemedText style={{ marginLeft: 30 }}>{item.name}</ThemedText>
+                      </ThemedView>
+                    </ThemedView>
+                  )}
+                />
+              </ThemedView>
+            )}
+          </>
+        )}
+      </ThemedView>
+      {roundOptions && isRoundPickerVisible && (
+        <BottomSheetContainer
+          isVisible={isRoundPickerVisible}
+          title="Select Round"
+          modalHeight="70%"
+          onClose={() => setIsRoundPickerVisible(false)}
+        >
+          <OptionList
+            options={roundOptions}
+            onSelect={(option) => handleRoundOptionChange(option)}
+            selectedOption={pickedRound}
+          />
+        </BottomSheetContainer>
+      )}
+    </ThemedView>
+  );
+}
+
+const styles = StyleSheet.create({
+  groupCard: { padding: 10, borderWidth: 1, borderRadius: 8, marginBottom: 8 },
+  stepContainer: {
+    gap: 8,
+    marginBottom: 8,
+  },
+});
