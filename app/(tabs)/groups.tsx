@@ -23,9 +23,17 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Button, FlatList, Linking, Pressable, StyleSheet, TouchableOpacity } from 'react-native';
 
 export default function GroupsScreen() {
-  const { rounds, groups, groupPlayers, players, roundPlayers, setGroupsForRound, swapGroupSlots } =
-    useDbStore();
-  const [currentRoundId, setCurrentRoundId] = useState<number | null>(null);
+  const {
+    rounds,
+    groups,
+    groupPlayers,
+    players,
+    roundPlayers,
+    setGroupsForRound,
+    swapGroupSlots,
+    currentRoundId,
+    setCurrentRoundId,
+  } = useDbStore();
   const [currentRoundPlayerIds, setCurrentRoundPlayerIds] = useState<number[]>([]);
   const [isRoundPickerVisible, setIsRoundPickerVisible] = useState<boolean>(false);
   const [showMismatchPlayerWarning, setShowMismatchPlayerWarning] = useState<boolean>(false);
@@ -56,22 +64,22 @@ export default function GroupsScreen() {
     if (availableOptions.length === 0) {
       setRoundOptions([]);
     } else {
-      const latestRound = availableOptions[0];
+      const latestRound = availableOptions.find((o) => o.value === currentRoundId) ?? availableOptions[0];
       setPickedRound(latestRound);
-      setCurrentRoundId(latestRound.value);
       setRoundOptions(availableOptions);
     }
   }, [rounds]);
+
+  useEffect(() => {
+    const latestRound = roundOptions.find((o) => o.value === currentRoundId) ?? roundOptions[0];
+    setPickedRound(latestRound);
+  }, [currentRoundId, roundOptions]);
 
   const handleRoundOptionChange = (option: OptionEntry) => {
     setPickedRound(option);
     setCurrentRoundId(option.value);
     setIsRoundPickerVisible(false);
   };
-
-  useEffect(() => {
-    if (rounds.length > 0) setCurrentRoundId(rounds[0].id);
-  }, [rounds]);
 
   useEffect(() => {
     if (currentRoundId !== null) {

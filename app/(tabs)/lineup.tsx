@@ -10,30 +10,12 @@ import React, { useEffect, useRef, useState } from 'react';
 import { FlatList, StyleSheet, Switch } from 'react-native';
 
 export default function LineupScreen() {
-  const {
-    rounds,
-    groups,
-    groupPlayers,
-    players,
-    roundPlayers,
-    setGroupsForRound,
-    swapGroupSlots,
-    setRoundPlayers,
-    setCurrentRoundId,
-    currentRoundId,
-  } = useDbStore();
-  const [currentRoundPlayerIds, setCurrentRoundPlayerIds] = useState<number[]>([]);
+  const { rounds, players, roundPlayers, setRoundPlayers, setCurrentRoundId, currentRoundId } = useDbStore();
   const [isRoundPickerVisible, setIsRoundPickerVisible] = useState<boolean>(false);
-  const [showMismatchPlayerWarning, setShowMismatchPlayerWarning] = useState<boolean>(false);
   const [pickedRound, setPickedRound] = useState<OptionEntry | undefined>(undefined);
   const [roundOptions, setRoundOptions] = useState<OptionEntry[]>([]);
-  const [selectedGroupIndex, setSelectedGroupIndex] = useState<number | null>(null);
   const backgroundColor = useThemeColor({ light: undefined, dark: undefined }, 'background');
-  const borderColor = useThemeColor({ light: undefined, dark: undefined }, 'border');
-  const textColor = useThemeColor({ light: undefined, dark: undefined }, 'text');
   const errorText = useThemeColor({ light: undefined, dark: undefined }, 'errorText');
-  const iconButton = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
-  const iconButtonDisabled = useThemeColor({ light: undefined, dark: undefined }, 'iconButtonDisabled');
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [selectedPlayers, setSelectedPlayers] = useState<number[]>([]);
