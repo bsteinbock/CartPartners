@@ -21,6 +21,7 @@ import * as Clipboard from 'expo-clipboard';
 import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Button, FlatList, Linking, Pressable, StyleSheet, TouchableOpacity } from 'react-native';
+
 export default function GroupsScreen() {
   const { rounds, groups, groupPlayers, players, roundPlayers, setGroupsForRound, swapGroupSlots } =
     useDbStore();
@@ -53,8 +54,7 @@ export default function GroupsScreen() {
       value: r.id,
     }));
     if (availableOptions.length === 0) {
-      availableOptions.push({ label: 'No rounds defined', value: 0 });
-      setRoundOptions(availableOptions);
+      setRoundOptions([]);
     } else {
       const latestRound = availableOptions[0];
       setPickedRound(latestRound);
@@ -161,8 +161,7 @@ export default function GroupsScreen() {
   const renderGroup = ({ item, index }: { item: GroupPlayers; index: number }) => {
     return (
       <TouchableOpacity
-        onPress={() => setSelectedGroupIndex(index)}
-        onLongPress={() => setSelectedGroupIndex(null)}
+        onPress={() => setSelectedGroupIndex(selectedGroupIndex === index ? null : index)}
         activeOpacity={0.8}
       >
         <ThemedView
@@ -226,111 +225,112 @@ export default function GroupsScreen() {
 
   return (
     <ThemedView style={{ flex: 1 }}>
-      <ThemedView style={{ paddingHorizontal: 12, paddingVertical: 12 }}>
+      <ThemedView style={{ flex: 1, paddingHorizontal: 12, paddingVertical: 12 }}>
         <ThemedText type="title">Tee Groups</ThemedText>
-
-        <ThemedText style={{ marginTop: 16, marginBottom: 8 }}>Select Round</ThemedText>
-        <OptionPickerItem
-          containerStyle={{ backgroundColor: backgroundColor, height: 36 }}
-          optionLabel={pickedRound?.label}
-          placeholder="Select Round"
-          onPickerButtonPress={() => setIsRoundPickerVisible(true)}
-        />
-      </ThemedView>
-
-      {currentRoundId && (
-        <>
-          <ThemedView style={{ padding: 12 }}>
-            {currentRoundPlayerIds.length > 0 ? (
-              <ThemedView
-                style={{
-                  flexDirection: 'row',
-                  gap: 8,
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  paddingRight: 12,
-                }}
-              >
-                <Button
-                  title={currentRoundGroups.length > 0 ? 'Regenerate Groups' : 'Generate Groups'}
-                  onPress={handleGenerateGroupings}
-                />
-                {currentRoundGroups.length && (
-                  <Pressable
-                    onPress={() => {
-                      void exportToEmail();
-                    }}
-                  >
-                    <Feather name="send" size={28} color={iconButton} />
-                  </Pressable>
-                )}
-              </ThemedView>
-            ) : (
+        {rounds.length === 0 ? (
+          <ThemedText type="defaultSemiBold" style={{ color: errorText, padding: 10 }}>
+            At least one Rounds must be defined and its line-up of players set before Groups can be generated.
+          </ThemedText>
+        ) : (
+          <>
+            <ThemedText style={{ marginTop: 16, marginBottom: 8 }}>Select Round</ThemedText>
+            <OptionPickerItem
+              containerStyle={{ backgroundColor: backgroundColor, height: 36 }}
+              optionLabel={pickedRound?.label}
+              placeholder="Select Round"
+              onPickerButtonPress={() => setIsRoundPickerVisible(true)}
+            />
+            {currentRoundPlayerIds.length === 0 ? (
               <ThemedText type="defaultSemiBold" style={{ color: errorText, padding: 10 }}>
                 The line-up of players for this round has not been set. Please return to the Rounds tab and
                 tap the round to select players.
               </ThemedText>
-            )}
-            {showMismatchPlayerWarning && (
-              <ThemedText type="defaultSemiBold" style={{ color: errorText, padding: 10 }}>
-                The line-up of players for this round has changed since the groups were initially created. It
-                is recommended that the groups be regenerate to handle line-up changes.
-              </ThemedText>
-            )}
-          </ThemedView>
-
-          {currentRoundGroups.length > 0 && (
-            <>
-              <ThemedView style={{ padding: 12, flex: 1 }}>
+            ) : (
+              <>
                 <ThemedView
                   style={{
                     flexDirection: 'row',
-                    justifyContent: 'space-between',
-                    marginBottom: 8,
+                    gap: 8,
                     alignItems: 'center',
-                    height: 46,
+                    justifyContent: 'space-between',
+                    paddingRight: 12,
+                    paddingTop: 12,
                   }}
                 >
-                  <ThemedView style={{ flex: 1 }}>
-                    <ThemedText type="subtitle">Tee Order</ThemedText>
-                  </ThemedView>
-                  {selectedGroupIndex !== null && (
-                    <ThemedView style={{ flexDirection: 'row', gap: 20 }}>
-                      <Pressable onPress={() => moveGroup('up')} disabled={selectedGroupIndex === 0}>
-                        <Entypo
-                          name="arrow-bold-up"
-                          size={28}
-                          color={selectedGroupIndex === 0 ? iconButtonDisabled : iconButton}
-                        />
-                      </Pressable>
-                      <Pressable
-                        onPress={() => moveGroup('down')}
-                        disabled={selectedGroupIndex === currentRoundGroups.length - 1}
-                      >
-                        <Entypo
-                          name="arrow-bold-down"
-                          size={28}
-                          color={
-                            selectedGroupIndex === currentRoundGroups.length - 1
-                              ? iconButtonDisabled
-                              : iconButton
-                          }
-                        />
-                      </Pressable>
-                    </ThemedView>
+                  <Button
+                    title={currentRoundGroups.length ? 'Regenerate Groups' : 'Generate Groups'}
+                    onPress={handleGenerateGroupings}
+                  />
+                  {currentRoundGroups.length && (
+                    <Pressable
+                      onPress={() => {
+                        void exportToEmail();
+                      }}
+                    >
+                      <Feather name="send" size={28} color={iconButton} />
+                    </Pressable>
                   )}
                 </ThemedView>
-
-                <FlatList
-                  data={currentRoundGroups}
-                  keyExtractor={(g, index) => `$(g.group_id)-${index}`}
-                  renderItem={renderGroup}
-                />
-              </ThemedView>
-            </>
-          )}
-        </>
-      )}
+                {showMismatchPlayerWarning && (
+                  <ThemedText type="defaultSemiBold" style={{ color: errorText, padding: 10 }}>
+                    The line-up of players for this round has changed since the groups were initially created.
+                    It is recommended that the groups be regenerate to handle line-up changes.
+                  </ThemedText>
+                )}
+                {currentRoundGroups.length && (
+                  <ThemedView style={{ padding: 0, flex: 1 }}>
+                    <ThemedView
+                      style={{
+                        flexDirection: 'row',
+                        justifyContent: 'space-between',
+                        marginBottom: 8,
+                        alignItems: 'center',
+                        height: 46,
+                      }}
+                    >
+                      <ThemedText type="subtitle">Tee Order</ThemedText>
+                      <>
+                        {selectedGroupIndex !== null && (
+                          <ThemedView style={{ flexDirection: 'row', gap: 20 }}>
+                            <Pressable onPress={() => moveGroup('up')} disabled={selectedGroupIndex === 0}>
+                              <Entypo
+                                name="arrow-bold-up"
+                                size={28}
+                                color={selectedGroupIndex === 0 ? iconButtonDisabled : iconButton}
+                              />
+                            </Pressable>
+                            <Pressable
+                              onPress={() => moveGroup('down')}
+                              disabled={selectedGroupIndex === currentRoundGroups.length - 1}
+                            >
+                              <Entypo
+                                name="arrow-bold-down"
+                                size={28}
+                                color={
+                                  selectedGroupIndex === currentRoundGroups.length - 1
+                                    ? iconButtonDisabled
+                                    : iconButton
+                                }
+                              />
+                            </Pressable>
+                          </ThemedView>
+                        )}
+                      </>
+                    </ThemedView>
+                    <ThemedView style={{ flex: 1 }}>
+                      <FlatList
+                        data={currentRoundGroups}
+                        keyExtractor={(g, index) => `${g.group_id}-${index}`}
+                        renderItem={renderGroup}
+                      />
+                    </ThemedView>
+                  </ThemedView>
+                )}
+              </>
+            )}
+          </>
+        )}
+      </ThemedView>
       {roundOptions && isRoundPickerVisible && (
         <BottomSheetContainer
           isVisible={isRoundPickerVisible}

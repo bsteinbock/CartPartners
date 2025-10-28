@@ -43,7 +43,7 @@ export default function LineupScreen() {
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
     debounceTimer.current = setTimeout(() => {
       setRoundPlayers(roundId, newSelection);
-    }, 250);
+    }, 100);
   };
 
   // Toggle a player's selection
@@ -97,13 +97,13 @@ export default function LineupScreen() {
           <ThemedText>No players available. Go to Players Tab to add players to get started.</ThemedText>
         </View>
       ) : (
-        <>
+        <ThemedView>
           <FlatList
             data={players}
             keyExtractor={(item) => String(item.id)}
             ListHeaderComponent={() => {
               const allSelected = players.length > 0 && players.every((p) => selectedPlayers.includes(p.id));
-
+              const playerLabel = `Player (${selectedPlayers.length} of ${players.length} Selected)`;
               return (
                 <ThemedView
                   style={{
@@ -122,9 +122,7 @@ export default function LineupScreen() {
                       disabled={players.length === 0}
                     />
                   </View>
-                  <ThemedText
-                    style={{ fontWeight: '700' }}
-                  >{`Player (${selectedPlayers.length} of ${players.length} Selected)`}</ThemedText>
+                  <ThemedText style={{ fontWeight: '700' }}>{playerLabel}</ThemedText>
                 </ThemedView>
               );
             }}
@@ -137,21 +135,19 @@ export default function LineupScreen() {
                   justifyContent: 'space-between',
                 }}
               >
-                <>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <Switch
-                      value={selectedPlayers.includes(item.id)}
-                      onValueChange={(_val) => {
-                        void togglePlayer(item.id);
-                      }}
-                    />
-                    <ThemedText style={{ marginLeft: 30 }}>{item.name}</ThemedText>
-                  </View>
-                </>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Switch
+                    value={selectedPlayers.includes(item.id)}
+                    onValueChange={(_val) => {
+                      void togglePlayer(item.id);
+                    }}
+                  />
+                  <ThemedText style={{ marginLeft: 30 }}>{item.name}</ThemedText>
+                </View>
               </ThemedView>
             )}
           />
-        </>
+        </ThemedView>
       )}
     </ThemedView>
   );
