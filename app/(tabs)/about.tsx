@@ -28,7 +28,15 @@ export default function AboutScreen() {
         </ThemedText>
         <ThemedText style={styles.text}>
           This is were you define your round by specifying the course and date. Once created you tap on the
-          round to set the active players for that week.
+          round to open the line-up tab to set the line-up for the round.
+        </ThemedText>
+
+        <ThemedText type="subtitle" style={styles.subTitle}>
+          Line-up Tab
+        </ThemedText>
+        <ThemedText style={styles.text}>
+          This tab is used to specify the players that will be playing for this round. The list of players
+          that is shown comes for all available players with their status set to available.
         </ThemedText>
 
         <ThemedText type="subtitle" style={styles.subTitle}>
@@ -68,11 +76,9 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   subTitle: {
-    marginTop: 15,
     marginBottom: 5,
   },
   text: {
     lineHeight: 24,
-    marginBottom: 15,
   },
 });
