@@ -1,5 +1,5 @@
 // utils.ts
-import { GroupPlayers, Player } from '../hooks/use-dbStore';
+import { Group, GroupPlayers, Player } from '../hooks/use-dbStore';
 
 /**
  * @param playerIds - The list of players for the next round
@@ -277,7 +277,7 @@ function getLeastConnectedPlayer(
  * @param allPlayers - Array of all Player objects
  * @returns string - Formatted report showing each group with player names
  */
-export function reportGroupsWithNames(groups: number[][], allPlayers: Player[]): string {
+export function reportGroupsWithNames(groups: GroupPlayers[], allPlayers: Player[]): string {
   const playerMap: Record<number, string> = {};
   for (const player of allPlayers) {
     playerMap[player.id] = player.name;
@@ -285,7 +285,7 @@ export function reportGroupsWithNames(groups: number[][], allPlayers: Player[]):
 
   return groups
     .map((group, index) => {
-      const names = group.map((id) => playerMap[id] || `Unknown(${id})`);
+      const names = group.player_ids.map((id) => playerMap[id] || `Unknown(${id})`);
       return `Group ${index + 1}: ${names.join(', ')}`;
     })
     .join('\n');
@@ -299,18 +299,84 @@ export function reportGroupsWithNames(groups: number[][], allPlayers: Player[]):
  * @param allPlayers - Array of all Player objects
  * @returns string[] - Array of strings, one per group, formatted as 'Name <email>, ...'
  */
-export function groupsToMailtoStrings(groups: number[][], allPlayers: Player[]): string[] {
+export function getMailtoStrings(groups: GroupPlayers[], allPlayers: Player[]): string[] {
   const playerMap: Record<number, Player> = {};
   for (const player of allPlayers) {
     playerMap[player.id] = player;
   }
 
   return groups.map((group) =>
-    group
+    group.player_ids
       .map((id) => {
         const player = playerMap[id];
         return player ? `${player.name} <${player.email}>` : `Unknown(${id})`;
       })
       .join(', '),
   );
+}
+
+/**
+ * Returns all GroupPlayers for a specific round.
+ * @param roundId - The round ID to filter by.
+ * @param groups - The list of Group objects.
+ * @param groupPlayers - The list of GroupPlayers objects.
+ * @returns An array of GroupPlayers belonging to that round.
+ */
+export function getGroupPlayersByRoundId(
+  roundId: number,
+  groups: Group[],
+  groupPlayers: GroupPlayers[],
+): GroupPlayers[] {
+  // Get all groups associated with the given round
+  const roundGroupIds = groups.filter((group) => group.round_id === roundId).map((group) => group.id);
+
+  // Filter groupPlayers that belong to those groups
+  return groupPlayers.filter((gp) => roundGroupIds.includes(gp.group_id));
+}
+
+/**
+ * Converts GroupPlayers into readable strings of player names.
+ * @param groupPlayers - The GroupPlayers array (e.g., result of getGroupPlayersByRoundId).
+ * @param players - The full list of Player objects.
+ * @returns An array of strings, one per group.
+ */
+export function formatGroupPlayersByNames(groupPlayers: GroupPlayers[], players: Player[]): string[] {
+  return groupPlayers.map((gp) => {
+    const names = gp.player_ids
+      .map((pid) => players.find((p) => p.id === pid)?.name)
+      .filter((name): name is string => Boolean(name)); // filter out undefined
+
+    return names.join(', ');
+  });
+}
+
+/**
+ * Ensures the active players exactly match the players in GroupPlayers.
+ * Returns true only if:
+ *  1. Every player_id in groupPlayers is in activePlayerIds, AND
+ *  2. Every activePlayerId is found in some groupPlayers entry.
+ *
+ * @param groupPlayers - The groups and their assigned player IDs.
+ * @param activePlayerIds - The currently active player IDs.
+ * @returns true if both sets of IDs match exactly; false otherwise.
+ */
+export function groupPlayersMatchActivePlayers(
+  groupPlayers: GroupPlayers[],
+  activePlayerIds: number[],
+): boolean {
+  // Collect all unique player_ids from groupPlayers
+  const groupPlayerIds = new Set<number>(groupPlayers.flatMap((gp) => gp.player_ids));
+
+  // Check if both sets have the same size
+  if (groupPlayerIds.size !== activePlayerIds.length) {
+    return false;
+  }
+
+  // Check that every activePlayerId is in the group players
+  for (const id of activePlayerIds) {
+    if (!groupPlayerIds.has(id)) {
+      return false;
+    }
+  }
+  return true;
 }

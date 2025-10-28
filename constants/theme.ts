@@ -18,8 +18,11 @@ export const Colors = {
     tint: tintColorLight,
     border: tintColorLight,
     icon: '#687076',
+    iconButton: '#007AFF',
+    iconButtonDisabled: 'rgba(0,122,255,0.3)',
     tabIconDefault: '#687076',
     tabIconSelected: tintColorLight,
+    errorText: '#B00020',
   },
   dark: {
     text: '#ECEDEE',
@@ -30,8 +33,11 @@ export const Colors = {
     tint: tintColorDark,
     border: tintColorDark,
     icon: '#9BA1A6',
+    iconButton: '#007AFF',
+    iconButtonDisabled: 'rgba(0,122,255,0.3)',
     tabIconDefault: '#9BA1A6',
     tabIconSelected: tintColorDark,
+    errorText: '#FF453A',
   },
 };
 

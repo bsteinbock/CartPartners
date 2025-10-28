@@ -3,71 +3,65 @@ import { ThemedView } from '@/components/themed-view';
 import BottomSheetContainer from '@/components/ui/BottomSheetContainer';
 import OptionList, { OptionEntry } from '@/components/ui/OptionList';
 import { OptionPickerItem } from '@/components/ui/OptionPickerItem';
+import { GroupPlayers, useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import {
-  BasePlayer,
-  CartGroup,
-  convertGroupsToCartGroups,
-  getGroupsForPreviousRound,
-  getGroupsForRound,
-  getPlayersForRound,
-  getRoundSummaries,
-  Group,
-  Round,
-  setGroupsForRound,
-} from '@/lib/db-helper';
+  buildPlayingPartnerFrequencies,
+  formatGroupPlayersByNames,
+  generateNextRoundGroups,
+  getGroupPlayersByRoundId,
+  getMailtoStrings,
+  groupPlayersMatchActivePlayers,
+  reportGroupsWithNames,
+} from '@/lib/cart-utils';
 import { formatDate } from '@/lib/formatters';
-import { createCartGroupings } from '@/lib/group-utils';
-import { useFocusEffect } from '@react-navigation/native';
+import Entypo from '@expo/vector-icons/Entypo';
+import Feather from '@expo/vector-icons/Feather';
 import * as Clipboard from 'expo-clipboard';
-import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Button, FlatList, Linking, StyleSheet, TouchableOpacity } from 'react-native';
-
+import { useFocusEffect } from 'expo-router';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Alert, Button, FlatList, Linking, Pressable, StyleSheet, TouchableOpacity } from 'react-native';
 export default function GroupsScreen() {
-  const [rounds, setRounds] = useState<Round[]>([]);
+  const { rounds, groups, groupPlayers, players, roundPlayers, setGroupsForRound, swapGroupSlots } =
+    useDbStore();
   const [currentRoundId, setCurrentRoundId] = useState<number | null>(null);
-  const [activePlayers, setActivePlayers] = useState<BasePlayer[]>([]);
-  const [groups, setGroups] = useState<Group[]>([]);
-  const [recentGroups, setRecentGroups] = useState<CartGroup[]>([]);
+  const [currentRoundPlayerIds, setCurrentRoundPlayerIds] = useState<number[]>([]);
   const [isRoundPickerVisible, setIsRoundPickerVisible] = useState<boolean>(false);
+  const [showMismatchPlayerWarning, setShowMismatchPlayerWarning] = useState<boolean>(false);
   const [pickedRound, setPickedRound] = useState<OptionEntry | undefined>(undefined);
   const [roundOptions, setRoundOptions] = useState<OptionEntry[]>([]);
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [selectedGroupIndex, setSelectedGroupIndex] = useState<number | null>(null);
   const backgroundColor = useThemeColor({ light: undefined, dark: undefined }, 'background');
   const borderColor = useThemeColor({ light: undefined, dark: undefined }, 'border');
   const textColor = useThemeColor({ light: undefined, dark: undefined }, 'text');
+  const errorText = useThemeColor({ light: undefined, dark: undefined }, 'errorText');
+  const iconButton = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
+  const iconButtonDisabled = useThemeColor({ light: undefined, dark: undefined }, 'iconButtonDisabled');
+  const [currentRoundGroups, setCurrentRoundGroups] = useState<GroupPlayers[]>([]);
+  const [groupPlayersNames, setGroupPlayerNames] = useState<string[]>([]);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const loadRounds = async () => {
-    const r = await getRoundSummaries();
-    setRounds(r as any);
-    if (r && r.length && currentRoundId == null) {
-      setCurrentRoundId((r[0] as any).id);
-    }
-  };
-
+  // useFocusEffect runs every time this screen is focused
   useFocusEffect(
-    useCallback(() => {
-      void loadRounds();
+    React.useCallback(() => {
+      setSelectedGroupIndex(null);
     }, []),
   );
-
-  useFocusEffect(
-    useCallback(() => {
-      const availableOptions = rounds.map((r) => {
-        // Add space between course and date for better formatting
-        return { label: `${r.course} (${formatDate(r.date)})`, value: r.id };
-      });
-      if (availableOptions.length === 0) {
-        availableOptions.push({ label: 'No rounds defined', value: 0 });
-        setRoundOptions(availableOptions);
-      } else {
-        const latestRound = availableOptions[0];
-        setPickedRound(latestRound);
-        setCurrentRoundId(latestRound.value);
-        setRoundOptions(availableOptions);
-      }
-    }, [rounds]),
-  );
+  useEffect(() => {
+    const availableOptions = rounds.map((r) => ({
+      label: `${r.course} (${formatDate(r.date)})`,
+      value: r.id,
+    }));
+    if (availableOptions.length === 0) {
+      availableOptions.push({ label: 'No rounds defined', value: 0 });
+      setRoundOptions(availableOptions);
+    } else {
+      const latestRound = availableOptions[0];
+      setPickedRound(latestRound);
+      setCurrentRoundId(latestRound.value);
+      setRoundOptions(availableOptions);
+    }
+  }, [rounds]);
 
   const handleRoundOptionChange = (option: OptionEntry) => {
     setPickedRound(option);
@@ -75,57 +69,44 @@ export default function GroupsScreen() {
     setIsRoundPickerVisible(false);
   };
 
-  const loadActivePlayers = async (roundId: number) => {
-    const p = await getPlayersForRound(roundId);
-    // filter only active
-    const active: BasePlayer[] = (p || [])
-      .filter((pp) => pp.active)
-      .map((pp) => ({ id: pp.id, name: pp.name, speedIndex: pp.speedIndex }));
-    return active;
-  };
+  useEffect(() => {
+    if (rounds.length > 0) setCurrentRoundId(rounds[0].id);
+  }, [rounds]);
 
-  const buildGroupSummary = (groupsToExport: any[]) => {
-    let summary = '';
-    groupsToExport.forEach((group, index) => {
-      const playerNames = (group.players || []).map((p: any) => p.name).join(', ');
-      summary += `Group ${index + 1}: ${playerNames}\n`;
-    });
-
-    return summary;
-  };
-
-  const buildEmailAddresses = (groupsToExport: any[]) => {
-    const entries: string[] = [];
-
-    for (const group of groupsToExport || []) {
-      for (const p of group.players || []) {
-        const email = p?.email?.toString().trim();
-        const name = (p?.name ?? '').toString().trim();
-        if (email) {
-          entries.push(`"${name}"<${email}>`);
-        }
-      }
+  useEffect(() => {
+    if (currentRoundId !== null) {
+      setCurrentRoundGroups(getGroupPlayersByRoundId(currentRoundId, groups, groupPlayers));
     }
+  }, [currentRoundId, groups, groupPlayers, getGroupPlayersByRoundId]);
 
-    // remove duplicates by email
-    const seen = new Set<string>();
-    const unique = entries.filter((e) => {
-      const m = e.match(/<([^>]+)>$/);
-      const key = m ? m[1] : e;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
+  useEffect(() => {
+    if (currentRoundGroups.length > 0) {
+      const names = formatGroupPlayersByNames(currentRoundGroups, players);
+      setGroupPlayerNames(names);
+    }
+  }, [currentRoundGroups, players, formatGroupPlayersByNames]);
 
-    return unique.join(', ');
-  };
+  useEffect(() => {
+    if (roundPlayers.length > 0) {
+      const ids = roundPlayers.filter((rp) => rp.round_id === currentRoundId).map((rpe) => rpe.player_id);
+      setCurrentRoundPlayerIds(ids);
+    }
+  }, [roundPlayers, currentRoundId]);
+
+  useEffect(() => {
+    if (currentRoundGroups.length > 0) {
+      const isMatching = groupPlayersMatchActivePlayers(currentRoundGroups, currentRoundPlayerIds);
+      setShowMismatchPlayerWarning(!isMatching);
+    } else {
+      setShowMismatchPlayerWarning(false);
+    }
+  }, [currentRoundGroups, currentRoundPlayerIds]);
 
   const exportToEmail = async () => {
-    if (!currentRoundId) return Alert.alert('No round selected');
-    if (!groups || groups.length === 0) return Alert.alert('No groups to export for this round');
+    if (currentRoundGroups.length === 0) return Alert.alert('No groups to export for this round');
 
-    const summary = buildGroupSummary(groups);
-    const addresses = buildEmailAddresses(groups);
+    const summary = reportGroupsWithNames(currentRoundGroups, players);
+    const addresses = getMailtoStrings(currentRoundGroups, players);
 
     try {
       await Clipboard.setStringAsync(summary);
@@ -148,92 +129,48 @@ export default function GroupsScreen() {
     }
   };
 
-  const loadGroupsForRound = async (roundId: number) => {
-    const groups = await getGroupsForRound(roundId);
-    if (!groups) {
-      setGroups([]);
-      return;
-    }
-    setGroups(groups);
-  };
-
-  useEffect(() => {
-    if (currentRoundId !== null) {
-      loadGroupsForRound(currentRoundId);
-    }
-  }, [currentRoundId]);
-
-  useEffect(() => {
-    const load = async () => {
-      if (currentRoundId !== null) {
-        const players = await loadActivePlayers(currentRoundId);
-        setActivePlayers(players);
-      } else {
-        setActivePlayers([]);
-      }
-    };
-    void load();
-  }, [currentRoundId]);
-
-  // Load recent groups when the current round changes
-  useEffect(() => {
-    let mounted = true;
-    const loadRecent = async () => {
-      if (currentRoundId == null) {
-        if (mounted) setRecentGroups([]);
-        return;
-      }
-      try {
-        const previousGroups = await getGroupsForPreviousRound(currentRoundId);
-        if (mounted) {
-          const recentCartGroups = convertGroupsToCartGroups(previousGroups);
-          setRecentGroups(recentCartGroups);
-        }
-      } catch (e) {
-        if (mounted) setRecentGroups([]);
-      }
-    };
-    void loadRecent();
-    return () => {
-      mounted = false;
-    };
-  }, [currentRoundId]);
-
   const selectRound = async (id: number) => {
     setCurrentRoundId(id);
   };
 
   const handleGenerateGroupings = useCallback(async () => {
-    if (activePlayers.length === 0) {
+    if (currentRoundPlayerIds.length === 0) {
       Alert.alert('No active players', 'Please select a round with active players to generate groups.');
       return;
     }
-    if (currentRoundId === null) {
-      Alert.alert('No round selected', 'Please select a round to generate groups for.');
-      return;
-    }
+    const partnerFrequencies = buildPlayingPartnerFrequencies(currentRoundPlayerIds, groupPlayers);
 
-    try {
-      const players = await loadActivePlayers(currentRoundId);
-      const newGroupings = createCartGroupings(players, recentGroups);
-      await setGroupsForRound(currentRoundId, newGroupings);
-      setGroups(newGroupings);
-    } catch (e) {
-      Alert.alert('Error', `Failed to generate groups. ${e}`);
-    }
-  }, [activePlayers, currentRoundId, recentGroups]);
+    const newGroupList = generateNextRoundGroups({
+      playerIds: currentRoundPlayerIds,
+      partnerFrequencies,
+      allPlayers: players,
+    });
+
+    setGroupsForRound(currentRoundId!, newGroupList);
+  }, [
+    currentRoundPlayerIds,
+    groupPlayers,
+    currentRoundId,
+    players,
+    buildPlayingPartnerFrequencies,
+    generateNextRoundGroups,
+    setGroupsForRound,
+  ]);
 
   // Render each group in the FlatList
-
-  const renderGroup = ({ item, index }: { item: CartGroup; index: number }) => {
+  const renderGroup = ({ item, index }: { item: GroupPlayers; index: number }) => {
     return (
-      <TouchableOpacity onPress={() => setSelectedIndex(index)} activeOpacity={0.8}>
+      <TouchableOpacity
+        onPress={() => setSelectedGroupIndex(index)}
+        onLongPress={() => setSelectedGroupIndex(null)}
+        activeOpacity={0.8}
+      >
         <ThemedView
           style={[
             styles.groupCard,
             {
               backgroundColor: backgroundColor,
-              borderColor: selectedIndex === index ? '#2f95eb' : borderColor,
+              borderColor: selectedGroupIndex === index ? '#2f95eb' : borderColor,
               shadowColor: borderColor,
               shadowOpacity: 0.05,
               shadowRadius: 4,
@@ -242,8 +179,10 @@ export default function GroupsScreen() {
           ]}
         >
           <ThemedView style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <ThemedText style={{ fontWeight: '600', color: selectedIndex === index ? '#2f95eb' : textColor }}>
-              {`${item.players.map((p) => p.name).join(', ')}`}
+            <ThemedText
+              style={{ fontWeight: '600', color: selectedGroupIndex === index ? '#2f95eb' : textColor }}
+            >
+              {`${groupPlayersNames[index]}`}
             </ThemedText>
           </ThemedView>
         </ThemedView>
@@ -253,40 +192,44 @@ export default function GroupsScreen() {
 
   // Add effect to handle selection bounds
   useEffect(() => {
-    if (selectedIndex != null && (selectedIndex < 0 || selectedIndex >= groups.length)) {
-      setSelectedIndex(groups.length ? 0 : null);
+    if (selectedGroupIndex != null && (selectedGroupIndex < 0 || selectedGroupIndex >= groups.length)) {
+      setSelectedGroupIndex(groups.length ? 0 : null);
     }
-  }, [groups, selectedIndex]);
+  }, [groups, selectedGroupIndex]);
+
+  // Debounced DB save helper - we debounce calls by 250 ms to prevent SQLite from being hammered
+  // if the user quickly taps multiple players in a row.
+  const persistSwap = (
+    groupId1: number,
+    swapIndex1: number,
+    groupId2: number,
+    swapIndex2: number,
+    newSelectionIndex: number,
+  ) => {
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(() => {
+      swapGroupSlots(groupId1, swapIndex1, groupId2, swapIndex2);
+      setSelectedGroupIndex(newSelectionIndex);
+    }, 100);
+  };
 
   const moveGroup = useCallback(
     async (direction: 'up' | 'down') => {
-      if (selectedIndex === null) return;
-
-      const newIndex = direction === 'up' ? selectedIndex - 1 : selectedIndex + 1;
-      if (newIndex < 0 || newIndex >= groups.length) return;
-
-      const newGroups = [...groups];
-      const temp = newGroups[selectedIndex];
-      newGroups[selectedIndex] = newGroups[newIndex];
-      newGroups[selectedIndex].slot_index = selectedIndex;
-      newGroups[newIndex] = { ...temp, slot_index: newIndex };
-      if (currentRoundId) {
-        try {
-          await setGroupsForRound(currentRoundId, newGroups);
-          setGroups(newGroups);
-          setSelectedIndex(newIndex);
-        } catch (e) {
-          Alert.alert('Error', `Failed to generate groups. ${e}`);
-        }
-      }
+      if (selectedGroupIndex === null) return;
+      const group1 = currentRoundGroups[selectedGroupIndex];
+      const swapIndex = direction === 'down' ? selectedGroupIndex + 1 : selectedGroupIndex - 1;
+      const group2 = currentRoundGroups[swapIndex];
+      persistSwap(group1.group_id, selectedGroupIndex, group2.group_id, swapIndex, swapIndex);
     },
-    [currentRoundId, selectedIndex, groups],
+    [currentRoundId, selectedGroupIndex, persistSwap, currentRoundGroups],
   );
 
   return (
     <ThemedView style={{ flex: 1 }}>
       <ThemedView style={{ paddingHorizontal: 12, paddingVertical: 12 }}>
-        <ThemedText style={{ marginBottom: 8 }}>Select Round</ThemedText>
+        <ThemedText type="title">Tee Groups</ThemedText>
+
+        <ThemedText style={{ marginTop: 16, marginBottom: 8 }}>Select Round</ThemedText>
         <OptionPickerItem
           containerStyle={{ backgroundColor: backgroundColor, height: 36 }}
           optionLabel={pickedRound?.label}
@@ -298,43 +241,91 @@ export default function GroupsScreen() {
       {currentRoundId && (
         <>
           <ThemedView style={{ padding: 12 }}>
-            <ThemedText style={{ marginBottom: 8 }}>Active players: {activePlayers.length}</ThemedText>
-            {activePlayers.length > 0 && (
-              <ThemedView style={{ flexDirection: 'row', gap: 8 }}>
-                <Button title="Generate Groups" onPress={handleGenerateGroupings} />
-              </ThemedView>
-            )}
-          </ThemedView>
-
-          {groups.length > 0 && (
-            <>
-              <ThemedView style={{ padding: 12, flex: 1 }}>
-                <ThemedText style={{ fontWeight: '600', marginBottom: 8 }}>Groups for this round</ThemedText>
-
-                <ThemedView
-                  style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 8, gap: 8 }}
-                >
-                  <Button
-                    title="Move Up"
-                    onPress={() => moveGroup('up')}
-                    disabled={selectedIndex === null || selectedIndex === 0}
-                  />
-                  <Button
-                    title="Move Down"
-                    onPress={() => moveGroup('down')}
-                    disabled={selectedIndex === null || selectedIndex === groups.length - 1}
-                  />
-                </ThemedView>
-
-                <FlatList data={groups} keyExtractor={(g, index) => String(index)} renderItem={renderGroup} />
-                <ThemedView style={{ flexDirection: 'row', gap: 8 }}>
-                  <Button
-                    title="Export to Email"
+            {currentRoundPlayerIds.length > 0 ? (
+              <ThemedView
+                style={{
+                  flexDirection: 'row',
+                  gap: 8,
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  paddingRight: 12,
+                }}
+              >
+                <Button
+                  title={currentRoundGroups.length > 0 ? 'Regenerate Groups' : 'Generate Groups'}
+                  onPress={handleGenerateGroupings}
+                />
+                {currentRoundGroups.length && (
+                  <Pressable
                     onPress={() => {
                       void exportToEmail();
                     }}
-                  />
+                  >
+                    <Feather name="send" size={28} color={iconButton} />
+                  </Pressable>
+                )}
+              </ThemedView>
+            ) : (
+              <ThemedText type="defaultSemiBold" style={{ color: errorText, padding: 10 }}>
+                The line-up of players for this round has not been set. Please return to the Rounds tab and
+                tap the round to select players.
+              </ThemedText>
+            )}
+            {showMismatchPlayerWarning && (
+              <ThemedText type="defaultSemiBold" style={{ color: errorText, padding: 10 }}>
+                The line-up of players for this round has changed since the groups were initially created. It
+                is recommended that the groups be regenerate to handle line-up changes.
+              </ThemedText>
+            )}
+          </ThemedView>
+
+          {currentRoundGroups.length > 0 && (
+            <>
+              <ThemedView style={{ padding: 12, flex: 1 }}>
+                <ThemedView
+                  style={{
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    marginBottom: 8,
+                    alignItems: 'center',
+                    height: 46,
+                  }}
+                >
+                  <ThemedView style={{ flex: 1 }}>
+                    <ThemedText type="subtitle">Tee Order</ThemedText>
+                  </ThemedView>
+                  {selectedGroupIndex !== null && (
+                    <ThemedView style={{ flexDirection: 'row', gap: 20 }}>
+                      <Pressable onPress={() => moveGroup('up')} disabled={selectedGroupIndex === 0}>
+                        <Entypo
+                          name="arrow-bold-up"
+                          size={28}
+                          color={selectedGroupIndex === 0 ? iconButtonDisabled : iconButton}
+                        />
+                      </Pressable>
+                      <Pressable
+                        onPress={() => moveGroup('down')}
+                        disabled={selectedGroupIndex === currentRoundGroups.length - 1}
+                      >
+                        <Entypo
+                          name="arrow-bold-down"
+                          size={28}
+                          color={
+                            selectedGroupIndex === currentRoundGroups.length - 1
+                              ? iconButtonDisabled
+                              : iconButton
+                          }
+                        />
+                      </Pressable>
+                    </ThemedView>
+                  )}
                 </ThemedView>
+
+                <FlatList
+                  data={currentRoundGroups}
+                  keyExtractor={(g, index) => `$(g.group_id)-${index}`}
+                  renderItem={renderGroup}
+                />
               </ThemedView>
             </>
           )}

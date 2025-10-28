@@ -59,7 +59,7 @@ export type GroupPlayers = { group_id: number; player_ids: number[] };
 
 type DbState = {
   players: Player[];
-  rounds: Round[];
+  rounds: Round[]; // most recent at index 0
   groups: Group[];
   roundPlayers: RoundPlayer[];
   roundSummaries: RoundSummary[];
@@ -84,7 +84,8 @@ type DbState = {
   updateRound: (id: number, data: Partial<Omit<Round, 'id'>>) => void;
 
   refreshAll: () => void;
-  setGroupsForRound: (roundId: number, groupsList: number[][]) => void; // Add this line
+  setGroupsForRound: (roundId: number, groupsList: number[][]) => void;
+  swapGroupSlots: (groupId1: number, slotIndex1: number, groupId2: number, slotIndex2: number) => void;
 };
 
 // ------------------- STORE -------------------
@@ -317,6 +318,7 @@ export const useDbStore = create<DbState>((set) => ({
     fetchGroupPlayers();
   },
 
+  // --- Set Group and Group Members Mutations ----------------------------------------------------
   setGroupsForRound: (roundId: number, groupsList: number[][]) => {
     const db = getDb();
     const createdAt = new Date().toISOString();
@@ -353,6 +355,20 @@ export const useDbStore = create<DbState>((set) => ({
     });
 
     // Refresh groups in store
+    const { fetchGroups, fetchGroupPlayers } = useDbStore.getState();
+    fetchGroups();
+    fetchGroupPlayers();
+  },
+
+  swapGroupSlots: (groupId1: number, slotIndex1: number, groupId2: number, slotIndex2: number) => {
+    const db = getDb();
+
+    db.withTransactionSync(() => {
+      db.runSync('UPDATE groups SET slot_index = ? WHERE id = ?;', [slotIndex2, groupId1]);
+      db.runSync('UPDATE groups SET slot_index = ? WHERE id = ?;', [slotIndex1, groupId2]);
+    });
+
+    // Refresh store data
     const { fetchGroups, fetchGroupPlayers } = useDbStore.getState();
     fetchGroups();
     fetchGroupPlayers();
