@@ -102,7 +102,15 @@ export default function DefineManualGroups() {
 
   return (
     <ThemedView style={styles.container}>
-      <Stack.Screen options={{ title: 'Define Manual Groups' }} />
+      <Stack.Screen
+        options={{
+          title: 'Manual Groups',
+          headerTitleStyle: {
+            fontSize: 22,
+            fontWeight: '500',
+          },
+        }}
+      />
 
       <ThemedText type="default" style={styles.header}>
         You are allowed to define up to {groupSizes.length} manual groups for this round. The number of
