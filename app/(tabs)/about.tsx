@@ -16,7 +16,7 @@ export default function AboutScreen() {
         </ThemedText>
         <ThemedText style={styles.text}>
           CartPartners is designed to maximize your interaction with the rest of your golfing buddies. It does
-          this by ensuring that your cart partners are different from round to round.
+          this by ensuring your cart partners are different from round to round.
         </ThemedText>
 
         <ThemedText type="subtitle" style={styles.sectionTitle}>
@@ -27,8 +27,8 @@ export default function AboutScreen() {
           Rounds Tab
         </ThemedText>
         <ThemedText style={styles.text}>
-          This is were you define your round by specifying the course and date. Once created you tap on the
-          round to open the line-up tab to set the line-up for the round.
+          This is were you define your round by specifying the course and date. Once created tap on the round
+          to open the line-up tab for the round.
         </ThemedText>
 
         <ThemedText type="subtitle" style={styles.subTitle}>
@@ -43,10 +43,10 @@ export default function AboutScreen() {
           Groups Tab
         </ThemedText>
         <ThemedText style={styles.text}>
-          Create and manage the Playing Groups for the specified round. The round is automatically set to the
-          round with the latest date. Press Generate to create the Groups for the round. If the Groups have
-          already been created you can use Regenerate to update the set of groups. Once satisfied with the
-          line-up use the airplane icon to create an email to all the player informing them of the groups.
+          Create and manage the Tee Time Groupings for the specified round. Press Generate to create the
+          Groups for the round. If the Groups have already been created you can use Regenerate to update the
+          set of groups. Once satisfied with the line-up use the airplane icon to create an email to all the
+          player informing them of the groups.
         </ThemedText>
 
         <ThemedText type="subtitle" style={styles.subTitle}>
@@ -69,13 +69,14 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   title: {
-    textAlign: 'center',
+    textAlign: 'left',
   },
   sectionTitle: {
     marginTop: 12,
-    marginBottom: 10,
+    fontSize: 22,
   },
   subTitle: {
+    marginTop: 15,
     marginBottom: 5,
   },
   text: {

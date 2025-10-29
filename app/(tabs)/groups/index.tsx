@@ -18,9 +18,18 @@ import { formatDate } from '@/lib/formatters';
 import Entypo from '@expo/vector-icons/Entypo';
 import Feather from '@expo/vector-icons/Feather';
 import * as Clipboard from 'expo-clipboard';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Button, FlatList, Linking, Pressable, StyleSheet, TouchableOpacity } from 'react-native';
+import {
+  Alert,
+  Button,
+  FlatList,
+  Linking,
+  Pressable,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 export default function GroupsScreen() {
   const {
@@ -49,6 +58,7 @@ export default function GroupsScreen() {
   const [currentRoundGroups, setCurrentRoundGroups] = useState<GroupPlayers[]>([]);
   const [groupPlayersNames, setGroupPlayerNames] = useState<string[]>([]);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const router = useRouter();
 
   // useFocusEffect runs every time this screen is focused
   useFocusEffect(
@@ -234,7 +244,18 @@ export default function GroupsScreen() {
   return (
     <ThemedView style={{ flex: 1 }}>
       <ThemedView style={{ flex: 1, paddingHorizontal: 12, paddingVertical: 12 }}>
-        <ThemedText type="title">Tee Groups</ThemedText>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <ThemedText type="title">Tee Groups</ThemedText>
+          {currentRoundPlayerIds.length > 0 && (
+            <Pressable
+              onPress={() => {
+                router.push('/(tabs)/groups/manualGroups');
+              }}
+            >
+              <Feather name="edit" size={28} color={iconButton} />
+            </Pressable>
+          )}
+        </View>
         {rounds.length === 0 ? (
           <ThemedText type="defaultSemiBold" style={{ color: errorText, padding: 10 }}>
             At least one Rounds must be defined and its line-up of players set before Groups can be generated.

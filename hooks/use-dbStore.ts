@@ -56,6 +56,7 @@ export type Group = { id: number; round_id: number; slot_index: number; created_
 export type RoundPlayer = { round_id: number; player_id: number };
 export type RoundSummary = { round_id: number; numPlayers: number };
 export type GroupPlayers = { group_id: number; player_ids: number[] };
+export type ManualGroupList = number[];
 
 type DbState = {
   players: Player[];
@@ -64,6 +65,7 @@ type DbState = {
   roundPlayers: RoundPlayer[];
   roundSummaries: RoundSummary[];
   groupPlayers: GroupPlayers[];
+  manualGroupList: ManualGroupList[]; // only for current round, clear in currentRoundIdChanges
 
   currentRoundId: number | null;
 
@@ -90,6 +92,7 @@ type DbState = {
   swapGroupSlots: (groupId1: number, slotIndex1: number, groupId2: number, slotIndex2: number) => void;
 
   setCurrentRoundId: (id: number | null) => void;
+  setManualGroupList: (groupList: ManualGroupList[]) => void;
 };
 
 // ------------------- STORE -------------------
@@ -100,9 +103,13 @@ export const useDbStore = create<DbState>((set, get) => ({
   roundPlayers: [],
   roundSummaries: [],
   groupPlayers: [],
+  manualGroupList: [],
   currentRoundId: null,
 
-  setCurrentRoundId: (id: number | null) => set({ currentRoundId: id }),
+  setCurrentRoundId: (id: number | null) => {
+    set({ currentRoundId: id });
+    set({ manualGroupList: [] });
+  },
 
   // --- Fetchers ------------------------------------------------------------
   fetchPlayers: () => {
@@ -265,6 +272,7 @@ export const useDbStore = create<DbState>((set, get) => ({
     db.runSync('INSERT INTO rounds (date, course) VALUES (?, ?)', [date, course]);
     useDbStore.getState().fetchRounds();
     useDbStore.getState().fetchRoundPlayers();
+    useDbStore.getState().setManualGroupList([]);
   },
 
   // Update a round (edit course/date)
@@ -313,20 +321,27 @@ export const useDbStore = create<DbState>((set, get) => ({
       }
     });
 
-    const { fetchRoundPlayers } = useDbStore.getState();
-    fetchRoundPlayers();
+    useDbStore.getState().fetchRoundPlayers();
+    useDbStore.getState().setManualGroupList([]);
   },
 
   // --- Refresh All ---------------------------------------------------------
   refreshAll: () => {
-    const { fetchPlayers, fetchRounds, fetchGroups, fetchRoundPlayers, fetchGroupPlayers } =
-      useDbStore.getState();
+    const {
+      fetchPlayers,
+      fetchRounds,
+      fetchGroups,
+      fetchRoundPlayers,
+      fetchGroupPlayers,
+      setManualGroupList,
+    } = useDbStore.getState();
 
     fetchPlayers();
     fetchRounds();
     fetchGroups();
     fetchRoundPlayers();
     fetchGroupPlayers();
+    setManualGroupList([]);
   },
 
   // --- Set Group and Group Members Mutations ----------------------------------------------------
@@ -383,5 +398,9 @@ export const useDbStore = create<DbState>((set, get) => ({
     const { fetchGroups, fetchGroupPlayers } = useDbStore.getState();
     fetchGroups();
     fetchGroupPlayers();
+  },
+
+  setManualGroupList: (groupList: ManualGroupList[]) => {
+    set({ manualGroupList: groupList });
   },
 }));
