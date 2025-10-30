@@ -8,7 +8,8 @@ import React, { useEffect, useState } from 'react';
 import { Alert, Button, FlatList, StyleSheet, Switch, View } from 'react-native';
 
 export default function DefineManualGroups() {
-  const { roundPlayers, currentRoundId, setManualGroupList, manualGroupList, players } = useDbStore();
+  const { roundPlayers, currentRoundId, setManualGroupList, manualGroupList, players, setGroupsForRound } =
+    useDbStore();
   const [availablePlayerIds, setAvailablePlayerIds] = useState<RoundPlayer[]>([]);
   const [availablePlayers, setAvailablePlayers] = useState<Player[]>([]);
   const [selectedPlayers, setSelectedPlayers] = useState<number[]>([]);
@@ -23,25 +24,29 @@ export default function DefineManualGroups() {
   }, [manualGroupList]);
 
   useEffect(() => {
-    setAvailablePlayerIds(roundPlayers.filter((p) => p.round_id === currentRoundId));
-  }, [roundPlayers, currentRoundId]);
+    const manualGroupPlayerIds = manualGroups.flat().flat();
+    const possiblePlayer = roundPlayers
+      .filter((p) => p.round_id === currentRoundId)
+      .filter((rp) => !manualGroupPlayerIds.includes(rp.player_id));
+    setAvailablePlayerIds(possiblePlayer);
+  }, [roundPlayers, currentRoundId, manualGroups]);
 
   useEffect(() => {
     const currentRoundPlayers = availablePlayerIds
       .map((ap) => players.find((p) => p.id === ap.player_id))
       .filter((e) => e !== undefined);
     setAvailablePlayers(currentRoundPlayers);
-  }, [availablePlayerIds]);
+  }, [availablePlayerIds, players]);
 
   useEffect(() => {
     const groupSizes = getGroupSizes(availablePlayerIds.length);
     setGroupSizes(groupSizes);
-  }, [availablePlayerIds]);
+  }, [availablePlayerIds, players]);
 
   useEffect(() => {
-    const groupSize = manualGroups.length;
-    setCurrentGroupSize(groupSizes[groupSize] || 0);
-  }, [manualGroups]);
+    // since we remove the available players when they are added to manual group we should always choose the first group size
+    setCurrentGroupSize(groupSizes[0] || 0);
+  }, [manualGroups, groupSizes]);
 
   const togglePlayer = (playerId: number) => {
     if (selectedPlayers.includes(playerId)) {
@@ -60,17 +65,22 @@ export default function DefineManualGroups() {
     }
 
     setManualGroups([...manualGroups, selectedPlayers]);
-    setAvailablePlayers(availablePlayers.filter((p) => !selectedPlayers.includes(p.id)));
+    setAvailablePlayerIds(availablePlayerIds.filter((ap) => !selectedPlayers.includes(ap.player_id)));
     setSelectedPlayers([]);
   };
 
   const finishGrouping = () => {
-    if (availablePlayers.length > 0) {
-      Alert.alert('Incomplete Groups', 'Please assign all players to groups');
-      return;
+    if (availablePlayers.length === 0) {
+      // if all players have been assigned to groups the we can save to database
+      setGroupsForRound(currentRoundId!, manualGroups);
+      setManualGroupList([]);
+      setManualGroups([]);
+    } else {
+      // if manual groups does not include all players return to Groups tab so the remaining groups can be generated.
+      setManualGroupList(manualGroups);
+      setManualGroups([]);
     }
-    //setManualGroups(groups);
-    Alert.alert('Success', 'Manual groups have been saved');
+    router.back();
   };
 
   const cancelGrouping = () => {
@@ -111,29 +121,39 @@ export default function DefineManualGroups() {
           },
         }}
       />
+      {currentGroupSize > 0 ? (
+        <>
+          <ThemedText type="default" style={styles.header}>
+            You are allowed to define up to {groupSizes.length} manual groups for this round. The number of
+            players per group will be specified.
+          </ThemedText>
 
-      <ThemedText type="default" style={styles.header}>
-        You are allowed to define up to {groupSizes.length} manual groups for this round. The number of
-        players per group will be specified.
-      </ThemedText>
+          <ThemedText style={styles.subheader}>
+            Selected: {selectedPlayers.length}/{currentGroupSize} players
+          </ThemedText>
 
-      <ThemedText style={styles.subheader}>
-        Selected: {selectedPlayers.length}/{currentGroupSize} players
-      </ThemedText>
-
-      <FlatList
-        data={availablePlayers}
-        renderItem={renderPlayer}
-        keyExtractor={(item) => `${item.id}`}
-        style={styles.list}
-      />
+          <FlatList
+            data={availablePlayers}
+            renderItem={renderPlayer}
+            keyExtractor={(item) => `${item.id}`}
+            style={styles.list}
+          />
+        </>
+      ) : (
+        <ThemedText type="default" style={styles.header}>
+          All players have been assigned to a group. Press finish to use these group or Cancel to discard
+          groups and return to screen to generate groups.
+        </ThemedText>
+      )}
 
       <View>
-        <Button
-          title="Save Selected as Group"
-          onPress={saveGroup}
-          disabled={selectedPlayers.length !== currentGroupSize}
-        />
+        {currentGroupSize > 0 && (
+          <Button
+            title="Save Selected as Group"
+            onPress={saveGroup}
+            disabled={selectedPlayers.length !== currentGroupSize || currentGroupSize === 0}
+          />
+        )}
         <View style={styles.buttonContainer}>
           <Button title="Finish" onPress={finishGrouping} disabled={manualGroups.length === 0} />
           <Button title="Cancel" onPress={cancelGrouping} />

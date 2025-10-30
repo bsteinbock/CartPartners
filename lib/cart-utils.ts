@@ -1,5 +1,5 @@
 // utils.ts
-import { Group, GroupPlayers, Player } from '../hooks/use-dbStore';
+import { Group, GroupPlayers, ManualGroupList, Player } from '../hooks/use-dbStore';
 
 /**
  * @param playerIds - The list of players for the next round
@@ -268,6 +268,25 @@ function getLeastConnectedPlayer(
   }
 
   return bestPlayer;
+}
+
+/**
+ * Converts ManualGroupList into readable strings of player names.
+ * @param groupPlayers - The ManualGroupList array
+ * @param players - The full list of Player objects.
+ * @returns An array of strings, one per group.
+ */
+export function formatManualGroupPlayersByNames(
+  groupPlayers: ManualGroupList[],
+  players: Player[],
+): string[] {
+  return groupPlayers.map((gp) => {
+    const names = gp
+      .map((pid) => players.find((p) => p.id === pid)?.name)
+      .filter((name): name is string => Boolean(name)); // filter out undefined
+
+    return names.join(', ');
+  });
 }
 
 /**

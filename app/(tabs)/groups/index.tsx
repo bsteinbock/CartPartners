@@ -8,6 +8,7 @@ import { useThemeColor } from '@/hooks/use-theme-color';
 import {
   buildPlayingPartnerFrequencies,
   formatGroupPlayersByNames,
+  formatManualGroupPlayersByNames,
   generateNextRoundGroups,
   getGroupPlayersByRoundId,
   getMailtoStrings,
@@ -42,6 +43,8 @@ export default function GroupsScreen() {
     swapGroupSlots,
     currentRoundId,
     setCurrentRoundId,
+    setManualGroupList,
+    manualGroupList,
   } = useDbStore();
   const [currentRoundPlayerIds, setCurrentRoundPlayerIds] = useState<number[]>([]);
   const [isRoundPickerVisible, setIsRoundPickerVisible] = useState<boolean>(false);
@@ -56,6 +59,7 @@ export default function GroupsScreen() {
   const iconButton = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
   const iconButtonDisabled = useThemeColor({ light: undefined, dark: undefined }, 'iconButtonDisabled');
   const [currentRoundGroups, setCurrentRoundGroups] = useState<GroupPlayers[]>([]);
+  const [manualGroupsPlayersNames, setManualGroupsPlayersNames] = useState<string[]>([]);
   const [groupPlayersNames, setGroupPlayerNames] = useState<string[]>([]);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const router = useRouter();
@@ -103,6 +107,13 @@ export default function GroupsScreen() {
       setGroupPlayerNames(names);
     }
   }, [currentRoundGroups, players, formatGroupPlayersByNames]);
+
+  useEffect(() => {
+    if (manualGroupList.length > 0) {
+      const names = formatManualGroupPlayersByNames(manualGroupList, players);
+      setManualGroupsPlayersNames(names);
+    }
+  }, [manualGroupList, players, formatManualGroupPlayersByNames]);
 
   useEffect(() => {
     if (roundPlayers.length > 0) {
@@ -156,15 +167,29 @@ export default function GroupsScreen() {
       Alert.alert('No active players', 'Please select a round with active players to generate groups.');
       return;
     }
-    const partnerFrequencies = buildPlayingPartnerFrequencies(currentRoundPlayerIds, groupPlayers);
 
-    const newGroupList = generateNextRoundGroups({
-      playerIds: currentRoundPlayerIds,
+    let playerIds = [...currentRoundPlayerIds];
+
+    if (manualGroupList.length) {
+      // build a list of playerIds by take currentRoundPlayerIds and removing any id specified in the manualGroupList array
+      const manualGroupPlayerIds = manualGroupList.flat().flat();
+      playerIds = playerIds.filter((pid) => !manualGroupPlayerIds.includes(pid));
+    }
+
+    const partnerFrequencies = buildPlayingPartnerFrequencies(playerIds, groupPlayers);
+
+    let newGroupList = generateNextRoundGroups({
+      playerIds,
       partnerFrequencies,
       allPlayers: players,
     });
 
+    if (manualGroupList.length) {
+      newGroupList = [...manualGroupList, ...newGroupList];
+    }
+
     setGroupsForRound(currentRoundId!, newGroupList);
+    setManualGroupList([]);
   }, [
     currentRoundPlayerIds,
     groupPlayers,
@@ -173,6 +198,8 @@ export default function GroupsScreen() {
     buildPlayingPartnerFrequencies,
     generateNextRoundGroups,
     setGroupsForRound,
+    manualGroupList,
+    setManualGroupList,
   ]);
 
   // Render each group in the FlatList
@@ -204,6 +231,29 @@ export default function GroupsScreen() {
           </ThemedView>
         </ThemedView>
       </TouchableOpacity>
+    );
+  };
+
+  // Render each group in the FlatList
+  const renderManualGroup = ({ item, index }: { item: string; index: number }) => {
+    return (
+      <ThemedView
+        style={[
+          styles.groupCard,
+          {
+            backgroundColor: backgroundColor,
+            borderColor: selectedGroupIndex === index ? '#2f95eb' : borderColor,
+            shadowColor: borderColor,
+            shadowOpacity: 0.05,
+            shadowRadius: 4,
+            elevation: 2,
+          },
+        ]}
+      >
+        <ThemedView style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <ThemedText style={{ fontWeight: '600' }}>{`${item}`}</ThemedText>
+        </ThemedView>
+      </ThemedView>
     );
   };
 
@@ -287,10 +337,14 @@ export default function GroupsScreen() {
                   }}
                 >
                   <Button
-                    title={currentRoundGroups.length ? 'Regenerate Groups' : 'Generate Groups'}
+                    title={
+                      currentRoundGroups.length && manualGroupList.length === 0
+                        ? 'Regenerate Groups'
+                        : 'Generate Groups'
+                    }
                     onPress={handleGenerateGroupings}
                   />
-                  {currentRoundGroups.length && (
+                  {currentRoundGroups.length && manualGroupList.length === 0 && (
                     <Pressable
                       onPress={() => {
                         void exportToEmail();
@@ -306,7 +360,7 @@ export default function GroupsScreen() {
                     It is recommended that the groups be regenerate to handle line-up changes.
                   </ThemedText>
                 )}
-                {currentRoundGroups.length && (
+                {currentRoundGroups.length && manualGroupList.length === 0 && (
                   <ThemedView style={{ padding: 0, flex: 1 }}>
                     <ThemedView
                       style={{
@@ -318,39 +372,54 @@ export default function GroupsScreen() {
                       }}
                     >
                       <ThemedText type="subtitle">Tee Order</ThemedText>
-                      <>
-                        {selectedGroupIndex !== null && (
-                          <ThemedView style={{ flexDirection: 'row', gap: 20 }}>
-                            <Pressable onPress={() => moveGroup('up')} disabled={selectedGroupIndex === 0}>
-                              <Entypo
-                                name="arrow-bold-up"
-                                size={28}
-                                color={selectedGroupIndex === 0 ? iconButtonDisabled : iconButton}
-                              />
-                            </Pressable>
-                            <Pressable
-                              onPress={() => moveGroup('down')}
-                              disabled={selectedGroupIndex === currentRoundGroups.length - 1}
-                            >
-                              <Entypo
-                                name="arrow-bold-down"
-                                size={28}
-                                color={
-                                  selectedGroupIndex === currentRoundGroups.length - 1
-                                    ? iconButtonDisabled
-                                    : iconButton
-                                }
-                              />
-                            </Pressable>
-                          </ThemedView>
-                        )}
-                      </>
+                      {selectedGroupIndex !== null && (
+                        <ThemedView style={{ flexDirection: 'row', gap: 20 }}>
+                          <Pressable onPress={() => moveGroup('up')} disabled={selectedGroupIndex === 0}>
+                            <Entypo
+                              name="arrow-bold-up"
+                              size={28}
+                              color={selectedGroupIndex === 0 ? iconButtonDisabled : iconButton}
+                            />
+                          </Pressable>
+                          <Pressable
+                            onPress={() => moveGroup('down')}
+                            disabled={selectedGroupIndex === currentRoundGroups.length - 1}
+                          >
+                            <Entypo
+                              name="arrow-bold-down"
+                              size={28}
+                              color={
+                                selectedGroupIndex === currentRoundGroups.length - 1
+                                  ? iconButtonDisabled
+                                  : iconButton
+                              }
+                            />
+                          </Pressable>
+                        </ThemedView>
+                      )}
                     </ThemedView>
                     <ThemedView style={{ flex: 1 }}>
                       <FlatList
                         data={currentRoundGroups}
                         keyExtractor={(g, index) => `${g.group_id}-${index}`}
                         renderItem={renderGroup}
+                      />
+                    </ThemedView>
+                  </ThemedView>
+                )}
+                {manualGroupList.length > 0 && (
+                  <ThemedView style={{ paddingTop: 10, flex: 1 }}>
+                    <ThemedView>
+                      <ThemedText type="subtitle">Manual Tee Groups</ThemedText>
+                      <ThemedText style={{ color: errorText, paddingBottom: 10 }} type="default">
+                        You must press Generate to build groups that include the rest of the players.
+                      </ThemedText>
+                    </ThemedView>
+                    <ThemedView style={{ flex: 1 }}>
+                      <FlatList
+                        data={manualGroupsPlayersNames}
+                        keyExtractor={(index) => `${index}`}
+                        renderItem={renderManualGroup}
                       />
                     </ThemedView>
                   </ThemedView>
