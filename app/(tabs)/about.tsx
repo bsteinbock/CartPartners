@@ -1,15 +1,61 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { getDatabasePath } from '@/hooks/use-dbStore';
+import { useThemeColor } from '@/hooks/use-theme-color';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import React from 'react';
-import { ScrollView, StyleSheet } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet } from 'react-native';
 
 export default function AboutScreen() {
+  const iconColor = useThemeColor({ light: undefined, dark: undefined }, 'icon');
+
+  const handleExportDb = async () => {
+    try {
+      const dbPath = getDatabasePath();
+
+      // Check if sharing is available
+      const canShare = await Sharing.isAvailableAsync();
+      if (!canShare) {
+        Alert.alert('Error', 'Sharing is not available on this device');
+        return;
+      }
+
+      // Create a copy of the database file in the cache directory
+      const now = new Date();
+      const timestamp = `${now.getMonth() + 1}-${now.getDate()}-${now.getFullYear()}`;
+      const fileName = `cartpartners-backup-${timestamp}.db`;
+      const destPath = `${FileSystem.cacheDirectory}${fileName}`;
+
+      await FileSystem.copyAsync({
+        from: dbPath,
+        to: destPath,
+      });
+
+      // Share the copied file
+      await Sharing.shareAsync(destPath, {
+        mimeType: 'application/x-sqlite3',
+        dialogTitle: 'Export CartPartners Database',
+        UTI: 'public.database', // for iOS
+      });
+    } catch (error) {
+      Alert.alert('Error', 'Failed to export database');
+      console.error('Export error:', error);
+    }
+  };
+
   return (
     <ScrollView style={styles.container}>
       <ThemedView style={styles.content}>
-        <ThemedText type="title" style={styles.title}>
-          CartPartners
-        </ThemedText>
+        <ThemedView style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <ThemedText type="title" style={styles.title}>
+            CartPartners
+          </ThemedText>
+          <Pressable onPress={handleExportDb}>
+            <MaterialIcons name="backup-table" size={28} color={iconColor} />
+          </Pressable>
+        </ThemedView>
 
         <ThemedText type="subtitle" style={styles.sectionTitle}>
           Overview

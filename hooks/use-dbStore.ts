@@ -13,6 +13,11 @@ function getDb() {
   return db;
 }
 
+export function getDatabasePath(): string {
+  const db = getDb();
+  return db.databasePath;
+}
+
 // ------------------- INIT DB -------------------
 export function initDb() {
   const db = getDb();
