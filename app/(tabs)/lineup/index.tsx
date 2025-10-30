@@ -115,7 +115,7 @@ export default function LineupScreen() {
               {players.length === 0 ? (
                 <ThemedView style={styles.stepContainer}>
                   <ThemedText>
-                    No players available. Go to Players Tab to add players to get started.
+                    No players available. Go to Add Players using the icon on the top right of this screen.
                   </ThemedText>
                 </ThemedView>
               ) : (
