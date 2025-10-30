@@ -2,7 +2,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { ManualGroupList, Player, RoundPlayer, useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
-import { getGroupSizes } from '@/lib/cart-utils';
+import { formatManualGroupPlayersByNames, getGroupSizes } from '@/lib/cart-utils';
 import { Stack, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Alert, Button, FlatList, StyleSheet, Switch, View } from 'react-native';
@@ -17,6 +17,9 @@ export default function DefineManualGroups() {
   const [groupSizes, setGroupSizes] = useState<number[]>([]);
   const [currentGroupSize, setCurrentGroupSize] = useState<number>(0);
   const borderColor = useThemeColor({ light: undefined, dark: undefined }, 'border');
+  const backgroundColor = useThemeColor({ light: undefined, dark: undefined }, 'background');
+  const [manualGroupsPlayersNames, setManualGroupsPlayersNames] = useState<string[]>([]);
+
   const router = useRouter();
 
   useEffect(() => {
@@ -47,6 +50,14 @@ export default function DefineManualGroups() {
     // since we remove the available players when they are added to manual group we should always choose the first group size
     setCurrentGroupSize(groupSizes[0] || 0);
   }, [manualGroups, groupSizes]);
+
+  useEffect(() => {
+    if (manualGroups.length > 0) {
+      const names = formatManualGroupPlayersByNames(manualGroups, players);
+      setManualGroupsPlayersNames(names);
+      console.log('Formatted manual groups names:', names);
+    }
+  }, [manualGroups, players, formatManualGroupPlayersByNames]);
 
   const togglePlayer = (playerId: number) => {
     if (selectedPlayers.includes(playerId)) {
@@ -103,6 +114,29 @@ export default function DefineManualGroups() {
     router.back();
   };
 
+  // Render each group in the FlatList
+  const renderManualGroup = ({ item, index }: { item: string; index: number }) => {
+    return (
+      <ThemedView
+        style={[
+          styles.groupCard,
+          {
+            backgroundColor: backgroundColor,
+            borderColor: borderColor,
+            shadowColor: borderColor,
+            shadowOpacity: 0.05,
+            shadowRadius: 4,
+            elevation: 2,
+          },
+        ]}
+      >
+        <ThemedView style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <ThemedText style={{ fontWeight: '600' }}>{`${item}`}</ThemedText>
+        </ThemedView>
+      </ThemedView>
+    );
+  };
+
   const renderPlayer = ({ item }: { item: Player }) => (
     <ThemedView style={[styles.playerRow, { borderBottomColor: borderColor, borderBottomWidth: 1 }]}>
       <Switch value={selectedPlayers.includes(item.id)} onValueChange={() => togglePlayer(item.id)} />
@@ -122,12 +156,7 @@ export default function DefineManualGroups() {
         }}
       />
       {currentGroupSize > 0 ? (
-        <>
-          <ThemedText type="default" style={styles.header}>
-            You are allowed to define up to {groupSizes.length} manual groups for this round. The number of
-            players per group will be specified.
-          </ThemedText>
-
+        <ThemedView style={{ flex: 1 }}>
           <ThemedText style={styles.subheader}>
             Selected: {selectedPlayers.length}/{currentGroupSize} players
           </ThemedText>
@@ -138,7 +167,12 @@ export default function DefineManualGroups() {
             keyExtractor={(item) => `${item.id}`}
             style={styles.list}
           />
-        </>
+          <Button
+            title="Save Selected as Group"
+            onPress={saveGroup}
+            disabled={selectedPlayers.length !== currentGroupSize || currentGroupSize === 0}
+          />
+        </ThemedView>
       ) : (
         <ThemedText type="default" style={styles.header}>
           All players have been assigned to a group. Press finish to use these group or Cancel to discard
@@ -146,19 +180,27 @@ export default function DefineManualGroups() {
         </ThemedText>
       )}
 
-      <View>
-        {currentGroupSize > 0 && (
-          <Button
-            title="Save Selected as Group"
-            onPress={saveGroup}
-            disabled={selectedPlayers.length !== currentGroupSize || currentGroupSize === 0}
-          />
+      <ThemedView style={{ flex: 1, marginTop: 16 }}>
+        {manualGroups.length > 0 && (
+          <ThemedView style={{ paddingTop: 10, flex: 1 }}>
+            <ThemedView>
+              <ThemedText type="subtitle">Manual Tee Groups</ThemedText>
+            </ThemedView>
+            <ThemedView style={{ flex: 1 }}>
+              <FlatList
+                data={manualGroupsPlayersNames}
+                keyExtractor={(index) => `${index}`}
+                renderItem={renderManualGroup}
+              />
+            </ThemedView>
+          </ThemedView>
         )}
+
         <View style={styles.buttonContainer}>
           <Button title="Finish" onPress={finishGrouping} disabled={manualGroups.length === 0} />
           <Button title="Cancel" onPress={cancelGrouping} />
         </View>
-      </View>
+      </ThemedView>
     </ThemedView>
   );
 }
@@ -192,4 +234,5 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     gap: 16,
   },
+  groupCard: { padding: 10, borderWidth: 1, borderRadius: 8, marginBottom: 8 },
 });
