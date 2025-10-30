@@ -9,40 +9,60 @@ import React from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet } from 'react-native';
 
 export default function AboutScreen() {
-  const iconColor = useThemeColor({ light: undefined, dark: undefined }, 'icon');
+  const iconColor = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
 
   const handleExportDb = async () => {
-    try {
-      const dbPath = getDatabasePath();
+    Alert.alert(
+      'Export Database',
+      'Are you sure you want to export the CartPartners database?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Export',
+          style: 'default',
+          onPress: async () => {
+            try {
+              const dbPath = getDatabasePath();
 
-      // Check if sharing is available
-      const canShare = await Sharing.isAvailableAsync();
-      if (!canShare) {
-        Alert.alert('Error', 'Sharing is not available on this device');
-        return;
-      }
+              const canShare = await Sharing.isAvailableAsync();
+              if (!canShare) {
+                Alert.alert('Error', 'Sharing is not available on this device');
+                return;
+              }
 
-      // Create a copy of the database file in the cache directory
-      const now = new Date();
-      const timestamp = `${now.getMonth() + 1}-${now.getDate()}-${now.getFullYear()}`;
-      const fileName = `cartpartners-backup-${timestamp}.db`;
-      const destPath = `${FileSystem.cacheDirectory}${fileName}`;
+              const now = new Date();
+              const timestamp = `${now.getMonth() + 1}-${now.getDate()}-${now.getFullYear()}`;
+              const fileName = `cartpartners-backup-${timestamp}.db`;
+              const destPath = `${FileSystem.cacheDirectory}${fileName}`;
 
-      await FileSystem.copyAsync({
-        from: dbPath,
-        to: destPath,
-      });
+              await FileSystem.copyAsync({
+                from: dbPath,
+                to: destPath,
+              });
 
-      // Share the copied file
-      await Sharing.shareAsync(destPath, {
-        mimeType: 'application/x-sqlite3',
-        dialogTitle: 'Export CartPartners Database',
-        UTI: 'public.database', // for iOS
-      });
-    } catch (error) {
-      Alert.alert('Error', 'Failed to export database');
-      console.error('Export error:', error);
-    }
+              await Sharing.shareAsync(destPath, {
+                mimeType: 'application/x-sqlite3',
+                dialogTitle: 'Export CartPartners Database',
+                UTI: 'public.database', // iOS
+              });
+
+              // Show success message after sharing completes
+              Alert.alert(
+                'Export Successful',
+                `Your database has been successfully exported as "${fileName}".`,
+              );
+            } catch (error) {
+              Alert.alert('Error', 'Failed to export database');
+              console.error('Export error:', error);
+            }
+          },
+        },
+      ],
+      { cancelable: true },
+    );
   };
 
   return (

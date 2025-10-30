@@ -17,7 +17,7 @@ export default function LineupScreen() {
   const [pickedRound, setPickedRound] = useState<OptionEntry | undefined>(undefined);
   const [roundOptions, setRoundOptions] = useState<OptionEntry[]>([]);
   const backgroundColor = useThemeColor({ light: undefined, dark: undefined }, 'background');
-  const iconColor = useThemeColor({ light: undefined, dark: undefined }, 'icon');
+  const iconColor = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
   const errorText = useThemeColor({ light: undefined, dark: undefined }, 'errorText');
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const router = useRouter();

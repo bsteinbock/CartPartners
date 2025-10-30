@@ -1,4 +1,5 @@
 // use-DbStore.ts
+import { File, Paths } from 'expo-file-system';
 import * as SQLite from 'expo-sqlite';
 import { create } from 'zustand';
 
@@ -17,6 +18,38 @@ export function getDatabasePath(): string {
   const db = getDb();
   return db.databasePath;
 }
+
+/**
+ * Restore the database from a given file URI.
+ * Automatically backs up current DB before restoring.
+ * Uses modern expo-file-system API.
+ * @param selectedFileUri The URI of the backup database to restore
+ */
+export const restoreDatabaseFromFile = async (selectedFileUri: string): Promise<boolean> => {
+  try {
+    // Construct file / directory references
+    const currentDbFile = new File(Paths.document, DB_NAME);
+    const backupFile = new File(Paths.document, `db-backup-before-restore.db`);
+    const sourceFile = new File(selectedFileUri); // note: selectedFileUri may be a URI string, we wrap it
+
+    //  Backup current DB
+    await currentDbFile.copy(backupFile);
+
+    // "Close" current DB by removing reference
+    db = null;
+
+    // Replace current DB with selectedFile
+    await sourceFile.copy(currentDbFile);
+
+    // Re‑open DB
+    db = SQLite.openDatabaseSync(DB_NAME);
+
+    return true;
+  } catch (error) {
+    console.error('restoreDatabaseFromFile error:', error);
+    return false;
+  }
+};
 
 // ------------------- INIT DB -------------------
 export function initDb() {
