@@ -401,7 +401,6 @@ export const useDbStore = create<DbState>((set, get) => ({
   },
 
   setManualGroupList: (groupList: ManualGroupList[]) => {
-    console.log('Setting manual group list:', groupList);
     set({ manualGroupList: groupList });
   },
 }));
