@@ -36,7 +36,8 @@ export default function AboutScreen() {
         </ThemedText>
         <ThemedText style={styles.text}>
           This tab is used to specify the players that will be playing for this round. The list of players
-          that is shown comes for all available players with their status set to available.
+          that is shown comes for all available players with their status set to available. To manage the list
+          of available players press the icon on the top right of the screen.
         </ThemedText>
 
         <ThemedText type="subtitle" style={styles.subTitle}>
@@ -46,15 +47,8 @@ export default function AboutScreen() {
           Create and manage the Tee Time Groupings for the specified round. Press Generate to create the
           Groups for the round. If the Groups have already been created you can use Regenerate to update the
           set of groups. Once satisfied with the line-up use the airplane icon to create an email to all the
-          player informing them of the groups.
-        </ThemedText>
-
-        <ThemedText type="subtitle" style={styles.subTitle}>
-          Players Tab
-        </ThemedText>
-        <ThemedText style={styles.text}>
-          This is where you manage your list of players and specify if they are currently available for being
-          shown when setting up rounds.
+          player informing them of the groups. You can use the icon on the top right of the screen to manually
+          set the players for any number of groups.
         </ThemedText>
       </ThemedView>
     </ScrollView>

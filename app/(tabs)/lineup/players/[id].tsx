@@ -2,7 +2,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedTextInput } from '@/components/themed-textinput';
 import { ThemedView } from '@/components/themed-view';
 import { useDbStore } from '@/hooks/use-dbStore';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Alert, Button, StyleSheet } from 'react-native';
 
@@ -55,38 +55,41 @@ export default function PlayerDetailScreen() {
   };
 
   return (
-    <ThemedView style={styles.container}>
-      <ThemedText type="title" style={styles.title}>
-        {isNew ? 'Add New Player' : 'Edit Player'}
-      </ThemedText>
+    <>
+      <Stack.Screen options={{ title: 'Define Player', headerShown: true }} />
+      <ThemedView style={styles.container}>
+        <ThemedText type="title" style={styles.title}>
+          {isNew ? 'Add New Player' : 'Edit Player'}
+        </ThemedText>
 
-      <ThemedText style={styles.label}>Name</ThemedText>
-      <ThemedTextInput style={styles.input} value={name} onChangeText={setName} placeholder="Player name" />
+        <ThemedText style={styles.label}>Name</ThemedText>
+        <ThemedTextInput style={styles.input} value={name} onChangeText={setName} placeholder="Player name" />
 
-      <ThemedText style={styles.label}>Email</ThemedText>
-      <ThemedTextInput
-        style={styles.input}
-        value={email}
-        autoCorrect={false}
-        onChangeText={setEmail}
-        placeholder="Email"
-        keyboardType="email-address"
-      />
+        <ThemedText style={styles.label}>Email</ThemedText>
+        <ThemedTextInput
+          style={styles.input}
+          value={email}
+          autoCorrect={false}
+          onChangeText={setEmail}
+          placeholder="Email"
+          keyboardType="email-address"
+        />
 
-      <ThemedText style={styles.label}>Speed Index (1-Fast/3-Med/5-Slow)</ThemedText>
-      <ThemedTextInput
-        style={styles.input}
-        value={speedIndex}
-        onChangeText={setSpeedIndex}
-        placeholder="Speed index"
-        keyboardType="numeric"
-      />
+        <ThemedText style={styles.label}>Speed Index (1-Fast/3-Med/5-Slow)</ThemedText>
+        <ThemedTextInput
+          style={styles.input}
+          value={speedIndex}
+          onChangeText={setSpeedIndex}
+          placeholder="Speed index"
+          keyboardType="numeric"
+        />
 
-      <ThemedView style={{ marginTop: 12 }}>
-        <Button title={isNew ? 'Add Player' : 'Save Changes'} onPress={handleSave} />
-        <Button title="Cancel" color="gray" onPress={() => router.back()} />
+        <ThemedView style={{ marginTop: 12 }}>
+          <Button title={isNew ? 'Add Player' : 'Save Changes'} onPress={handleSave} />
+          <Button title="Cancel" color="gray" onPress={() => router.back()} />
+        </ThemedView>
       </ThemedView>
-    </ThemedView>
+    </>
   );
 }
 

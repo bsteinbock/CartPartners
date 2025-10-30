@@ -338,13 +338,13 @@ export default function GroupsScreen() {
                 >
                   <Button
                     title={
-                      currentRoundGroups.length && manualGroupList.length === 0
+                      currentRoundGroups.length > 0 && manualGroupList.length === 0
                         ? 'Regenerate Groups'
                         : 'Generate Groups'
                     }
                     onPress={handleGenerateGroupings}
                   />
-                  {currentRoundGroups.length && manualGroupList.length === 0 && (
+                  {currentRoundGroups.length > 0 && manualGroupList.length === 0 && (
                     <Pressable
                       onPress={() => {
                         void exportToEmail();
@@ -360,7 +360,7 @@ export default function GroupsScreen() {
                     It is recommended that the groups be regenerate to handle line-up changes.
                   </ThemedText>
                 )}
-                {currentRoundGroups.length && manualGroupList.length === 0 && (
+                {currentRoundGroups.length > 0 && manualGroupList.length === 0 && (
                   <ThemedView style={{ padding: 0, flex: 1 }}>
                     <ThemedView
                       style={{

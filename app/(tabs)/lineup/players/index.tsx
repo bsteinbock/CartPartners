@@ -1,5 +1,5 @@
 import { File, Paths } from 'expo-file-system';
-import { useRouter } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { Alert, Button, FlatList, Pressable, StyleSheet, Switch, View } from 'react-native';
 
@@ -39,11 +39,11 @@ export default function PlayersScreen() {
 
   const startEdit = (id?: number) => {
     if (typeof id === 'undefined') return;
-    router.push(`/players/${id}`);
+    router.push(`/lineup/players/${id}`);
   };
 
   const addNewPlayer = () => {
-    router.push({ pathname: `/players/[id]`, params: { id: 'new' } });
+    router.push({ pathname: `/lineup/players/[id]`, params: { id: 'new' } });
   };
 
   const toggleAvailable = (p: Player) => {
@@ -162,78 +162,81 @@ export default function PlayersScreen() {
 ------------------------*/
 
   return (
-    <ThemedView style={{ flex: 1 }}>
-      <View
-        style={{
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          padding: 10,
-        }}
-      >
-        <ThemedText type="title">Players</ThemedText>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          {players.length === 0 && <Button title="Import" onPress={importFromCSV} />}
-          {players.length > 0 && <Button title="Export" onPress={exportToCSV} />}
-          <Button title="Add" onPress={addNewPlayer} />
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <ThemedView style={{ flex: 1 }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: 10,
+          }}
+        >
+          <ThemedText type="title">Players</ThemedText>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {players.length === 0 && <Button title="Import" onPress={importFromCSV} />}
+            {players.length > 0 && <Button title="Export" onPress={exportToCSV} />}
+            <Button title="Add" onPress={addNewPlayer} />
+          </View>
         </View>
-      </View>
 
-      {players.length === 0 && (
-        <View style={styles.stepContainer}>
-          <Button title="Seed sample players" onPress={seed} />
-        </View>
-      )}
-
-      <FlatList
-        data={players}
-        keyExtractor={(item, i) => String(item.id ?? i)}
-        ListHeaderComponent={() => (
-          <ThemedView
-            style={{
-              padding: 8,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              borderBottomWidth: 1,
-              borderColor: '#ddd',
-            }}
-          >
-            <ThemedText style={{ fontWeight: '700' }}>Name</ThemedText>
-            <ThemedText style={{ fontWeight: '700', textAlign: 'right', flex: 1, paddingRight: 20 }}>
-              Available
-            </ThemedText>
-          </ThemedView>
-        )}
-        renderItem={({ item }) => (
-          <View
-            style={{
-              padding: 12,
-              borderBottomWidth: 1,
-              borderColor: '#eee',
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}
-          >
-            <View style={{ flex: 1, marginRight: 12 }}>
-              <Pressable onPress={() => startEdit(item.id)}>
-                <View>
-                  <ThemedText>{item.name}</ThemedText>
-                  <ThemedText style={{ color: '#666' }}>{`Speed: ${item.speedIndex}`}</ThemedText>
-                  <ThemedText numberOfLines={2} style={{ color: '#666' }}>{`Email: ${
-                    item.email ?? 'not specified'
-                  }`}</ThemedText>
-                </View>
-              </Pressable>
-            </View>
-            <View style={{ alignItems: 'center' }}>
-              <Switch value={!!item.available} onValueChange={() => toggleAvailable(item)} />
-            </View>
+        {players.length === 0 && (
+          <View style={styles.stepContainer}>
+            <Button title="Seed sample players" onPress={seed} />
           </View>
         )}
-      />
-    </ThemedView>
+
+        <FlatList
+          data={players}
+          keyExtractor={(item, i) => String(item.id ?? i)}
+          ListHeaderComponent={() => (
+            <ThemedView
+              style={{
+                padding: 8,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                borderBottomWidth: 1,
+                borderColor: '#ddd',
+              }}
+            >
+              <ThemedText style={{ fontWeight: '700' }}>Name</ThemedText>
+              <ThemedText style={{ fontWeight: '700', textAlign: 'right', flex: 1, paddingRight: 20 }}>
+                Available
+              </ThemedText>
+            </ThemedView>
+          )}
+          renderItem={({ item }) => (
+            <View
+              style={{
+                padding: 12,
+                borderBottomWidth: 1,
+                borderColor: '#eee',
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <View style={{ flex: 1, marginRight: 12 }}>
+                <Pressable onPress={() => startEdit(item.id)}>
+                  <View>
+                    <ThemedText>{item.name}</ThemedText>
+                    <ThemedText style={{ color: '#666' }}>{`Speed: ${item.speedIndex}`}</ThemedText>
+                    <ThemedText numberOfLines={2} style={{ color: '#666' }}>{`Email: ${
+                      item.email ?? 'not specified'
+                    }`}</ThemedText>
+                  </View>
+                </Pressable>
+              </View>
+              <View style={{ alignItems: 'center' }}>
+                <Switch value={!!item.available} onValueChange={() => toggleAvailable(item)} />
+              </View>
+            </View>
+          )}
+        />
+      </ThemedView>
+    </>
   );
 }
 
