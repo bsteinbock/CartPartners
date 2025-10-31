@@ -48,12 +48,6 @@ export default function AboutScreen() {
                 dialogTitle: 'Export CartPartners Database',
                 UTI: 'public.database', // iOS
               });
-
-              // Show success message after sharing completes
-              Alert.alert(
-                'Export Successful',
-                `Your database has been successfully exported as "${fileName}".`,
-              );
             } catch (error) {
               Alert.alert('Error', 'Failed to export database');
               console.error('Export error:', error);
