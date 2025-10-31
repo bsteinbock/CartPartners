@@ -143,3 +143,20 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
 });
+
+/*
+import React from 'react';
+import { View, Text } from 'react-native';
+import * as Application from 'expo-application';
+
+export default function AppVersionDisplay() {
+  const version = Application.nativeApplicationVersion || 'Unknown';
+  const buildNumber = Application.nativeBuildVersion || \';
+  const versionText = `Version: ${version}${buildNumber?(buildNumber):''}`;
+  return (
+    <View style={{ padding: 20 }}>
+      <Text>{versionText}</Text>
+    </View>
+  );
+}
+*/
