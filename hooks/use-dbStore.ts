@@ -28,18 +28,18 @@ export function getDatabasePath(): string {
 export const restoreDatabaseFromFile = async (selectedFileUri: string): Promise<boolean> => {
   try {
     // Construct file / directory references
-    const currentDbFile = new File(Paths.document, DB_NAME);
+    const currentDbFile = new File(getDatabasePath());
     const backupFile = new File(Paths.document, `db-backup-before-restore.db`);
     const sourceFile = new File(selectedFileUri); // note: selectedFileUri may be a URI string, we wrap it
 
     //  Backup current DB
-    await currentDbFile.copy(backupFile);
+    currentDbFile.copy(backupFile);
 
     // "Close" current DB by removing reference
     db = null;
 
     // Replace current DB with selectedFile
-    await sourceFile.copy(currentDbFile);
+    sourceFile.copy(currentDbFile);
 
     // Re‑open DB
     db = SQLite.openDatabaseSync(DB_NAME);
