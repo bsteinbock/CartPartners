@@ -3,7 +3,7 @@ import { ThemedView } from '@/components/themed-view';
 import { getDatabasePath } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import * as FileSystem from 'expo-file-system/legacy';
+import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import React from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet } from 'react-native';
@@ -36,14 +36,15 @@ export default function AboutScreen() {
               const now = new Date();
               const timestamp = `${now.getMonth() + 1}-${now.getDate()}-${now.getFullYear()}`;
               const fileName = `cartpartners-backup-${timestamp}.db`;
-              const destPath = `${FileSystem.cacheDirectory}${fileName}`;
 
-              await FileSystem.copyAsync({
-                from: dbPath,
-                to: destPath,
-              });
+              const sourceFile = new File(dbPath);
+              const backupFile = new File(Paths.cache, fileName);
+              if (backupFile.exists) {
+                backupFile.delete();
+              }
+              sourceFile.copy(backupFile);
 
-              await Sharing.shareAsync(destPath, {
+              await Sharing.shareAsync(backupFile.uri, {
                 mimeType: 'application/x-sqlite3',
                 dialogTitle: 'Export CartPartners Database',
                 UTI: 'public.database', // iOS
