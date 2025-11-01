@@ -1,15 +1,19 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Player, useDbStore } from '@/hooks/use-dbStore';
+import { useThemeColor } from '@/hooks/use-theme-color';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import * as DocumentPicker from 'expo-document-picker';
 import { File, Paths } from 'expo-file-system';
 import { Stack, useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
-import { Alert, Button, FlatList, Pressable, StyleSheet, Switch, View } from 'react-native';
+import { Alert, FlatList, Pressable, StyleSheet, Switch, View } from 'react-native';
 
 export default function PlayersScreen() {
   const router = useRouter();
   const { players, addPlayers, updatePlayer } = useDbStore();
+  const iconColor = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
 
   const startEdit = (id?: number) => {
     if (typeof id === 'undefined') return;
@@ -47,7 +51,7 @@ export default function PlayersScreen() {
 
       const csvString = [header.join(','), ...rows.map((r) => r.join(','))].join('\n');
 
-      const file = new File(Paths.cache, 'players.csv');
+      const file = new File(Paths.cache, 'cartpartners-players.csv');
       file.create({ overwrite: true });
       file.write(csvString);
 
@@ -145,61 +149,87 @@ export default function PlayersScreen() {
           }}
         >
           <ThemedText type="title">Players</ThemedText>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            {players.length === 0 && <Button title="Import" onPress={importFromCSV} />}
-            {players.length > 0 && <Button title="Export" onPress={exportToCSV} />}
-            <Button title="Add" onPress={addNewPlayer} />
+          <View style={{ flexDirection: 'row', gap: 30, alignItems: 'center', paddingRight: 10 }}>
+            {players.length === 0 && (
+              <Pressable onPress={importFromCSV}>
+                <MaterialCommunityIcons name="application-import" size={28} color={iconColor} />
+              </Pressable>
+            )}
+            {players.length > 0 && (
+              <Pressable onPress={exportToCSV}>
+                <MaterialCommunityIcons name="application-export" size={28} color={iconColor} />
+              </Pressable>
+            )}
+            <Pressable onPress={addNewPlayer}>
+              <Ionicons name="person-add-sharp" size={28} color={iconColor} />
+            </Pressable>
           </View>
         </View>
-
-        <FlatList
-          data={players}
-          keyExtractor={(item, i) => String(item.id ?? i)}
-          ListHeaderComponent={() => (
-            <ThemedView
-              style={{
-                padding: 8,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                borderBottomWidth: 1,
-                borderColor: '#ddd',
-              }}
-            >
-              <ThemedText style={{ fontWeight: '700' }}>Name</ThemedText>
-              <ThemedText style={{ fontWeight: '700', textAlign: 'right', flex: 1, paddingRight: 20 }}>
-                Available
-              </ThemedText>
-            </ThemedView>
-          )}
-          renderItem={({ item }) => (
-            <View
-              style={{
-                padding: 12,
-                borderBottomWidth: 1,
-                borderColor: '#eee',
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}
-            >
-              <View style={{ flex: 1, marginRight: 12 }}>
-                <Pressable onPress={() => startEdit(item.id)}>
-                  <View>
-                    <ThemedText>{item.name}</ThemedText>
-                    <ThemedText style={{ color: '#666' }}>{`Speed: ${item.speedIndex}`}</ThemedText>
-                    <ThemedText numberOfLines={2} style={{ color: '#666' }}>{`Email: ${
-                      item.email ?? 'not specified'
-                    }`}</ThemedText>
-                  </View>
-                </Pressable>
+        {players.length === 0 && (
+          <ThemedView style={{ padding: 12 }}>
+            <ThemedText style={{ marginTop: 12 }}>
+              No players defined. You can add players manually using the right icon on top of screen.
+            </ThemedText>
+            <ThemedText style={{ marginTop: 12 }}>
+              You can also import a list of users from a CSV file using the left icon. The accepted format of
+              the CSV file is shown below.
+            </ThemedText>
+            <ThemedText style={{ marginTop: 12 }}>Name,Speed Index,Email,Available</ThemedText>
+            <ThemedText>For example:</ThemedText>
+            <ThemedText>"name",1,"emailname@gmail.com",Yes</ThemedText>
+            <ThemedText style={{ marginTop: 12 }}>note: Speed Index:1=fast 5=slow</ThemedText>
+          </ThemedView>
+        )}
+        {players.length > 0 && (
+          <FlatList
+            data={players}
+            keyExtractor={(item, i) => String(item.id ?? i)}
+            ListHeaderComponent={() => (
+              <ThemedView
+                style={{
+                  padding: 8,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  borderBottomWidth: 1,
+                  borderColor: '#ddd',
+                }}
+              >
+                <ThemedText style={{ fontWeight: '700' }}>Name</ThemedText>
+                <ThemedText style={{ fontWeight: '700', textAlign: 'right', flex: 1, paddingRight: 20 }}>
+                  Available
+                </ThemedText>
+              </ThemedView>
+            )}
+            renderItem={({ item }) => (
+              <View
+                style={{
+                  padding: 12,
+                  borderBottomWidth: 1,
+                  borderColor: '#eee',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}
+              >
+                <View style={{ flex: 1, marginRight: 12 }}>
+                  <Pressable onPress={() => startEdit(item.id)}>
+                    <View>
+                      <ThemedText>{item.name}</ThemedText>
+                      <ThemedText style={{ color: '#666' }}>{`Speed: ${item.speedIndex}`}</ThemedText>
+                      <ThemedText numberOfLines={2} style={{ color: '#666' }}>{`Email: ${
+                        item.email ?? 'not specified'
+                      }`}</ThemedText>
+                    </View>
+                  </Pressable>
+                </View>
+                <View style={{ alignItems: 'center' }}>
+                  <Switch value={!!item.available} onValueChange={() => toggleAvailable(item)} />
+                </View>
               </View>
-              <View style={{ alignItems: 'center' }}>
-                <Switch value={!!item.available} onValueChange={() => toggleAvailable(item)} />
-              </View>
-            </View>
-          )}
-        />
+            )}
+          />
+        )}
       </ThemedView>
     </>
   );

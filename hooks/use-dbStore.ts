@@ -29,14 +29,27 @@ export const restoreDatabaseFromFile = async (selectedFileUri: string): Promise<
   try {
     // Construct file / directory references
     const currentDbFile = new File(getDatabasePath());
-    const backupFile = new File(Paths.document, `db-backup-before-restore.db`);
     const sourceFile = new File(selectedFileUri);
+
+    const now = new Date();
+    const timestamp = `${now.getMonth() + 1}-${now.getDate()}-${now.getFullYear()}`;
+    const fileName = `cartpartners-backup-${timestamp}.db`;
+
+    const backupFile = new File(Paths.cache, fileName);
+    if (backupFile.exists) {
+      backupFile.delete();
+    }
 
     //  Backup current DB
     currentDbFile.copy(backupFile);
 
-    // before replacing DB let's open it and verify it's valid
-    const testDb = SQLite.openDatabaseSync(selectedFileUri);
+    // Copy selected DB into app’s cache to safely open and inspect
+    const tempImportFile = new File(Paths.cache, 'imported-temp.db');
+    if (tempImportFile.exists) {
+      tempImportFile.delete();
+    }
+    sourceFile.copy(tempImportFile);
+    const testDb = SQLite.openDatabaseSync('imported-temp.db', undefined, Paths.cache.uri);
 
     // explicitly type the query result as an array of objects with a `name` string property
     const tables = testDb
@@ -45,18 +58,21 @@ export const restoreDatabaseFromFile = async (selectedFileUri: string): Promise<
 
     const expectedTables = ['players', 'rounds', 'round_players', 'groups', 'group_players'];
 
+    await testDb.closeAsync();
     for (const table of expectedTables) {
       if (!tables.includes(table)) {
         throw new Error(`Invalid database: missing table ${table}`);
       }
     }
 
-    await testDb.closeAsync();
-
-    // "Close" current DB by removing reference
-    db = null;
-
     // Replace current DB with selectedFile
+    if (db) {
+      ``;
+      await db.closeAsync();
+      db = null;
+    }
+
+    currentDbFile.delete();
     sourceFile.copy(currentDbFile);
 
     initDb(); // re-initialize DB connection and schema if needed
@@ -133,7 +149,7 @@ type DbState = {
   setRoundPlayers: (roundId: number, playerIds: number[]) => void;
 
   addPlayer: (name: string, email: string, speedIndex: number) => void;
-  addPlayers: (players: { name: string; speedIndex: number; email: string }[]) => void;
+  addPlayers: (players: { name: string; speedIndex: number; email: string; available: number }[]) => void;
   updatePlayer: (id: number, data: Partial<Omit<Player, 'id'>>) => void;
   deletePlayer: (id: number) => void;
 
@@ -293,15 +309,15 @@ export const useDbStore = create<DbState>((set, get) => ({
   },
 
   // Add multiple players at once
-  addPlayers: (players: { name: string; speedIndex: number; email: string }[]) => {
+  addPlayers: (players: { name: string; speedIndex: number; email: string; available: number }[]) => {
     const db = getDb();
     db.withTransactionSync(() => {
-      for (const { name, speedIndex, email } of players) {
+      for (const { name, speedIndex, email, available } of players) {
         db.runSync('INSERT INTO players (name, speedIndex, email, available) VALUES (?, ?, ?, ?)', [
           name,
           speedIndex,
           email,
-          1,
+          available ? 1 : 0,
         ]);
       }
     });
@@ -369,10 +385,7 @@ export const useDbStore = create<DbState>((set, get) => ({
 
       // Insert new player list
       for (const playerId of playerIds) {
-        db.runSync('INSERT INTO round_players (round_id, player_id, active) VALUES (?, ?, 1);', [
-          roundId,
-          playerId,
-        ]);
+        db.runSync('INSERT INTO round_players (round_id, player_id) VALUES (?, ?);', [roundId, playerId]);
       }
     });
 

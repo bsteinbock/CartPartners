@@ -1,27 +1,29 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { getDatabasePath, restoreDatabaseFromFile } from '@/hooks/use-dbStore';
+import { getDatabasePath, restoreDatabaseFromFile, useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import * as Application from 'expo-application';
 import * as DocumentPicker from 'expo-document-picker';
 import { File, Paths } from 'expo-file-system';
-
 import * as Sharing from 'expo-sharing';
 import React from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { Alert, Platform, Pressable, ScrollView, StyleSheet } from 'react-native';
 
 export default function AboutScreen() {
+  const { refreshAll } = useDbStore();
   const iconColor = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
   const version = Application.nativeApplicationVersion || 'Unknown';
-  const buildNumber = Application.nativeBuildVersion;
-  const versionText = `Version: ${version}${buildNumber ? buildNumber : ''}`;
+  const buildNumber = Application.nativeBuildVersion
+    ? `(${Application.nativeBuildVersion} ${Platform.OS})`
+    : `(${Platform.OS})`;
+  const versionText = `Version: ${version}${buildNumber}`;
 
   const handleImportDb = async () => {
     Alert.alert(
       'Import Database',
-      'Are you sure you want to overwrite all your existing data with date from a different CartPartners database?',
+      'Are you sure you want to overwrite all your existing data with data from a different CartPartners database?',
       [
         {
           text: 'Cancel',
@@ -31,38 +33,32 @@ export default function AboutScreen() {
           text: 'Import',
           style: 'default',
           onPress: async () => {
-            const handleRestoreDb = async () => {
-              try {
-                const result = await DocumentPicker.getDocumentAsync({
-                  type: 'application/*', // or 'application/x-sqlite3'
-                  copyToCacheDirectory: true,
-                });
-
-                if (result.canceled || !result.assets?.[0]?.uri) {
-                  return;
-                }
-
-                const selectedFileUri = result.assets[0].uri;
-
-                // Optional: validate file
-                if (!selectedFileUri.endsWith('.db')) {
-                  Alert.alert('Invalid file', 'Please select a valid SQLite database file.');
-                  return;
-                }
-
-                const fileRestored = await restoreDatabaseFromFile(selectedFileUri);
-                if (fileRestored) Alert.alert('Restore Successful', 'Database has been replaced.');
-                else Alert.alert('Restore Unsuccessful', 'Original Database has been restored.');
-              } catch (error) {
-                console.error('Restore error:', error);
-                Alert.alert('Error', 'Failed to restore database. Original DB backed up.');
-              }
-            };
-
             try {
+              const result = await DocumentPicker.getDocumentAsync({
+                type: '*/*',
+                copyToCacheDirectory: true,
+              });
+
+              if (result.canceled || !result.assets?.[0]?.uri) {
+                return;
+              }
+
+              const selectedFileUri = result.assets[0].uri;
+
+              // Optional: validate file
+              if (!selectedFileUri.endsWith('.db')) {
+                Alert.alert('Invalid file', 'Please select a valid SQLite database file.');
+                return;
+              }
+
+              const fileRestored = await restoreDatabaseFromFile(selectedFileUri);
+              if (fileRestored) {
+                Alert.alert('Restore Successful', 'Database has been replaced.');
+                refreshAll();
+              } else Alert.alert('Restore Unsuccessful', 'Original Database has been restored.');
             } catch (error) {
-              Alert.alert('Error', 'Failed to import database');
-              console.error('Import error:', error);
+              console.error('Restore error:', error);
+              Alert.alert('Error', 'Failed to restore database. Original DB backed up.');
             }
           },
         },
@@ -127,12 +123,14 @@ export default function AboutScreen() {
           <ThemedText type="title" style={styles.title}>
             CartPartners
           </ThemedText>
-          <Pressable onPress={handleExportDb}>
-            <MaterialIcons name="backup-table" size={28} color={iconColor} />
-          </Pressable>
-          <Pressable onPress={handleImportDb}>
-            <MaterialCommunityIcons name="application-import" size={28} color="iconColor" />
-          </Pressable>
+          <ThemedView style={{ flexDirection: 'row', gap: 20 }}>
+            <Pressable onPress={handleExportDb}>
+              <MaterialIcons name="backup-table" size={28} color={iconColor} />
+            </Pressable>
+            <Pressable onPress={handleImportDb}>
+              <MaterialCommunityIcons name="application-import" size={28} color={iconColor} />
+            </Pressable>
+          </ThemedView>
         </ThemedView>
         <ThemedText style={{ marginBottom: 5 }}>{`CartPartners ${versionText}`}</ThemedText>
         <ThemedText type="subtitle" style={styles.sectionTitle}>

@@ -6,7 +6,7 @@ import { OptionPickerItem } from '@/components/ui/OptionPickerItem';
 import { useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { formatDate } from '@/lib/formatters';
-import AntDesign from '@expo/vector-icons/AntDesign';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Switch } from 'react-native';
@@ -96,7 +96,7 @@ export default function LineupScreen() {
                 router.push('/(tabs)/lineup/players');
               }}
             >
-              <AntDesign name="user-add" size={28} color={iconColor} />
+              <Ionicons name="person" size={28} color={iconColor} />
             </Pressable>
           </ThemedView>
           {rounds.length === 0 ? (
@@ -113,9 +113,10 @@ export default function LineupScreen() {
                 onPickerButtonPress={() => setIsRoundPickerVisible(true)}
               />
               {players.length === 0 ? (
-                <ThemedView style={styles.stepContainer}>
+                <ThemedView style={[styles.stepContainer, { marginTop: 12 }]}>
                   <ThemedText>
-                    No players available. Go to Add Players using the icon on the top right of this screen.
+                    No players available. Go to Players Management screen using the icon on the top right of
+                    this screen.
                   </ThemedText>
                 </ThemedView>
               ) : (
