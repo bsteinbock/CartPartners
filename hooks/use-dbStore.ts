@@ -30,10 +30,28 @@ export const restoreDatabaseFromFile = async (selectedFileUri: string): Promise<
     // Construct file / directory references
     const currentDbFile = new File(getDatabasePath());
     const backupFile = new File(Paths.document, `db-backup-before-restore.db`);
-    const sourceFile = new File(selectedFileUri); // note: selectedFileUri may be a URI string, we wrap it
+    const sourceFile = new File(selectedFileUri);
 
     //  Backup current DB
     currentDbFile.copy(backupFile);
+
+    // before replacing DB let's open it and verify it's valid
+    const testDb = SQLite.openDatabaseSync(selectedFileUri);
+
+    // explicitly type the query result as an array of objects with a `name` string property
+    const tables = testDb
+      .getAllSync<{ name: string }>('SELECT name FROM sqlite_master WHERE type="table";')
+      .map((row) => row.name);
+
+    const expectedTables = ['players', 'rounds', 'round_players', 'groups', 'group_players'];
+
+    for (const table of expectedTables) {
+      if (!tables.includes(table)) {
+        throw new Error(`Invalid database: missing table ${table}`);
+      }
+    }
+
+    await testDb.closeAsync();
 
     // "Close" current DB by removing reference
     db = null;
@@ -41,8 +59,7 @@ export const restoreDatabaseFromFile = async (selectedFileUri: string): Promise<
     // Replace current DB with selectedFile
     sourceFile.copy(currentDbFile);
 
-    // Re‑open DB
-    db = SQLite.openDatabaseSync(DB_NAME);
+    initDb(); // re-initialize DB connection and schema if needed
 
     return true;
   } catch (error) {

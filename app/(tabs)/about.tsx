@@ -1,15 +1,75 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { getDatabasePath } from '@/hooks/use-dbStore';
+import { getDatabasePath, restoreDatabaseFromFile } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import * as Application from 'expo-application';
+import * as DocumentPicker from 'expo-document-picker';
 import { File, Paths } from 'expo-file-system';
+
 import * as Sharing from 'expo-sharing';
 import React from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet } from 'react-native';
 
 export default function AboutScreen() {
   const iconColor = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
+  const version = Application.nativeApplicationVersion || 'Unknown';
+  const buildNumber = Application.nativeBuildVersion;
+  const versionText = `Version: ${version}${buildNumber ? buildNumber : ''}`;
+
+  const handleImportDb = async () => {
+    Alert.alert(
+      'Import Database',
+      'Are you sure you want to overwrite all your existing data with date from a different CartPartners database?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Import',
+          style: 'default',
+          onPress: async () => {
+            const handleRestoreDb = async () => {
+              try {
+                const result = await DocumentPicker.getDocumentAsync({
+                  type: 'application/*', // or 'application/x-sqlite3'
+                  copyToCacheDirectory: true,
+                });
+
+                if (result.canceled || !result.assets?.[0]?.uri) {
+                  return;
+                }
+
+                const selectedFileUri = result.assets[0].uri;
+
+                // Optional: validate file
+                if (!selectedFileUri.endsWith('.db')) {
+                  Alert.alert('Invalid file', 'Please select a valid SQLite database file.');
+                  return;
+                }
+
+                const fileRestored = await restoreDatabaseFromFile(selectedFileUri);
+                if (fileRestored) Alert.alert('Restore Successful', 'Database has been replaced.');
+                else Alert.alert('Restore Unsuccessful', 'Original Database has been restored.');
+              } catch (error) {
+                console.error('Restore error:', error);
+                Alert.alert('Error', 'Failed to restore database. Original DB backed up.');
+              }
+            };
+
+            try {
+            } catch (error) {
+              Alert.alert('Error', 'Failed to import database');
+              console.error('Import error:', error);
+            }
+          },
+        },
+      ],
+      { cancelable: true },
+    );
+  };
 
   const handleExportDb = async () => {
     Alert.alert(
@@ -70,8 +130,11 @@ export default function AboutScreen() {
           <Pressable onPress={handleExportDb}>
             <MaterialIcons name="backup-table" size={28} color={iconColor} />
           </Pressable>
+          <Pressable onPress={handleImportDb}>
+            <MaterialCommunityIcons name="application-import" size={28} color="iconColor" />
+          </Pressable>
         </ThemedView>
-
+        <ThemedText style={{ marginBottom: 5 }}>{`CartPartners ${versionText}`}</ThemedText>
         <ThemedText type="subtitle" style={styles.sectionTitle}>
           Overview
         </ThemedText>
@@ -138,20 +201,3 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
 });
-
-/*
-import React from 'react';
-import { View, Text } from 'react-native';
-import * as Application from 'expo-application';
-
-export default function AppVersionDisplay() {
-  const version = Application.nativeApplicationVersion || 'Unknown';
-  const buildNumber = Application.nativeBuildVersion || \';
-  const versionText = `Version: ${version}${buildNumber?(buildNumber):''}`;
-  return (
-    <View style={{ padding: 20 }}>
-      <Text>{versionText}</Text>
-    </View>
-  );
-}
-*/

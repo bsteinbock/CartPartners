@@ -1,41 +1,15 @@
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+import { Player, useDbStore } from '@/hooks/use-dbStore';
+import * as DocumentPicker from 'expo-document-picker';
 import { File, Paths } from 'expo-file-system';
 import { Stack, useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { Alert, Button, FlatList, Pressable, StyleSheet, Switch, View } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Player, useDbStore } from '@/hooks/use-dbStore';
-
 export default function PlayersScreen() {
   const router = useRouter();
   const { players, addPlayers, updatePlayer } = useDbStore();
-
-  const seed = () => {
-    const seedPlayers = [
-      { name: 'Garry', speedIndex: 1, email: 'minter5@outlook.com' },
-      { name: 'Carl', speedIndex: 1, email: 'Carlofky@gmail.com' },
-      { name: 'Bill', speedIndex: 1, email: 'bill.steinbock@icloud.com' },
-      { name: 'Ed', speedIndex: 1, email: 'e.mathison@att.net' },
-      { name: 'Joe Gates', speedIndex: 1, email: 'mrjoegates@gmail.com' },
-      { name: 'Joe H', speedIndex: 1, email: 'jhenehan57@gmail.com' },
-      { name: 'Ron W', speedIndex: 1, email: 'ron.wibbels@gmail.com' },
-      { name: 'Richard', speedIndex: 1, email: 'richarray@gmail.com' },
-      { name: 'Greg', speedIndex: 2, email: 'gregweber@twc.com' },
-      { name: 'Larry L', speedIndex: 2, email: 'larryalee13@gmail.com' },
-      { name: 'Larry K', speedIndex: 2, email: 'lekelley1@gmail.com' },
-      { name: 'Ben Finn', speedIndex: 3, email: 'ben.finn1950@gmail.com' },
-      { name: 'Dave', speedIndex: 3, email: 'kybred48@yahoo.com' },
-      { name: 'Huff', speedIndex: 4, email: 'starwars48@msn.com' },
-      { name: 'Brad', speedIndex: 4, email: 'Bniedert@gmail.com' },
-      { name: 'Jack', speedIndex: 5, email: 'jgorbett@aol.com' },
-      { name: 'Jerry', speedIndex: 5, email: 'jlcarr39@att.net' },
-      { name: 'Clark', speedIndex: 2, email: 'cottrell@twc.com' },
-      { name: 'Mike Connelly', speedIndex: 1, email: 'mike.connelly.louisville@gmail.com' },
-      { name: 'Mike Morris', speedIndex: 1, email: 'mtmorris146@gmail.com' },
-    ];
-    addPlayers(seedPlayers);
-  };
 
   const startEdit = (id?: number) => {
     if (typeof id === 'undefined') return;
@@ -55,6 +29,7 @@ export default function PlayersScreen() {
       Alert.alert('Error', 'Failed to update availability');
     }
   };
+
   const exportToCSV = async () => {
     if (!players || players.length === 0) {
       Alert.alert('No data', 'There are no players to export.');
@@ -92,10 +67,7 @@ export default function PlayersScreen() {
     }
   };
 
-  const importFromCSV = async () => {};
-
-  /* -------------------------------------------------------------
- const importFromCSV = async () => {
+  const importFromCSV = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: 'text/csv',
@@ -107,9 +79,9 @@ export default function PlayersScreen() {
       }
 
       const fileUri = result.assets[0].uri;
-      const fileContent = await FileSystem.readAsStringAsync(fileUri, {
-        encoding: FileSystem.EncodingType.UTF8,
-      });
+      const csvFile = new File(fileUri);
+
+      const fileContent = await csvFile.text();
 
       // Split into lines and parse CSV
       const lines = fileContent.trim().split('\n');
@@ -124,7 +96,7 @@ export default function PlayersScreen() {
         return;
       }
 
-      let newPlayers: Player[] = [];
+      let newPlayers: Omit<Player, 'id'>[] = [];
 
       for (let i = 1; i < lines.length; i++) {
         const cols = lines[i].split(',').map((v) => v.replace(/"/g, '').trim());
@@ -143,7 +115,7 @@ export default function PlayersScreen() {
         const existing = players.find((p) => p.name.trim().toLowerCase() === name.trim().toLowerCase());
 
         if (existing && existing.id) {
-          await updatePlayer(existing.id, { speedIndex, email, available });
+          updatePlayer(existing.id, { speedIndex, email, available });
         } else {
           newPlayers.push({ name, speedIndex, email, available });
         }
@@ -153,13 +125,12 @@ export default function PlayersScreen() {
         addPlayers(newPlayers);
       }
 
-      Alert.alert('Import complete', 'Players imported successfully!');
+      Alert.alert('Import complete', `${newPlayers.length}Players imported successfully!`);
     } catch (err) {
       console.error('Import failed', err);
       Alert.alert('Error', 'Failed to import players.');
     }
   };
-------------------------*/
 
   return (
     <>
@@ -180,12 +151,6 @@ export default function PlayersScreen() {
             <Button title="Add" onPress={addNewPlayer} />
           </View>
         </View>
-
-        {players.length === 0 && (
-          <View style={styles.stepContainer}>
-            <Button title="Seed sample players" onPress={seed} />
-          </View>
-        )}
 
         <FlatList
           data={players}
