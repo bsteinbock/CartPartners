@@ -21,6 +21,7 @@ const MAPPING = {
   calendar: 'event',
   'info.circle': 'info-outline',
   'figure.golf': 'person',
+  'person.3.fill': 'people-outline',
 } as IconMapping;
 
 /**
