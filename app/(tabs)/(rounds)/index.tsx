@@ -1,14 +1,16 @@
-import { useRouter } from 'expo-router';
-import { Button, FlatList, Pressable, StyleSheet, View } from 'react-native';
-
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useDbStore } from '@/hooks/use-dbStore';
+import { useThemeColor } from '@/hooks/use-theme-color';
 import { formatDate } from '@/lib/formatters';
+import Entypo from '@expo/vector-icons/Entypo';
+import { useRouter } from 'expo-router';
+import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 
 export default function RoundsScreen() {
   const router = useRouter();
   const { rounds, roundSummaries, setCurrentRoundId } = useDbStore();
+  const iconColor = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
 
   const createAndOpen = async () => {
     router.push({ pathname: '/edit-or-add', params: { id: 'new' } });
@@ -38,7 +40,9 @@ export default function RoundsScreen() {
         }}
       >
         <ThemedText type="title">Rounds</ThemedText>
-        <Button title="Add Round" onPress={createAndOpen} />
+        <Pressable onPress={createAndOpen}>
+          <Entypo name="add-to-list" size={28} color={iconColor} />
+        </Pressable>
       </View>
 
       <FlatList

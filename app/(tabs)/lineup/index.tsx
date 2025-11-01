@@ -6,7 +6,7 @@ import { OptionPickerItem } from '@/components/ui/OptionPickerItem';
 import { useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { formatDate } from '@/lib/formatters';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import AntDesign from '@expo/vector-icons/AntDesign';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Switch } from 'react-native';
@@ -96,7 +96,7 @@ export default function LineupScreen() {
                 router.push('/(tabs)/lineup/players');
               }}
             >
-              <MaterialIcons name="people-alt" size={28} color={iconColor} />
+              <AntDesign name="user-add" size={28} color={iconColor} />
             </Pressable>
           </ThemedView>
           {rounds.length === 0 ? (
