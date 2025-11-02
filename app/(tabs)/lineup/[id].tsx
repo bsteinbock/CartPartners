@@ -56,7 +56,6 @@ export default function PlayerDetailScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: 'Define Player', headerShown: true }} />
       <ThemedView style={styles.container}>
         <ThemedText type="title" style={styles.title}>
           {isNew ? 'Add New Player' : 'Edit Player'}

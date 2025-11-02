@@ -6,7 +6,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import * as DocumentPicker from 'expo-document-picker';
 import { File, Paths } from 'expo-file-system';
-import { Stack, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { Alert, FlatList, Pressable, StyleSheet, Switch, View } from 'react-native';
 
@@ -17,11 +17,11 @@ export default function PlayersScreen() {
 
   const startEdit = (id?: number) => {
     if (typeof id === 'undefined') return;
-    router.push(`/lineup/players/${id}`);
+    router.push(`/lineup/${id}`);
   };
 
   const addNewPlayer = () => {
-    router.push({ pathname: `/lineup/players/[id]`, params: { id: 'new' } });
+    router.push({ pathname: `/lineup/[id]`, params: { id: 'new' } });
   };
 
   const toggleAvailable = (p: Player) => {
@@ -138,7 +138,6 @@ export default function PlayersScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ headerShown: false }} />
       <ThemedView style={{ flex: 1 }}>
         <View
           style={{

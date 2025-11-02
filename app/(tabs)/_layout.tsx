@@ -33,6 +33,7 @@ export default function TabLayout() {
           options={{
             title: 'Line-up',
             tabBarIcon: ({ color }) => <IconSymbol size={28} name="figure.golf" color={color} />,
+            headerShown: false,
           }}
         />
 
