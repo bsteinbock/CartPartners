@@ -1,9 +1,14 @@
-import { Stack } from 'expo-router';
+import { Stack, usePathname } from 'expo-router';
 export default function Layout() {
+  const pathname = usePathname();
   return (
-    <Stack>
+    <Stack
+      screenOptions={{
+        animation: pathname.startsWith('lineup') ? 'default' : 'none',
+      }}
+    >
       <Stack.Screen name="index" options={{ title: 'Line-up', headerShown: false }} />
-      <Stack.Screen name="players" options={{ title: 'Manage Players', headerShown: true }} />
+      <Stack.Screen name="players" options={{ title: 'All Players', headerShown: true }} />
       <Stack.Screen name="[id]" options={{ title: 'Define Player', headerShown: true }} />
     </Stack>
   );

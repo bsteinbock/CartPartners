@@ -32,6 +32,7 @@ export default function TabLayout() {
           name="lineup"
           options={{
             title: 'Line-up',
+            popToTopOnBlur: true,
             tabBarIcon: ({ color }) => <IconSymbol size={28} name="figure.golf" color={color} />,
             headerShown: false,
           }}

@@ -2,7 +2,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedTextInput } from '@/components/themed-textinput';
 import { ThemedView } from '@/components/themed-view';
 import { useDbStore } from '@/hooks/use-dbStore';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Alert, Button, StyleSheet } from 'react-native';
 
@@ -45,7 +45,19 @@ export default function PlayerDetailScreen() {
 
     if (isNew) {
       addPlayer(name.trim(), email.trim(), speed);
-      Alert.alert('Player Added', `${name} has been added.`);
+      Alert.alert('Player Added', `${name} has been added, should play be set active in lineup for round`, [
+        {
+          text: 'No',
+          style: 'cancel',
+        },
+        {
+          text: 'Yes',
+          style: 'destructive',
+          onPress: () => {
+            // set the player active in current round
+          },
+        },
+      ]);
     } else {
       updatePlayer(Number(id), { name: name.trim(), email: email.trim(), speedIndex: speed });
       Alert.alert('Player Updated', `${name} has been updated.`);
