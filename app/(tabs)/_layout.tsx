@@ -37,10 +37,10 @@ export default function TabLayout() {
             headerShown: false,
           }}
         />
-
         <Tabs.Screen
           name="groups"
           options={{
+            popToTopOnBlur: true,
             title: 'Groups',
             tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.3.fill" color={color} />,
           }}

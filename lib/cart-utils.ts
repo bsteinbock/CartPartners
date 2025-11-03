@@ -249,6 +249,16 @@ function getBestNextPartnerWithFairnessAndSpeedLimit(
 }
 
 /**
+ * Given a list of player IDs, return the corresponding Player objects.
+ * @param playerIds - Array of player IDs from group specification
+ * @param players - Array of all Player objects
+ * @returns Array of Player objects matching the given IDs
+ */
+export function getPlayerForGroup(playerIds: number[], players: Player[]): Player[] {
+  return playerIds.map((pid) => players.find((p) => p.id === pid)).filter((p): p is Player => Boolean(p)); // filter out undefined
+}
+
+/**
  * Utility to find the least-connected player overall (fewest repeat partners).
  */
 function getLeastConnectedPlayer(
@@ -332,6 +342,27 @@ export function getMailtoStrings(groups: GroupPlayers[], allPlayers: Player[]): 
       })
       .join(', '),
   );
+}
+
+/**
+ * Returns Ids of all GroupPlayers for a specific round.
+ * @param roundId - The round ID to filter by.
+ * @param groups - The list of Group objects.
+ * @param groupPlayers - The list of GroupPlayers objects.
+ * @returns An array of GroupPlayers belonging to that round.
+ */
+export function getGroupPlayerIdsByRoundId(
+  roundId: number,
+  groups: Group[],
+  groupPlayers: GroupPlayers[],
+): number[] {
+  // Get all groups associated with the given round
+  const roundGroupIds = groups.filter((group) => group.round_id === roundId).map((group) => group.id);
+
+  // Filter groupPlayers that belong to those groups
+  const groupsForRound = groupPlayers.filter((gp) => roundGroupIds.includes(gp.group_id));
+  const groupPlayerIds = groupsForRound.flatMap((g) => g.player_ids);
+  return groupPlayerIds;
 }
 
 /**

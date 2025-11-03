@@ -159,6 +159,7 @@ type DbState = {
 
   refreshAll: () => void;
   setGroupsForRound: (roundId: number, groupsList: number[][]) => void;
+  updateGroupPlayers: (groupId: number, playerIds: number[]) => void;
   swapGroupSlots: (groupId1: number, slotIndex1: number, groupId2: number, slotIndex2: number) => void;
 
   setCurrentRoundId: (id: number | null) => void;
@@ -187,6 +188,7 @@ export const useDbStore = create<DbState>((set, get) => ({
     const rows = db.getAllSync('SELECT * FROM players ORDER BY name ASC;') as Player[];
     set({ players: rows });
   },
+
   fetchRounds: () => {
     const db = getDb();
     const rows = db.getAllSync('SELECT * FROM rounds ORDER BY date DESC;') as Round[];
@@ -196,11 +198,13 @@ export const useDbStore = create<DbState>((set, get) => ({
       currentRoundId: get().currentRoundId ?? (rows.length > 0 ? rows[0].id : null),
     });
   },
+
   fetchGroups: () => {
     const db = getDb();
     const rows = db.getAllSync('SELECT * FROM groups ORDER BY id ASC;') as Group[];
     set({ groups: rows });
   },
+
   fetchRoundPlayers: () => {
     const db = getDb();
     const rows = db.getAllSync('SELECT * FROM round_players;') as RoundPlayer[];
@@ -219,6 +223,7 @@ export const useDbStore = create<DbState>((set, get) => ({
 
     set({ roundSummaries });
   },
+
   fetchGroupPlayers: () => {
     const db = getDb();
 
@@ -409,6 +414,60 @@ export const useDbStore = create<DbState>((set, get) => ({
     fetchRoundPlayers();
     fetchGroupPlayers();
     setManualGroupList([]);
+  },
+
+  updateGroupPlayers: (groupId: number, playerIds: number[]) => {
+    const db = getDb();
+
+    db.withTransactionSync(() => {
+      // Remove existing players from the group
+      db.runSync('DELETE FROM group_players WHERE group_id = ?;', [groupId]);
+
+      // Add new players to the group
+      for (const playerId of playerIds) {
+        db.runSync('INSERT INTO group_players (group_id, player_id) VALUES (?, ?);', [groupId, playerId]);
+      }
+
+      // Since we may have manually updated the players in the groups for this round, go through and reset the active players
+      // for this round to match those used in the groups.
+      const roundInfo = db.getFirstSync<{ round_id: number }>('SELECT round_id FROM groups WHERE id = ?;', [
+        groupId,
+      ]);
+
+      const roundId = roundInfo?.round_id;
+      if (roundId) {
+        const otherGroups = useDbStore
+          .getState()
+          .groups.filter((g) => g.round_id === roundInfo?.round_id && g.id !== groupId);
+        const otherGroupPlayerIds = otherGroups.flatMap((g) => {
+          const gp = useDbStore.getState().groupPlayers.find((pg) => pg.group_id === g.id);
+          return gp ? gp.player_ids : [];
+        });
+
+        // add all the ids from playerIds
+        const revisedPlayerIds = new Set<number>();
+        for (const playerId of playerIds) {
+          revisedPlayerIds.add(playerId);
+        }
+        for (const playerId of otherGroupPlayerIds) {
+          revisedPlayerIds.add(playerId);
+        }
+
+        // Remove all previous assignments
+        db.runSync('DELETE FROM round_players WHERE round_id = ?;', [roundId]);
+
+        // Insert new player list
+        for (const playerId of revisedPlayerIds) {
+          db.runSync('INSERT INTO round_players (round_id, player_id) VALUES (?, ?);', [roundId, playerId]);
+        }
+      }
+    });
+
+    // Refresh store data
+    const { fetchGroups, fetchGroupPlayers, fetchRoundPlayers } = useDbStore.getState();
+    fetchGroups();
+    fetchRoundPlayers();
+    fetchGroupPlayers();
   },
 
   // --- Set Group and Group Members Mutations ----------------------------------------------------

@@ -70,6 +70,7 @@ export default function GroupsScreen() {
       setSelectedGroupIndex(null);
     }, []),
   );
+
   useEffect(() => {
     const availableOptions = rounds.map((r) => ({
       label: `${r.course} (${formatDate(r.date)})`,
