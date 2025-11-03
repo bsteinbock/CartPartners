@@ -11,14 +11,10 @@ export default function PlayerDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const isNew = id === 'new';
 
-  const { players, addPlayer, updatePlayer, fetchPlayers } = useDbStore();
+  const { players, addPlayer, updatePlayer } = useDbStore();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [speedIndex, setSpeedIndex] = useState('');
-
-  useEffect(() => {
-    fetchPlayers();
-  }, []);
 
   useEffect(() => {
     if (!isNew && id) {
@@ -45,19 +41,7 @@ export default function PlayerDetailScreen() {
 
     if (isNew) {
       addPlayer(name.trim(), email.trim(), speed);
-      Alert.alert('Player Added', `${name} has been added, should play be set active in lineup for round`, [
-        {
-          text: 'No',
-          style: 'cancel',
-        },
-        {
-          text: 'Yes',
-          style: 'destructive',
-          onPress: () => {
-            // set the player active in current round
-          },
-        },
-      ]);
+      Alert.alert('Player Added', `${name} has been added`);
     } else {
       updatePlayer(Number(id), { name: name.trim(), email: email.trim(), speedIndex: speed });
       Alert.alert('Player Updated', `${name} has been updated.`);

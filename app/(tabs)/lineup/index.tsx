@@ -205,6 +205,7 @@ const styles = StyleSheet.create({
   },
   list: {
     flex: 1,
+    paddingHorizontal: 12,
   },
   listContent: {
     paddingBottom: 20,
