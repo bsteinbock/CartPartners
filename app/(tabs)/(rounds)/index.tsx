@@ -1,11 +1,13 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import SwipeableRound from '@/components/ui/SwipeableRound';
 import { useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { formatDate } from '@/lib/formatters';
 import Entypo from '@expo/vector-icons/Entypo';
 import { useRouter } from 'expo-router';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Animated } from 'react-native';
 
 export default function RoundsScreen() {
   const router = useRouter();
@@ -14,19 +16,6 @@ export default function RoundsScreen() {
 
   const createAndOpen = async () => {
     router.push({ pathname: '/edit-or-add', params: { id: 'new' } });
-  };
-
-  const setLineUp = (r: any) => {
-    if (r && typeof r.id !== 'undefined') {
-      setCurrentRoundId(r.id);
-      router.replace({ pathname: '/lineup' });
-    }
-  };
-
-  const openEdit = (r: any) => {
-    if (r && typeof r.id !== 'undefined') {
-      router.push({ pathname: '/edit-or-add', params: { id: String(r.id) } });
-    }
   };
 
   return (
@@ -64,20 +53,7 @@ export default function RoundsScreen() {
           <FlatList
             data={rounds}
             keyExtractor={(item) => String(item.id)}
-            renderItem={({ item }) => (
-              <Pressable
-                onLongPress={() => openEdit(item)}
-                onPress={() => setLineUp(item)}
-                style={{ padding: 12, borderBottomWidth: 1, borderColor: '#eee' }}
-              >
-                <>
-                  <ThemedText>{`${item.course} (${formatDate(item.date)})`}</ThemedText>
-                  <ThemedText type="small">{`${
-                    roundSummaries.find((s) => s.round_id === item.id)?.numPlayers ?? 0
-                  } players`}</ThemedText>
-                </>
-              </Pressable>
-            )}
+            renderItem={({ item }) => <SwipeableRound round={item} />}
           />
         )}
       </>

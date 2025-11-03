@@ -155,7 +155,7 @@ type DbState = {
 
   addGroup: (roundId: number, slotIndex: number) => void;
   addRound: (date: string, course: string) => void;
-
+  deleteRound: (id: number) => void;
   updateRound: (id: number, data: Partial<Omit<Round, 'id'>>) => void;
 
   refreshAll: () => void;
@@ -470,5 +470,38 @@ export const useDbStore = create<DbState>((set, get) => ({
 
   setManualGroupList: (groupList: ManualGroupList[]) => {
     set({ manualGroupList: groupList });
+  },
+
+  deleteRound: (id: number) => {
+    const db = getDb();
+    db.runSync('DELETE FROM rounds WHERE id = ?;', [id]);
+
+    db.runSync('DELETE FROM round_players WHERE round_id = ?;', [id]);
+
+    const groupIds = db
+      .getAllSync<{ id: number }>('SELECT id FROM groups WHERE round_id = ?;', [id])
+      .map((row) => row.id);
+
+    for (const groupId of groupIds) {
+      db.runSync('DELETE FROM group_players WHERE group_id = ?;', [groupId]);
+    }
+
+    db.runSync('DELETE FROM groups WHERE round_id = ?;', [id]);
+    if (get().currentRoundId === id) {
+      if (get().rounds.length > 0) {
+        const remainingRounds = get().rounds.filter((r) => r.id !== id);
+        const mostRecentRoundId = remainingRounds.length > 0 ? remainingRounds[0].id : null;
+        useDbStore.getState().setCurrentRoundId(mostRecentRoundId);
+      } else {
+        useDbStore.getState().setCurrentRoundId(null);
+      }
+    } else {
+      useDbStore.getState().setCurrentRoundId(null);
+    }
+    useDbStore.getState().fetchRounds();
+    useDbStore.getState().fetchGroups();
+    useDbStore.getState().fetchRoundPlayers();
+    useDbStore.getState().fetchGroupPlayers();
+    useDbStore.getState().setManualGroupList([]);
   },
 }));
