@@ -17,6 +17,8 @@ export default function DefineManualGroups() {
   const [groupSizes, setGroupSizes] = useState<number[]>([]);
   const [currentGroupSize, setCurrentGroupSize] = useState<number>(0);
   const borderColor = useThemeColor({ light: undefined, dark: undefined }, 'border');
+  const iconButton = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
+  const disabledColor = useThemeColor({ light: undefined, dark: undefined }, 'disabledColor');
   const backgroundColor = useThemeColor({ light: undefined, dark: undefined }, 'background');
   const [manualGroupsPlayersNames, setManualGroupsPlayersNames] = useState<string[]>([]);
 
@@ -55,7 +57,6 @@ export default function DefineManualGroups() {
     if (manualGroups.length > 0) {
       const names = formatManualGroupPlayersByNames(manualGroups, players);
       setManualGroupsPlayersNames(names);
-      console.log('Formatted manual groups names:', names);
     }
   }, [manualGroups, players, formatManualGroupPlayersByNames]);
 
@@ -167,11 +168,23 @@ export default function DefineManualGroups() {
             keyExtractor={(item) => `${item.id}`}
             style={styles.list}
           />
-          <Button
-            title="Save Selected as Group"
-            onPress={saveGroup}
-            disabled={selectedPlayers.length !== currentGroupSize || currentGroupSize === 0}
-          />
+          <ThemedView
+            style={{
+              margin: 10,
+              borderColor:
+                selectedPlayers.length !== currentGroupSize || currentGroupSize === 0
+                  ? disabledColor
+                  : iconButton,
+              borderWidth: 1,
+              borderRadius: 6,
+            }}
+          >
+            <Button
+              title="Save Selected as Group"
+              onPress={saveGroup}
+              disabled={selectedPlayers.length !== currentGroupSize || currentGroupSize === 0}
+            />
+          </ThemedView>
         </ThemedView>
       ) : (
         <ThemedText type="default" style={styles.header}>
@@ -197,8 +210,19 @@ export default function DefineManualGroups() {
         )}
 
         <View style={styles.buttonContainer}>
-          <Button title="Finish" onPress={finishGrouping} disabled={manualGroups.length === 0} />
-          <Button title="Cancel" onPress={cancelGrouping} />
+          <ThemedView
+            style={{
+              margin: 10,
+              borderColor: manualGroups.length === 0 ? disabledColor : iconButton,
+              borderWidth: 1,
+              borderRadius: 6,
+            }}
+          >
+            <Button title="Finish" onPress={finishGrouping} disabled={manualGroups.length === 0} />
+          </ThemedView>
+          <ThemedView style={{ margin: 10, borderColor: iconButton, borderWidth: 1, borderRadius: 6 }}>
+            <Button title="Cancel" onPress={cancelGrouping} />
+          </ThemedView>
         </View>
       </ThemedView>
     </ThemedView>

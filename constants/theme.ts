@@ -24,6 +24,7 @@ export const Colors = {
     tabIconDefault: '#687076',
     tabIconSelected: tintColorLight,
     errorText: '#B00020',
+    disabledColor: 'rgba(209,209,214,1.0)',
   },
   dark: {
     text: '#ECEDEE',
@@ -39,6 +40,7 @@ export const Colors = {
     tabIconDefault: '#9BA1A6',
     tabIconSelected: tintColorDark,
     errorText: '#FF453A',
+    disabledColor: 'rgba(58, 58, 60, 1.0)',
   },
 };
 
