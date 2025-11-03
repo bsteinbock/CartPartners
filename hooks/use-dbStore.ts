@@ -19,6 +19,42 @@ export function getDatabasePath(): string {
   return db.databasePath;
 }
 
+// ------------------- INIT DB -------------------
+export function initDb() {
+  const db = getDb();
+  db.execSync(`
+    PRAGMA journal_mode = WAL;
+    CREATE TABLE IF NOT EXISTS players (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      speedIndex REAL NOT NULL,
+      email TEXT,
+      available INTEGER NOT NULL DEFAULT 1
+    );
+    CREATE TABLE IF NOT EXISTS rounds (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      date TEXT NOT NULL,
+      course TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS round_players (
+      round_id INTEGER NOT NULL,
+      player_id INTEGER NOT NULL,
+      PRIMARY KEY (round_id, player_id)
+    );
+    CREATE TABLE IF NOT EXISTS groups (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      round_id INTEGER NOT NULL,
+      slot_index INTEGER NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS group_players (
+      group_id INTEGER NOT NULL,
+      player_id INTEGER NOT NULL,
+      PRIMARY KEY (group_id, player_id)
+    );
+  `);
+}
+
 /**
  * Restore the database from a given file URI.
  * Automatically backs up current DB before restoring.
@@ -67,7 +103,6 @@ export const restoreDatabaseFromFile = async (selectedFileUri: string): Promise<
 
     // Replace current DB with selectedFile
     if (db) {
-      ``;
       await db.closeAsync();
       db = null;
     }
@@ -83,42 +118,6 @@ export const restoreDatabaseFromFile = async (selectedFileUri: string): Promise<
     return false;
   }
 };
-
-// ------------------- INIT DB -------------------
-export function initDb() {
-  const db = getDb();
-  db.execSync(`
-    PRAGMA journal_mode = WAL;
-    CREATE TABLE IF NOT EXISTS players (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      speedIndex REAL NOT NULL,
-      email TEXT,
-      available INTEGER NOT NULL DEFAULT 1
-    );
-    CREATE TABLE IF NOT EXISTS rounds (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      date TEXT NOT NULL,
-      course TEXT NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS round_players (
-      round_id INTEGER NOT NULL,
-      player_id INTEGER NOT NULL,
-      PRIMARY KEY (round_id, player_id)
-    );
-    CREATE TABLE IF NOT EXISTS groups (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      round_id INTEGER NOT NULL,
-      slot_index INTEGER NOT NULL,
-      created_at TEXT NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS group_players (
-      group_id INTEGER NOT NULL,
-      player_id INTEGER NOT NULL,
-      PRIMARY KEY (group_id, player_id)
-    );
-  `);
-}
 
 // ------------------- TYPES -------------------
 export type Player = { id: number; name: string; speedIndex: number; email: string; available: number };

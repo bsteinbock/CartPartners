@@ -168,6 +168,20 @@ export default function GroupsScreen() {
       return;
     }
 
+    if (currentRoundGroups.length > 0 && !showMismatchPlayerWarning) {
+      Alert.alert(
+        'Overwrite Current Tee Groups',
+        'Are you sure you want to create a new set of Tee Groupings?',
+        [{ text: 'Cancel' }, { text: 'Yes', onPress: () => generateGroups() }],
+        { cancelable: true },
+      );
+      return;
+    } else {
+      generateGroups();
+    }
+  }, [currentRoundPlayerIds, currentRoundGroups, showMismatchPlayerWarning, generateNextRoundGroups]);
+
+  const generateGroups = useCallback(() => {
     let playerIds = [...currentRoundPlayerIds];
 
     if (manualGroupList.length) {
@@ -291,6 +305,14 @@ export default function GroupsScreen() {
     [currentRoundId, selectedGroupIndex, persistSwap, currentRoundGroups],
   );
 
+  const modifyGroup = () => {
+    if (selectedGroupIndex === null) return;
+    router.push({
+      pathname: '/(tabs)/groups/modifyGroup',
+      params: { groupId: String(currentRoundGroups[selectedGroupIndex].group_id) },
+    });
+  };
+
   return (
     <ThemedView style={{ flex: 1 }}>
       <ThemedView style={{ flex: 1, paddingHorizontal: 12, paddingVertical: 12 }}>
@@ -336,14 +358,16 @@ export default function GroupsScreen() {
                     paddingTop: 12,
                   }}
                 >
-                  <Button
-                    title={
-                      currentRoundGroups.length > 0 && manualGroupList.length === 0
-                        ? 'Regenerate Groups'
-                        : 'Generate Groups'
-                    }
-                    onPress={handleGenerateGroupings}
-                  />
+                  <ThemedView style={{ borderColor: iconButton, borderWidth: 1, borderRadius: 6 }}>
+                    <Button
+                      title={
+                        currentRoundGroups.length > 0 && manualGroupList.length === 0
+                          ? 'Regenerate Groups'
+                          : 'Generate Groups'
+                      }
+                      onPress={handleGenerateGroupings}
+                    />
+                  </ThemedView>
                   {currentRoundGroups.length > 0 && manualGroupList.length === 0 && (
                     <Pressable
                       onPress={() => {
@@ -373,7 +397,10 @@ export default function GroupsScreen() {
                     >
                       <ThemedText type="subtitle">Tee Order</ThemedText>
                       {selectedGroupIndex !== null && (
-                        <ThemedView style={{ flexDirection: 'row', gap: 20 }}>
+                        <ThemedView style={{ flexDirection: 'row', gap: 15, alignItems: 'center' }}>
+                          <Pressable onPress={() => modifyGroup()}>
+                            <Entypo name="edit" size={24} color={iconButton} />
+                          </Pressable>
                           <Pressable onPress={() => moveGroup('up')} disabled={selectedGroupIndex === 0}>
                             <Entypo
                               name="arrow-bold-up"
