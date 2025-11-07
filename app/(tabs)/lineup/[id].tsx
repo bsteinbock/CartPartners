@@ -5,7 +5,8 @@ import { useDbStore } from '@/hooks/use-dbStore';
 import { displayPhoneNumberFromE164, formatPhoneNumberToE164, generateNickname } from '@/lib/cart-utils';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, Button, KeyboardAvoidingView, Platform, ScrollView, StyleSheet } from 'react-native';
+import { Alert, Button, StyleSheet } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 
 export default function PlayerDetailScreen() {
   const router = useRouter();
@@ -69,12 +70,12 @@ export default function PlayerDetailScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0} // adjust offset as needed
-    >
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+    <>
+      <KeyboardAwareScrollView
+        contentContainerStyle={styles.container}
+        bottomOffset={62}
+        keyboardShouldPersistTaps="handled"
+      >
         <ThemedView>
           <ThemedText type="title" style={styles.title}>
             {isNew ? 'Add New Player' : 'Edit Player'}
@@ -111,6 +112,7 @@ export default function PlayerDetailScreen() {
             style={styles.input}
             value={mobileNumber}
             onChangeText={setMobileNumber}
+            onBlur={() => setMobileNumber(displayPhoneNumberFromE164(mobileNumber))}
             placeholder="Mobile Number"
             keyboardType="phone-pad"
           />
@@ -129,8 +131,8 @@ export default function PlayerDetailScreen() {
             <Button title="Cancel" color="gray" onPress={() => router.back()} />
           </ThemedView>
         </ThemedView>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardAwareScrollView>
+    </>
   );
 }
 

@@ -22,18 +22,18 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <SafeAreaProvider>
-      <GestureHandlerRootView>
-        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-          <KeyboardProvider>
+    <KeyboardProvider>
+      <SafeAreaProvider>
+        <GestureHandlerRootView>
+          <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
             <Stack>
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
               <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
             </Stack>
             <StatusBar style="auto" />
-          </KeyboardProvider>
-        </ThemeProvider>
-      </GestureHandlerRootView>
-    </SafeAreaProvider>
+          </ThemeProvider>
+        </GestureHandlerRootView>
+      </SafeAreaProvider>
+    </KeyboardProvider>
   );
 }
