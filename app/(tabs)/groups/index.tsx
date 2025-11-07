@@ -93,7 +93,7 @@ export default function GroupsScreen() {
     if (matchingRound) {
       setRoundTeeTimeInfo(matchingRound.teeTimeInfo);
     }
-  }, [currentRoundId, roundOptions]);
+  }, [currentRoundId, roundOptions, rounds]);
 
   const handleRoundOptionChange = (option: OptionEntry) => {
     setPickedRound(option);
@@ -140,7 +140,7 @@ export default function GroupsScreen() {
   const exportToEmail = async () => {
     if (currentRoundGroups.length === 0) return Alert.alert('No groups to export for this round');
 
-    let bodyText = roundTeeTimeInfo ? `Tee-time info: ${roundTeeTimeInfo}\n\n` : '\n';
+    let bodyText = roundTeeTimeInfo ? `${roundTeeTimeInfo}\n\n` : '\n';
     const summary = reportGroupsWithNames(currentRoundGroups, players);
     bodyText += summary;
 

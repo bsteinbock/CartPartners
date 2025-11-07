@@ -122,7 +122,9 @@ export default function RoundEditScreen() {
               </TouchableOpacity>
             </View>
             <ThemedTextInput
-              style={styles.input}
+              style={[styles.input, { marginTop: 12 }]}
+              numberOfLines={3}
+              multiline={true}
               placeholder="Tee-time info"
               value={teeTimeInfo}
               onChangeText={setTeeTimeInfo}
