@@ -85,6 +85,9 @@ export default function LineupScreen() {
     persistSelection(newSelection);
   };
 
+  const allSelected = players.length > 0 && players.every((p) => selectedPlayers.includes(p.id));
+  const playerLabel = `Player (${selectedPlayers.length} of ${players.length} Selected)`;
+
   return (
     <ThemedView style={styles.container}>
       <ThemedView style={styles.header}>
@@ -124,59 +127,51 @@ export default function LineupScreen() {
           </ThemedText>
         </ThemedView>
       ) : (
-        <FlatList
-          style={styles.list}
-          contentContainerStyle={styles.listContent}
-          data={players}
-          keyExtractor={(item) => String(item.id)}
-          ListHeaderComponent={() => {
-            const allSelected = players.length > 0 && players.every((p) => selectedPlayers.includes(p.id));
-            const playerLabel = `Player (${selectedPlayers.length} of ${players.length} Selected)`;
-            return (
+        <>
+          <ThemedView
+            style={{
+              padding: 8,
+              flexDirection: 'row',
+              alignItems: 'center',
+              borderBottomWidth: 1,
+              borderColor: '#ddd',
+              gap: 30,
+            }}
+          >
+            <ThemedView style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Switch value={allSelected} onValueChange={toggleAllPlayers} disabled={players.length === 0} />
+            </ThemedView>
+            <ThemedText style={{ fontWeight: '700' }}>{playerLabel}</ThemedText>
+          </ThemedView>
+
+          <FlatList
+            style={styles.list}
+            contentContainerStyle={styles.listContent}
+            data={players}
+            keyExtractor={(item) => String(item.id)}
+            renderItem={({ item }) => (
               <ThemedView
                 style={{
-                  padding: 8,
+                  padding: 4,
                   flexDirection: 'row',
                   alignItems: 'center',
-                  borderBottomWidth: 1,
-                  borderColor: '#ddd',
-                  gap: 30,
+                  justifyContent: 'space-between',
                 }}
               >
                 <ThemedView style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                   <Switch
-                    value={allSelected}
-                    onValueChange={toggleAllPlayers}
-                    disabled={players.length === 0}
+                    value={selectedPlayers.includes(item.id)}
+                    onValueChange={(_val) => {
+                      void togglePlayer(item.id);
+                    }}
                   />
+                  <ThemedText style={{ marginLeft: 30 }}>{item.name}</ThemedText>
                 </ThemedView>
-                <ThemedText style={{ fontWeight: '700' }}>{playerLabel}</ThemedText>
               </ThemedView>
-            );
-          }}
-          renderItem={({ item }) => (
-            <ThemedView
-              style={{
-                padding: 4,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}
-            >
-              <ThemedView style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Switch
-                  value={selectedPlayers.includes(item.id)}
-                  onValueChange={(_val) => {
-                    void togglePlayer(item.id);
-                  }}
-                />
-                <ThemedText style={{ marginLeft: 30 }}>{item.name}</ThemedText>
-              </ThemedView>
-            </ThemedView>
-          )}
-        />
+            )}
+          />
+        </>
       )}
-
       {roundOptions.length > 0 && isRoundPickerVisible && (
         <BottomSheetContainer
           isVisible={isRoundPickerVisible}

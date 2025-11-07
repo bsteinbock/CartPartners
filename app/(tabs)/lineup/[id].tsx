@@ -7,11 +7,13 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Alert, Button, StyleSheet } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function PlayerDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const isNew = id === 'new';
+  const insets = useSafeAreaInsets();
 
   const { players, addPlayer, updatePlayer } = useDbStore();
   const [name, setName] = useState('');
@@ -72,8 +74,8 @@ export default function PlayerDetailScreen() {
   return (
     <>
       <KeyboardAwareScrollView
-        contentContainerStyle={styles.container}
-        bottomOffset={62}
+        style={styles.container}
+        automaticallyAdjustKeyboardInsets
         keyboardShouldPersistTaps="handled"
       >
         <ThemedView>
@@ -138,6 +140,7 @@ export default function PlayerDetailScreen() {
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
     padding: 16,
   },
   title: {

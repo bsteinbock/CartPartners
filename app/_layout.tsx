@@ -22,8 +22,8 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <KeyboardProvider>
-      <SafeAreaProvider>
+    <SafeAreaProvider>
+      <KeyboardProvider>
         <GestureHandlerRootView>
           <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
             <Stack>
@@ -33,7 +33,7 @@ export default function RootLayout() {
             <StatusBar style="auto" />
           </ThemeProvider>
         </GestureHandlerRootView>
-      </SafeAreaProvider>
-    </KeyboardProvider>
+      </KeyboardProvider>
+    </SafeAreaProvider>
   );
 }

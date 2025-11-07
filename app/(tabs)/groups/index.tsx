@@ -179,25 +179,6 @@ export default function GroupsScreen() {
     setCurrentRoundId(id);
   };
 
-  const handleGenerateGroupings = useCallback(async () => {
-    if (currentRoundPlayerIds.length === 0) {
-      Alert.alert('No active players', 'Please select a round with active players to generate groups.');
-      return;
-    }
-
-    if (currentRoundGroups.length > 0 && !showMismatchPlayerWarning) {
-      Alert.alert(
-        'Overwrite Current Tee Groups',
-        'Are you sure you want to create a new set of Tee Groupings?',
-        [{ text: 'Cancel' }, { text: 'Yes', onPress: () => generateGroups() }],
-        { cancelable: true },
-      );
-      return;
-    } else {
-      generateGroups();
-    }
-  }, [currentRoundPlayerIds, currentRoundGroups, showMismatchPlayerWarning, generateNextRoundGroups]);
-
   const generateGroups = useCallback(() => {
     let playerIds = [...currentRoundPlayerIds];
 
@@ -222,15 +203,38 @@ export default function GroupsScreen() {
     setGroupsForRound(currentRoundId!, newGroupList);
     setManualGroupList([]);
   }, [
+    currentRoundId,
     currentRoundPlayerIds,
     groupPlayers,
-    currentRoundId,
-    players,
-    buildPlayingPartnerFrequencies,
-    generateNextRoundGroups,
-    setGroupsForRound,
     manualGroupList,
+    players,
+    setGroupsForRound,
     setManualGroupList,
+  ]);
+
+  const handleGenerateGroupings = useCallback(async () => {
+    if (currentRoundPlayerIds.length === 0) {
+      Alert.alert('No active players', 'Please select a round with active players to generate groups.');
+      return;
+    }
+
+    if (currentRoundGroups.length > 0 && !showMismatchPlayerWarning) {
+      Alert.alert(
+        'Overwrite Current Tee Groups',
+        'Are you sure you want to create a new set of Tee Groupings?',
+        [{ text: 'Cancel' }, { text: 'Yes', onPress: () => generateGroups() }],
+        { cancelable: true },
+      );
+      return;
+    } else {
+      generateGroups();
+    }
+  }, [
+    currentRoundPlayerIds,
+    currentRoundGroups,
+    showMismatchPlayerWarning,
+    generateNextRoundGroups,
+    generateGroups,
   ]);
 
   // Render each group in the FlatList
