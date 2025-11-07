@@ -61,6 +61,7 @@ export default function GroupsScreen() {
   const [currentRoundGroups, setCurrentRoundGroups] = useState<GroupPlayers[]>([]);
   const [manualGroupsPlayersNames, setManualGroupsPlayersNames] = useState<string[]>([]);
   const [groupPlayersNames, setGroupPlayerNames] = useState<string[]>([]);
+  const [roundTeeTimeInfo, setRoundTeeTimeInfo] = useState<string>('');
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const router = useRouter();
 
@@ -88,6 +89,10 @@ export default function GroupsScreen() {
   useEffect(() => {
     const latestRound = roundOptions.find((o) => o.value === currentRoundId) ?? roundOptions[0];
     setPickedRound(latestRound);
+    const matchingRound = rounds.find((r) => r.id === currentRoundId);
+    if (matchingRound) {
+      setRoundTeeTimeInfo(matchingRound.teeTimeInfo);
+    }
   }, [currentRoundId, roundOptions]);
 
   const handleRoundOptionChange = (option: OptionEntry) => {
@@ -135,25 +140,36 @@ export default function GroupsScreen() {
   const exportToEmail = async () => {
     if (currentRoundGroups.length === 0) return Alert.alert('No groups to export for this round');
 
+    let bodyText = roundTeeTimeInfo ? `Tee-time info: ${roundTeeTimeInfo}\n\n` : '\n';
     const summary = reportGroupsWithNames(currentRoundGroups, players);
+    bodyText += summary;
+
     const addresses = getMailtoStrings(currentRoundGroups, players);
 
     try {
-      await Clipboard.setStringAsync(summary);
-      Alert.alert('Copied to clipboard', 'The group summary has been copied to the clipboard.', [
-        { text: 'OK' },
-        {
-          text: 'Open Email',
-          onPress: () => {
-            const subject = encodeURIComponent(`Cart Assignments - ${pickedRound?.label}`);
-            const body = encodeURIComponent(summary);
-            const url = `mailto:${addresses}?subject=${subject}&body=${body}`;
-            Linking.openURL(url).catch(() => {
-              Alert.alert('Could not open mail app');
-            });
+      Alert.alert(
+        'Send Groups Summary',
+        'You can copy the group summary to the clipboard so you can paste it elsewhere or send it via email.',
+        [
+          {
+            text: 'Clipboard',
+            onPress: async () => {
+              await Clipboard.setStringAsync(bodyText);
+            },
           },
-        },
-      ]);
+          {
+            text: 'Email',
+            onPress: () => {
+              const subject = encodeURIComponent(`Cart Assignments - ${pickedRound?.label}`);
+              const body = encodeURIComponent(bodyText);
+              const url = `mailto:${addresses}?subject=${subject}&body=${body}`;
+              Linking.openURL(url).catch(() => {
+                Alert.alert('Could not open mail app');
+              });
+            },
+          },
+        ],
+      );
     } catch (e) {
       Alert.alert('Error', 'Failed to copy summary to clipboard');
     }

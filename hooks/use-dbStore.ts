@@ -24,6 +24,7 @@ export function initDb() {
   const db = getDb();
   db.execSync(`
     PRAGMA journal_mode = WAL;
+
     CREATE TABLE IF NOT EXISTS players (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
@@ -31,28 +32,40 @@ export function initDb() {
       email TEXT,
       available INTEGER NOT NULL DEFAULT 1
     );
+
     CREATE TABLE IF NOT EXISTS rounds (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       date TEXT NOT NULL,
-      course TEXT NOT NULL
+      course TEXT NOT NULL,
+      tee_time_info TEXT DEFAULT ''
     );
+
     CREATE TABLE IF NOT EXISTS round_players (
       round_id INTEGER NOT NULL,
       player_id INTEGER NOT NULL,
       PRIMARY KEY (round_id, player_id)
     );
+
     CREATE TABLE IF NOT EXISTS groups (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       round_id INTEGER NOT NULL,
       slot_index INTEGER NOT NULL,
       created_at TEXT NOT NULL
     );
+
     CREATE TABLE IF NOT EXISTS group_players (
       group_id INTEGER NOT NULL,
       player_id INTEGER NOT NULL,
       PRIMARY KEY (group_id, player_id)
     );
   `);
+
+  // --- Migration step for existing DBs ---
+  const cols = db.getAllSync<{ name: string }>(`PRAGMA table_info(rounds);`).map((r) => r.name);
+
+  if (!cols.includes('tee_time_info')) {
+    db.execSync(`ALTER TABLE rounds ADD COLUMN tee_time_info TEXT DEFAULT '';`);
+  }
 }
 
 /**
@@ -121,7 +134,7 @@ export const restoreDatabaseFromFile = async (selectedFileUri: string): Promise<
 
 // ------------------- TYPES -------------------
 export type Player = { id: number; name: string; speedIndex: number; email: string; available: number };
-export type Round = { id: number; date: string; course: string };
+export type Round = { id: number; date: string; course: string; teeTimeInfo: string };
 export type Group = { id: number; round_id: number; slot_index: number; created_at: string };
 export type RoundPlayer = { round_id: number; player_id: number };
 export type RoundSummary = { round_id: number; numPlayers: number };
@@ -153,7 +166,7 @@ type DbState = {
   deletePlayer: (id: number) => void;
 
   addGroup: (roundId: number, slotIndex: number) => void;
-  addRound: (date: string, course: string) => void;
+  addRound: (date: string, course: string, teeTimeInfo: string) => void;
   deleteRound: (id: number) => void;
   updateRound: (id: number, data: Partial<Omit<Round, 'id'>>) => void;
 
@@ -191,11 +204,23 @@ export const useDbStore = create<DbState>((set, get) => ({
 
   fetchRounds: () => {
     const db = getDb();
-    const rows = db.getAllSync('SELECT * FROM rounds ORDER BY date DESC;') as Round[];
+    const rows = db.getAllSync('SELECT * FROM rounds ORDER BY date DESC;') as {
+      id: number;
+      date: string;
+      course: string;
+      tee_time_info: string;
+    }[];
+
+    const rounds: Round[] = rows.map((r) => ({
+      id: r.id,
+      date: r.date,
+      course: r.course,
+      teeTimeInfo: r.tee_time_info ?? '',
+    }));
+
     set({
-      rounds: rows,
-      // Set currentRoundId to most recent round if not already set
-      currentRoundId: get().currentRoundId ?? (rows.length > 0 ? rows[0].id : null),
+      rounds,
+      currentRoundId: get().currentRoundId ?? (rounds.length > 0 ? rounds[0].id : null),
     });
   },
 
@@ -342,9 +367,13 @@ export const useDbStore = create<DbState>((set, get) => ({
     useDbStore.getState().fetchGroups();
   },
 
-  addRound: (course, date) => {
+  addRound: (course, date, teeTimeInfo) => {
     const db = getDb();
-    db.runSync('INSERT INTO rounds (date, course) VALUES (?, ?)', [date, course]);
+    db.runSync('INSERT INTO rounds (date, course, tee_time_info) VALUES (?, ?, ?)', [
+      date,
+      course,
+      teeTimeInfo,
+    ]);
     useDbStore.getState().fetchRounds();
     useDbStore.getState().fetchRoundPlayers();
     useDbStore.getState().setManualGroupList([]);
@@ -366,6 +395,11 @@ export const useDbStore = create<DbState>((set, get) => ({
     if (data.course) {
       updates.push('course = ?');
       params.push(data.course);
+    }
+
+    if (data.teeTimeInfo) {
+      updates.push('tee_time_info = ?');
+      params.push(data.teeTimeInfo);
     }
 
     if (updates.length === 0) return; // nothing to update

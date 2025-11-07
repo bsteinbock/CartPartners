@@ -21,6 +21,7 @@ export default function RoundEditScreen() {
   const { rounds, addRound, updateRound } = useDbStore();
 
   const [course, setCourse] = useState('');
+  const [teeTimeInfo, setTeeTimeInfo] = useState('');
   const [date, setDate] = useState(new Date());
   const [errors, setErrors] = useState<string[]>([]);
   const [datePickerVisible, setDatePickerVisible] = useState(false);
@@ -60,13 +61,14 @@ export default function RoundEditScreen() {
     if (!validate()) return;
     try {
       if (isNew) {
-        addRound(course.trim(), date.toISOString());
+        addRound(course.trim(), date.toISOString(), teeTimeInfo);
       } else {
         const numericId = Number(id);
         if (!Number.isFinite(numericId)) throw new Error('invalid id');
         updateRound(numericId, {
           course: course.trim(),
           date: date.toISOString(),
+          teeTimeInfo,
         });
       }
       Keyboard.dismiss();
@@ -119,6 +121,13 @@ export default function RoundEditScreen() {
                 />
               </TouchableOpacity>
             </View>
+            <ThemedTextInput
+              style={styles.input}
+              placeholder="Tee-time info"
+              value={teeTimeInfo}
+              onChangeText={setTeeTimeInfo}
+              returnKeyType="next"
+            />
           </View>
           <View style={{ marginTop: 16 }}>
             <Button title="Save" onPress={onSave} />
