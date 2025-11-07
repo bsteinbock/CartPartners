@@ -2,6 +2,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Player, useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { displayPhoneNumberFromE164 } from '@/lib/cart-utils';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import * as DocumentPicker from 'expo-document-picker';
@@ -41,11 +42,13 @@ export default function PlayersScreen() {
     }
 
     try {
-      const header = ['Name', 'Speed Index', 'Email', 'Available'];
+      const header = ['Name', 'Nickname', 'Speed Index', 'Email', 'Mobile Number', 'Available'];
       const rows = players.map((p) => [
         `"${p.name}"`,
+        `"${p.nickname || ''}"`,
         p.speedIndex,
         `"${p.email ?? ''}"`,
+        `"${displayPhoneNumberFromE164(p.mobile_number) ?? ''}"`,
         p.available ? 'Yes' : 'No',
       ]);
 
@@ -91,6 +94,8 @@ export default function PlayersScreen() {
       const lines = fileContent.trim().split('\n');
       const header = lines[0].split(',').map((h) => h.trim().replace(/"/g, ''));
       const nameIndex = header.findIndex((h) => h.toLowerCase() === 'name');
+      const nicknameIndex = header.findIndex((h) => h.toLowerCase() === 'nickname');
+      const mobileNumberIndex = header.findIndex((h) => h.toLowerCase() === 'mobile_number');
       const speedIndexIdx = header.findIndex((h) => h.toLowerCase().includes('speed'));
       const emailIndex = header.findIndex((h) => h.toLowerCase() === 'email');
       const availableIndex = header.findIndex((h) => h.toLowerCase().includes('available'));
@@ -109,6 +114,8 @@ export default function PlayersScreen() {
         const name = cols[nameIndex];
         const speedIndex = parseInt(cols[speedIndexIdx]) || 1;
         const email = cols[emailIndex] || '';
+        const nickname = cols[nicknameIndex] || '';
+        const mobile_number = displayPhoneNumberFromE164(cols[mobileNumberIndex]) || '';
         const available =
           (cols[availableIndex] || '').toLowerCase().startsWith('y') ||
           (cols[availableIndex] || '').toLowerCase() === 'true'
@@ -119,9 +126,9 @@ export default function PlayersScreen() {
         const existing = players.find((p) => p.name.trim().toLowerCase() === name.trim().toLowerCase());
 
         if (existing && existing.id) {
-          updatePlayer(existing.id, { speedIndex, email, available });
+          updatePlayer(existing.id, { speedIndex, email, available, nickname, mobile_number });
         } else {
-          newPlayers.push({ name, speedIndex, email, available });
+          newPlayers.push({ name, speedIndex, email, available, nickname, mobile_number });
         }
       }
 
@@ -214,7 +221,10 @@ export default function PlayersScreen() {
                 <View style={{ flex: 1, marginRight: 12 }}>
                   <Pressable onPress={() => startEdit(item.id)}>
                     <View>
-                      <ThemedText>{item.name}</ThemedText>
+                      <ThemedText>
+                        {item.name}
+                        {item.nickname ? ` (${item.nickname})` : ''}
+                      </ThemedText>
                       <ThemedText style={{ color: '#666' }}>{`Speed: ${item.speedIndex}`}</ThemedText>
                       <ThemedText numberOfLines={2} style={{ color: '#666' }}>{`Email: ${
                         item.email ?? 'not specified'

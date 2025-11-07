@@ -1,4 +1,5 @@
 // use-DbStore.ts
+import { formatPhoneNumberToE164 } from '@/lib/cart-utils';
 import { File, Paths } from 'expo-file-system';
 import * as SQLite from 'expo-sqlite';
 import { create } from 'zustand';
@@ -28,6 +29,8 @@ export function initDb() {
     CREATE TABLE IF NOT EXISTS players (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
+      nickname TEXT DEFAULT '',
+      mobile_number TEXT DEFAULT '',
       speedIndex REAL NOT NULL,
       email TEXT,
       available INTEGER NOT NULL DEFAULT 1
@@ -61,9 +64,18 @@ export function initDb() {
   `);
 
   // --- Migration step for existing DBs ---
-  const cols = db.getAllSync<{ name: string }>(`PRAGMA table_info(rounds);`).map((r) => r.name);
+  const playerCols = db.getAllSync<{ name: string }>(`PRAGMA table_info(players);`).map((r) => r.name);
 
-  if (!cols.includes('tee_time_info')) {
+  if (!playerCols.includes('nickname')) {
+    db.execSync(`ALTER TABLE players ADD COLUMN nickname TEXT DEFAULT '';`);
+  }
+
+  if (!playerCols.includes('mobile_number')) {
+    db.execSync(`ALTER TABLE players ADD COLUMN mobile_number TEXT DEFAULT '';`);
+  }
+
+  const roundCols = db.getAllSync<{ name: string }>(`PRAGMA table_info(rounds);`).map((r) => r.name);
+  if (!roundCols.includes('tee_time_info')) {
     db.execSync(`ALTER TABLE rounds ADD COLUMN tee_time_info TEXT DEFAULT '';`);
   }
 }
@@ -133,13 +145,24 @@ export const restoreDatabaseFromFile = async (selectedFileUri: string): Promise<
 };
 
 // ------------------- TYPES -------------------
-export type Player = { id: number; name: string; speedIndex: number; email: string; available: number };
+export type Player = {
+  id: number;
+  name: string;
+  nickname: string;
+  mobile_number: string;
+  speedIndex: number;
+  email: string;
+  available: number;
+};
 export type Round = { id: number; date: string; course: string; teeTimeInfo: string };
 export type Group = { id: number; round_id: number; slot_index: number; created_at: string };
 export type RoundPlayer = { round_id: number; player_id: number };
 export type RoundSummary = { round_id: number; numPlayers: number };
 export type GroupPlayers = { group_id: number; player_ids: number[] };
 export type ManualGroupList = number[];
+export type NewPlayer = Pick<Player, 'name'> & Partial<Omit<Player, 'id' | 'name'>>;
+export type UpdatedPlayer = Partial<Omit<Player, 'id'>>;
+export type UpdatedRound = Partial<Omit<Round, 'id'>>;
 
 type DbState = {
   players: Player[];
@@ -160,15 +183,15 @@ type DbState = {
 
   setRoundPlayers: (roundId: number, playerIds: number[]) => void;
 
-  addPlayer: (name: string, email: string, speedIndex: number) => void;
-  addPlayers: (players: { name: string; speedIndex: number; email: string; available: number }[]) => void;
-  updatePlayer: (id: number, data: Partial<Omit<Player, 'id'>>) => void;
+  addPlayer: (player: NewPlayer) => void;
+  addPlayers: (players: NewPlayer[]) => void;
+  updatePlayer: (id: number, data: UpdatedPlayer) => void;
   deletePlayer: (id: number) => void;
 
   addGroup: (roundId: number, slotIndex: number) => void;
   addRound: (date: string, course: string, teeTimeInfo: string) => void;
   deleteRound: (id: number) => void;
-  updateRound: (id: number, data: Partial<Omit<Round, 'id'>>) => void;
+  updateRound: (id: number, data: UpdatedRound) => void;
 
   refreshAll: () => void;
   setGroupsForRound: (roundId: number, groupsList: number[][]) => void;
@@ -274,14 +297,18 @@ export const useDbStore = create<DbState>((set, get) => ({
   },
 
   // --- Simple Mutations ----------------------------------------------------
-  addPlayer: (name, email, speedIndex) => {
+  addPlayer: (player: NewPlayer) => {
     const db = getDb();
-    db.runSync('INSERT INTO players (name, email, speedIndex, available) VALUES (?, ?, ?, ?)', [
-      name,
-      email,
-      speedIndex,
-      1,
-    ]);
+
+    const { name, speedIndex = 1, nickname = '', mobile_number = '', email = '', available = 1 } = player;
+    const e164 = formatPhoneNumberToE164(mobile_number);
+    const storedNumber = e164 || '';
+
+    db.runSync(
+      'INSERT INTO players (name, nickname, mobile_number, speedIndex, email, available) VALUES (?, ?, ?, ?, ?, ?)',
+      [name, nickname, storedNumber, speedIndex, email, available ? 1 : 0],
+    );
+
     const { fetchPlayers, fetchGroups, fetchRoundPlayers } = useDbStore.getState();
     fetchPlayers();
     fetchGroups();
@@ -302,7 +329,7 @@ export const useDbStore = create<DbState>((set, get) => ({
   },
 
   // Update an existing player
-  updatePlayer: (id: number, data: Partial<Omit<Player, 'id'>>) => {
+  updatePlayer: (id: number, data: UpdatedPlayer) => {
     const db = getDb();
 
     const updates: string[] = [];
@@ -311,6 +338,16 @@ export const useDbStore = create<DbState>((set, get) => ({
     if (data.name !== undefined) {
       updates.push('name = ?');
       params.push(data.name);
+    }
+    if (data.nickname !== undefined) {
+      updates.push('nickname = ?');
+      params.push(data.nickname);
+    }
+    if (data.mobile_number !== undefined) {
+      updates.push('mobile_number = ?');
+      const e164 = formatPhoneNumberToE164(data.mobile_number);
+      const storedNumber = e164 || '';
+      params.push(storedNumber);
     }
     if (data.speedIndex !== undefined) {
       updates.push('speedIndex = ?');
@@ -325,7 +362,7 @@ export const useDbStore = create<DbState>((set, get) => ({
       params.push(data.available);
     }
 
-    if (updates.length === 0) return;
+    if (updates.length === 0) return; // nothing to update
 
     params.push(id);
     const sql = `UPDATE players SET ${updates.join(', ')} WHERE id = ?;`;
@@ -338,18 +375,28 @@ export const useDbStore = create<DbState>((set, get) => ({
   },
 
   // Add multiple players at once
-  addPlayers: (players: { name: string; speedIndex: number; email: string; available: number }[]) => {
+  addPlayers: (players: NewPlayer[]) => {
     const db = getDb();
+
     db.withTransactionSync(() => {
-      for (const { name, speedIndex, email, available } of players) {
-        db.runSync('INSERT INTO players (name, speedIndex, email, available) VALUES (?, ?, ?, ?)', [
-          name,
-          speedIndex,
-          email,
-          available ? 1 : 0,
-        ]);
+      for (const {
+        name,
+        speedIndex = 1,
+        nickname = '',
+        mobile_number = '',
+        email = '',
+        available = 1,
+      } of players) {
+        const e164 = formatPhoneNumberToE164(mobile_number);
+        const storedNumber = e164 || '';
+
+        db.runSync(
+          'INSERT INTO players (name, nickname, mobile_number, speedIndex, email, available) VALUES (?, ?, ?, ?, ?, ?)',
+          [name, nickname, storedNumber, speedIndex, email, available ? 1 : 0],
+        );
       }
     });
+
     const { fetchPlayers, fetchGroups, fetchRoundPlayers } = useDbStore.getState();
     fetchPlayers();
     fetchGroups();

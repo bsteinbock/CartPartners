@@ -292,8 +292,12 @@ export function formatManualGroupPlayersByNames(
 ): string[] {
   return groupPlayers.map((gp) => {
     const names = gp
-      .map((pid) => players.find((p) => p.id === pid)?.name)
-      .filter((name): name is string => Boolean(name)); // filter out undefined
+      .map((pid) => {
+        const player = players.find((p) => p.id === pid);
+        if (!player) return undefined;
+        return player.nickname?.trim().length ? player.nickname : player.name;
+      })
+      .filter((name): name is string => Boolean(name)); // remove undefined
 
     return names.join(', ');
   });
@@ -309,7 +313,7 @@ export function formatManualGroupPlayersByNames(
 export function reportGroupsWithNames(groups: GroupPlayers[], allPlayers: Player[]): string {
   const playerMap: Record<number, string> = {};
   for (const player of allPlayers) {
-    playerMap[player.id] = player.name;
+    playerMap[player.id] = player.nickname?.trim().length ? player.nickname : player.name;
   }
 
   return groups
@@ -338,7 +342,9 @@ export function getMailtoStrings(groups: GroupPlayers[], allPlayers: Player[]): 
     group.player_ids
       .map((id) => {
         const player = playerMap[id];
-        return player ? `${player.name} <${player.email}>` : `Unknown(${id})`;
+        if (!player) return `Unknown(${id})`;
+        const displayName = player.nickname?.trim().length ? player.nickname : player.name;
+        return `${displayName} <${player.email}>`;
       })
       .join(', '),
   );
@@ -393,8 +399,12 @@ export function getGroupPlayersByRoundId(
 export function formatGroupPlayersByNames(groupPlayers: GroupPlayers[], players: Player[]): string[] {
   return groupPlayers.map((gp) => {
     const names = gp.player_ids
-      .map((pid) => players.find((p) => p.id === pid)?.name)
-      .filter((name): name is string => Boolean(name)); // filter out undefined
+      .map((pid) => {
+        const player = players.find((p) => p.id === pid);
+        if (!player) return undefined;
+        return player.nickname?.trim().length ? player.nickname : player.name;
+      })
+      .filter((name): name is string => Boolean(name)); // remove undefined
 
     return names.join(', ');
   });
@@ -429,4 +439,112 @@ export function groupPlayersMatchActivePlayers(
     }
   }
   return true;
+}
+
+/**
+ * Generate a player nickname from a full name string.
+ *
+ * Example:
+ *   'John Doe'        → 'John D'
+ *   'Mary Jane Smith' → 'Mary S'
+ *   'Cher'            → 'Cher'
+ *   '  Carlos   Ruiz  ' → 'Carlos R'
+ */
+export function generateNickname(fullName: string): string {
+  if (!fullName) return '';
+
+  // Trim and split by whitespace
+  const parts = fullName.trim().split(/\s+/);
+
+  if (parts.length === 0) return '';
+
+  const firstName = parts[0];
+  const lastName = parts[parts.length - 1];
+
+  if (parts.length === 1) {
+    // Single word name — just return it
+    return firstName;
+  }
+
+  // Use first name + first initial of last name
+  const initial = lastName.charAt(0).toUpperCase();
+  return `${firstName} ${initial}`;
+}
+
+/**
+ * Converts a phone number string into E.164 format.
+ *
+ * Rules:
+ * - Keeps leading '+' if present.
+ * - Removes all other non-digit characters.
+ * - Does NOT prepend '+1' automatically unless already in input.
+ * - Useful for storing a normalized number in the database.
+ *
+ * Examples:
+ *   "+1 (415) 555-1234" → "+14155551234"
+ *   "415-555-1234"       → "4155551234"
+ *   "555-1234"           → "5551234"
+ */
+export function formatPhoneNumberToE164(input: string): string {
+  if (!input) return '';
+
+  // Trim and remove all non-digit/non-plus characters
+  const cleaned = input.trim().replace(/[^\d+]/g, '');
+
+  // Keep leading '+' if present
+  if (cleaned.startsWith('+')) {
+    return `+${cleaned.slice(1).replace(/\D/g, '')}`;
+  }
+
+  // Otherwise, return only digits
+  return cleaned.replace(/\D/g, '');
+}
+
+/**
+ * Convert an E.164 phone number (e.g., "+14155551234") into a readable format.
+ *
+ * Examples:
+ *   "+14155551234"  → "+1(415)555-1234"
+ *   "+442071838750" → "+44 2071838750"
+ *   "+15551234"     → "+1 555-1234"
+ *   "4155551234"    → "(415)555-1234"
+ */
+export function displayPhoneNumberFromE164(e164: string): string {
+  if (!e164) return '';
+
+  // Normalize input
+  const cleaned = e164.trim();
+
+  // Must start with '+', otherwise treat as raw local number
+  if (!cleaned.startsWith('+')) {
+    // Fallback for local format
+    const digits = cleaned.replace(/\D/g, '');
+    if (digits.length === 7) {
+      return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+    }
+    if (digits.length === 10) {
+      return `(${digits.slice(0, 3)})${digits.slice(3, 6)}-${digits.slice(6)}`;
+    }
+    return digits;
+  }
+
+  // Extract country code and rest of number
+  const match = cleaned.match(/^\+(\d{1,3})(\d*)$/);
+  if (!match) return cleaned;
+
+  const [, countryCode, rest] = match;
+
+  // US/Canada
+  if (countryCode === '1' && rest.length === 10) {
+    return `+1(${rest.slice(0, 3)})${rest.slice(3, 6)}-${rest.slice(6)}`;
+  }
+
+  // US/Canada with 7-digit local number (rare case)
+  if (countryCode === '1' && rest.length === 7) {
+    return `+1 ${rest.slice(0, 3)}-${rest.slice(3)}`;
+  }
+
+  // Other international numbers — group digits for readability
+  const grouped = rest.replace(/(\d{2,3})(?=\d)/g, '$1').trim();
+  return `+${countryCode} ${grouped}`;
 }
