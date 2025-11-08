@@ -66,6 +66,8 @@ export default function GroupsScreen() {
   const [roundTeeTimeInfo, setRoundTeeTimeInfo] = useState<string>('');
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const router = useRouter();
+  const [groupCoordinatorId, setGroupCoordinatorId] = useState<number>(0);
+  const [myMobileNumber, setMyMobileNumber] = useState<string | null>(null);
 
   // useFocusEffect runs every time this screen is focused
   useFocusEffect(
@@ -74,15 +76,24 @@ export default function GroupsScreen() {
     }, []),
   );
 
-  const [myMobileNumber, setMyMobileNumber] = useState<string | null>(null);
-
   useFocusEffect(() => {
     // Load saved number on mount
     (async () => {
-      const saved = await SecureStore.getItemAsync('cartPartnerGroupCoordinatorPhoneNumber');
-      setMyMobileNumber(saved);
+      const coordinatorIdString = await SecureStore.getItemAsync('cartPartnerGroupCoordinatorId');
+      const coordinatorId: number = coordinatorIdString ? parseInt(coordinatorIdString, 10) : 0;
+      setGroupCoordinatorId(coordinatorId);
     })();
   });
+
+  useEffect(() => {
+    // get mobile number for coordinator
+    const coordinator = players.find((p) => p.id === groupCoordinatorId);
+    if (coordinator && coordinator.mobile_number) {
+      setMyMobileNumber(coordinator.mobile_number);
+    } else {
+      setMyMobileNumber(null);
+    }
+  }, [groupCoordinatorId, players]);
 
   useEffect(() => {
     const availableOptions = rounds.map((r) => ({
@@ -155,25 +166,17 @@ export default function GroupsScreen() {
       Alert.alert('SMS not available on this device');
       return;
     }
-
-    const { result } = await SMS.sendSMSAsync(
-      addresses, // recipient(s)
-      message,
-    );
-
-    if (result === 'sent') {
-      Alert.alert('Message sent!');
-    } else {
-      Alert.alert('Message not sent');
-    }
+    //console.log('phones', addresses);
+    const { result } = await SMS.sendSMSAsync(addresses, message);
   };
 
-  const exportToEmail = async () => {
+  const informPlayers = async () => {
     if (currentRoundGroups.length === 0) return Alert.alert('No groups to export for this round');
 
-    let bodyText = roundTeeTimeInfo ? `${roundTeeTimeInfo}\n\n` : '\n';
+    let bodyText = roundTeeTimeInfo ? `${roundTeeTimeInfo}\n\n` : '';
     const summary = reportGroupsWithNames(currentRoundGroups, players);
     bodyText += summary;
+    const textMessageBody = `Cart Groups - ${pickedRound?.label}\n\n${bodyText}`;
 
     const addresses = getMailtoStrings(currentRoundGroups, players);
     const mobileNumbers = getMobilePhoneNumbers(currentRoundGroups, players);
@@ -183,7 +186,7 @@ export default function GroupsScreen() {
         {
           text: 'Email',
           onPress: () => {
-            const subject = encodeURIComponent(`Cart Assignments - ${pickedRound?.label}`);
+            const subject = encodeURIComponent(`Cart Groups - ${pickedRound?.label}`);
             const body = encodeURIComponent(bodyText);
             const url = `mailto:${addresses}?subject=${subject}&body=${body}`;
             Linking.openURL(url).catch(() => {
@@ -204,13 +207,21 @@ export default function GroupsScreen() {
                         mobileNumbers.splice(index, 1);
                       }
                     }
-                    await sendTextMessage(mobileNumbers, bodyText);
+
+                    await sendTextMessage(mobileNumbers, textMessageBody);
                   } else {
-                    // use router to send me to a screen to enter my number
-                    router.push({
-                      pathname: '/(tabs)/groups/enterCoordinatorNumber',
-                      params: { bodyText: bodyText, mobileNumbers: JSON.stringify(mobileNumbers) },
-                    });
+                    if (groupCoordinatorId) {
+                      Alert.alert(
+                        'No Mobile Number',
+                        'The group coordinator does not have a mobile number defined So we cannot send text message.',
+                      );
+                    } else {
+                      // use router to send me to a screen to enter my number
+                      router.push({
+                        pathname: '/(tabs)/groups/setGroupCoordinator',
+                        params: { bodyText: textMessageBody, mobileNumbers: JSON.stringify(mobileNumbers) },
+                      });
+                    }
                   }
                 },
               },
@@ -218,8 +229,8 @@ export default function GroupsScreen() {
           : []),
         { text: 'Cancel', style: 'cancel' },
       ]);
-    } catch (e) {
-      Alert.alert('Error', 'Failed to copy summary to clipboard');
+    } catch (e: any) {
+      Alert.alert('Error', `Unable to send text message: ${e && e.message ? e.message : 'Unknown error'}`);
     }
   };
 
@@ -440,7 +451,7 @@ export default function GroupsScreen() {
                   {currentRoundGroups.length > 0 && manualGroupList.length === 0 && (
                     <Pressable
                       onPress={() => {
-                        void exportToEmail();
+                        void informPlayers();
                       }}
                     >
                       <Feather name="send" size={28} color={iconButton} />
