@@ -12,14 +12,16 @@ import {
   generateNextRoundGroups,
   getGroupPlayersByRoundId,
   getMailtoStrings,
+  getMobilePhoneNumbers,
   groupPlayersMatchActivePlayers,
   reportGroupsWithNames,
 } from '@/lib/cart-utils';
 import { formatDate } from '@/lib/formatters';
 import Entypo from '@expo/vector-icons/Entypo';
 import Feather from '@expo/vector-icons/Feather';
-import * as Clipboard from 'expo-clipboard';
 import { useFocusEffect, useRouter } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
+import * as SMS from 'expo-sms';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
@@ -71,6 +73,16 @@ export default function GroupsScreen() {
       setSelectedGroupIndex(null);
     }, []),
   );
+
+  const [myMobileNumber, setMyMobileNumber] = useState<string | null>(null);
+
+  useFocusEffect(() => {
+    // Load saved number on mount
+    (async () => {
+      const saved = await SecureStore.getItemAsync('cartPartnerGroupCoordinatorPhoneNumber');
+      setMyMobileNumber(saved);
+    })();
+  });
 
   useEffect(() => {
     const availableOptions = rounds.map((r) => ({
@@ -137,6 +149,25 @@ export default function GroupsScreen() {
     }
   }, [currentRoundGroups, currentRoundPlayerIds]);
 
+  const sendTextMessage = async (addresses: string | string[], message: string) => {
+    const isAvailable = await SMS.isAvailableAsync();
+    if (!isAvailable) {
+      Alert.alert('SMS not available on this device');
+      return;
+    }
+
+    const { result } = await SMS.sendSMSAsync(
+      addresses, // recipient(s)
+      message,
+    );
+
+    if (result === 'sent') {
+      Alert.alert('Message sent!');
+    } else {
+      Alert.alert('Message not sent');
+    }
+  };
+
   const exportToEmail = async () => {
     if (currentRoundGroups.length === 0) return Alert.alert('No groups to export for this round');
 
@@ -145,31 +176,48 @@ export default function GroupsScreen() {
     bodyText += summary;
 
     const addresses = getMailtoStrings(currentRoundGroups, players);
+    const mobileNumbers = getMobilePhoneNumbers(currentRoundGroups, players);
 
     try {
-      Alert.alert(
-        'Send Groups Summary',
-        'You can copy the group summary to the clipboard so you can paste it elsewhere or send it via email.',
-        [
-          {
-            text: 'Clipboard',
-            onPress: async () => {
-              await Clipboard.setStringAsync(bodyText);
-            },
+      Alert.alert('Send Groups Summary', 'Select method of sharing', [
+        {
+          text: 'Email',
+          onPress: () => {
+            const subject = encodeURIComponent(`Cart Assignments - ${pickedRound?.label}`);
+            const body = encodeURIComponent(bodyText);
+            const url = `mailto:${addresses}?subject=${subject}&body=${body}`;
+            Linking.openURL(url).catch(() => {
+              Alert.alert('Could not open mail app');
+            });
           },
-          {
-            text: 'Email',
-            onPress: () => {
-              const subject = encodeURIComponent(`Cart Assignments - ${pickedRound?.label}`);
-              const body = encodeURIComponent(bodyText);
-              const url = `mailto:${addresses}?subject=${subject}&body=${body}`;
-              Linking.openURL(url).catch(() => {
-                Alert.alert('Could not open mail app');
-              });
-            },
-          },
-        ],
-      );
+        },
+        ...(mobileNumbers.length > 0
+          ? [
+              {
+                text: 'Text Msg',
+                onPress: async () => {
+                  // don't include my number in the list for texting
+                  if (myMobileNumber) {
+                    if (myMobileNumber.trim().length > 0) {
+                      const index = mobileNumbers.indexOf(myMobileNumber);
+                      if (index > -1) {
+                        mobileNumbers.splice(index, 1);
+                      }
+                    }
+                    await sendTextMessage(mobileNumbers, bodyText);
+                  } else {
+                    // use router to send me to a screen to enter my number
+                    router.push({
+                      pathname: '/(tabs)/groups/enterCoordinatorNumber',
+                      params: { bodyText: bodyText, mobileNumbers: JSON.stringify(mobileNumbers) },
+                    });
+                  }
+                },
+              },
+            ]
+          : []),
+        { text: 'Cancel', style: 'cancel' },
+      ]);
     } catch (e) {
       Alert.alert('Error', 'Failed to copy summary to clipboard');
     }

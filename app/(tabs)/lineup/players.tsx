@@ -15,6 +15,7 @@ export default function PlayersScreen() {
   const router = useRouter();
   const { players, addPlayers, updatePlayer } = useDbStore();
   const iconColor = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
+  const textDim = useThemeColor({ light: undefined, dark: undefined }, 'textDim');
 
   const startEdit = (id?: number) => {
     if (typeof id === 'undefined') return;
@@ -225,8 +226,7 @@ export default function PlayersScreen() {
                         {item.name}
                         {item.nickname ? ` (${item.nickname})` : ''}
                       </ThemedText>
-                      <ThemedText style={{ color: '#666' }}>{`Speed: ${item.speedIndex}`}</ThemedText>
-                      <ThemedText numberOfLines={2} style={{ color: '#666' }}>{`Email: ${
+                      <ThemedText numberOfLines={2} style={{ color: textDim }}>{`${
                         item.email ?? 'not specified'
                       }`}</ThemedText>
                     </View>

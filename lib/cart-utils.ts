@@ -325,6 +325,35 @@ export function reportGroupsWithNames(groups: GroupPlayers[], allPlayers: Player
 }
 
 /**
+ * Convert groups of player IDs into array of mobile phone number strings
+ * suitable for texting.
+ *
+ * @param groups - Array of groups (each a list of player IDs)
+ * @param allPlayers - Array of all Player objects
+ * @returns string[] - Array of mobile phone numbers'
+ */
+export function getMobilePhoneNumbers(groups: GroupPlayers[], allPlayers: Player[]): string[] {
+  const playerMap: Record<number, Player> = {};
+  for (const player of allPlayers) {
+    playerMap[player.id] = player;
+  }
+
+  const mobileNumbers = groups.map((group) =>
+    group.player_ids
+      .map((id) => {
+        const player = playerMap[id];
+        if (!player) return '';
+        return player.mobile_number;
+      })
+      .filter((num) => num && num.length > 0),
+  );
+  const mergedNumbers = mobileNumbers.flat();
+  //console.log('getMobilePhoneNumbers: ', mergedNumbers);
+
+  return mergedNumbers;
+}
+
+/**
  * Convert groups of player IDs into groups of `name<email>` strings
  * suitable for mailto links.
  *
