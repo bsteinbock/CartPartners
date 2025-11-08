@@ -2,8 +2,10 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedTextInput } from '@/components/themed-textinput';
 import { ThemedView } from '@/components/themed-view';
 import { useDbStore } from '@/hooks/use-dbStore';
+import { useThemeColor } from '@/hooks/use-theme-color';
 import { displayPhoneNumberFromE164, formatPhoneNumberToE164, generateNickname } from '@/lib/cart-utils';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
 import React, { useEffect, useState } from 'react';
 import { Alert, Button, StyleSheet } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
@@ -12,13 +14,28 @@ export default function PlayerDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const isNew = id === 'new';
+  const iconButton = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
+  const textDim = useThemeColor({ light: undefined, dark: undefined }, 'textDim');
 
   const { players, addPlayer, updatePlayer } = useDbStore();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [mobileNumber, setMobileNumber] = useState('');
+  const [rawMobileNumber, setRawMobileNumber] = useState('');
   const [nickname, setNickname] = useState('');
   const [speedIndex, setSpeedIndex] = useState('');
+
+  const [myMobileNumber, setMyMobileNumber] = useState<string | null>(null);
+  const [isGroupCoordinator, setIsGroupCoordinator] = useState(false);
+  const [groupCoordinatorMismatch, setGroupCoordinatorMismatch] = useState(false);
+
+  useFocusEffect(() => {
+    // Load saved number on mount
+    (async () => {
+      const saved = await SecureStore.getItemAsync('cartPartnerGroupCoordinatorPhoneNumber');
+      setMyMobileNumber(saved);
+    })();
+  });
 
   useEffect(() => {
     if (!isNew && id) {
@@ -28,10 +45,42 @@ export default function PlayerDetailScreen() {
         setEmail(existing.email || '');
         setSpeedIndex(String(existing.speedIndex));
         setMobileNumber(displayPhoneNumberFromE164(existing.mobile_number || ''));
+        setRawMobileNumber(existing.mobile_number);
         setNickname(existing.nickname || '');
+        // consider group coordinator if mobile number matches saved number to 10 digits
+        if (myMobileNumber && myMobileNumber?.length >= 10 && existing.mobile_number.length >= 10) {
+          setGroupCoordinatorMismatch(existing.mobile_number !== myMobileNumber);
+          setIsGroupCoordinator(existing.mobile_number.slice(-10) === myMobileNumber.slice(-10));
+        } else {
+          setIsGroupCoordinator(false);
+          setGroupCoordinatorMismatch(false);
+        }
       }
     }
-  }, [id, players]);
+  }, [id, players, myMobileNumber]);
+
+  useEffect(() => {
+    if (rawMobileNumber.length > 0) {
+      // consider group coordinator if mobile number matches saved number to 10 digits
+      if (myMobileNumber && myMobileNumber?.length >= 10 && rawMobileNumber.length >= 10) {
+        setGroupCoordinatorMismatch(rawMobileNumber !== myMobileNumber);
+        setIsGroupCoordinator(rawMobileNumber.slice(-10) === myMobileNumber.slice(-10));
+      } else {
+        setIsGroupCoordinator(false);
+        setGroupCoordinatorMismatch(false);
+      }
+    }
+  }, [rawMobileNumber, myMobileNumber]);
+
+  const handleUpdateCoordinator = async () => {
+    await SecureStore.setItemAsync('cartPartnerGroupCoordinatorPhoneNumber', rawMobileNumber);
+    setMyMobileNumber(rawMobileNumber);
+    setGroupCoordinatorMismatch(false);
+    Alert.alert(
+      'Group Coordinator Number Updated',
+      "The group coordinator's mobile number has been updated.",
+    );
+  };
 
   const handleSave = () => {
     if (!name.trim()) {
@@ -123,9 +172,40 @@ export default function PlayerDetailScreen() {
               keyboardType="numeric"
             />
 
-            <ThemedView style={{ marginTop: 12 }}>
-              <Button title={isNew ? 'Add Player' : 'Save Changes'} onPress={handleSave} />
-              <Button title="Cancel" color="gray" onPress={() => router.back()} />
+            {isGroupCoordinator && groupCoordinatorMismatch && rawMobileNumber.length > 0 && (
+              <ThemedView
+                style={{
+                  marginTop: 10,
+                  borderColor: iconButton,
+                  borderWidth: 1,
+                  borderRadius: 6,
+                }}
+              >
+                <Button title={'Update Group Coordinator Mobile Number'} onPress={handleUpdateCoordinator} />
+              </ThemedView>
+            )}
+
+            <ThemedView>
+              <ThemedView
+                style={{
+                  marginTop: 10,
+                  borderColor: iconButton,
+                  borderWidth: 1,
+                  borderRadius: 6,
+                }}
+              >
+                <Button title={isNew ? 'Add Player' : 'Save Changes'} onPress={handleSave} />
+              </ThemedView>
+              <ThemedView
+                style={{
+                  marginTop: 10,
+                  borderColor: textDim,
+                  borderWidth: 1,
+                  borderRadius: 6,
+                }}
+              >
+                <Button title="Cancel" color={textDim} onPress={() => router.back()} />
+              </ThemedView>
             </ThemedView>
           </ThemedView>
         </KeyboardAwareScrollView>
@@ -137,10 +217,10 @@ export default function PlayerDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
+    padding: 8,
   },
   title: {
-    marginBottom: 12,
+    marginBottom: 6,
   },
   label: {
     fontSize: 16,
