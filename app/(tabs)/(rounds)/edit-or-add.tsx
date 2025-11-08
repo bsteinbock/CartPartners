@@ -41,6 +41,7 @@ export default function RoundEditScreen() {
           if (p) {
             setCourse(p.course);
             setDate(new Date(p.date));
+            setTeeTimeInfo(p.teeTimeInfo);
           }
         }
       } catch (e) {
