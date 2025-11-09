@@ -519,7 +519,8 @@ export default function GroupsScreen() {
                   {showMismatchPlayerWarning && (
                     <ThemedText type="defaultSemiBold" style={{ color: errorText, padding: 10 }}>
                       The line-up of players for this round has changed since the groups were created. It is
-                      recommended that the groups be regenerate to handle line-up changes.
+                      recommended that the groups be regenerate to handle line-up changes. Any previous manual
+                      groups will need to be recreated before pressing the Generate/Regenerate Button.
                     </ThemedText>
                   )}
                   {currentRoundGroups.length > 0 && manualGroupList.length === 0 && (

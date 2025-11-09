@@ -40,17 +40,21 @@ export default function AboutScreen() {
           Rounds Tab
         </ThemedText>
         <ThemedText style={styles.text}>
-          This is were you define your round by specifying the course and date. Once created tap on the round
-          to open the line-up tab for the round.
+          This Tab shows all your defined rounds and show a button to add a new round. If you long press on a
+          round you will be taken to a screen to edit info about the round. You can swipe left on a round and
+          delete it and all the data associated with it. A round is defined by specifying the course, date,
+          and tee-time info. The Tee-time info is shown on the announcement sent to the players. A tap on the
+          round will open the line-up tab for the round.
         </ThemedText>
 
         <ThemedText type="subtitle" style={styles.subTitle}>
           Line-up Tab
         </ThemedText>
         <ThemedText style={styles.text}>
-          This tab is used to specify the players that will be playing for this round. The list of players
-          that is shown comes for all available players with their status set to available. To manage the list
-          of available players press the icon on the top right of the screen.
+          This tab is used to specify the players that will be playing in the specified round. The list of
+          players comes from all players that have their status set to available. To manage the list of
+          available players press the icon on the top right of the screen. Once all the line-up is set press
+          the Groups icon to open the Groups Tab.
         </ThemedText>
 
         <ThemedText type="subtitle" style={styles.subTitle}>
@@ -61,7 +65,23 @@ export default function AboutScreen() {
           Groups for the round. If the Groups have already been created you can use Regenerate to update the
           set of groups. Once satisfied with the line-up use the airplane icon to create an email to all the
           player informing them of the groups. You can use the icon on the top right of the screen to manually
-          set the players for any number of groups.
+          set the players for any number of groups. Once the Groups have been generated you can modify their
+          order or their players by touching the group you want to modify. When a group is selected icon
+          buttons will display that will let you manually edit a group or move the group up or down in the
+          order.
+        </ThemedText>
+
+        <ThemedText type="subtitle" style={styles.subTitle}>
+          More Tab
+        </ThemedText>
+        <ThemedText style={styles.text}>
+          The More Tab provides access to other screens that are not directly related to creating groups. The
+          initial screen allows you to notify any set of players via email or text message. The icon on the
+          top left of the screen will open a panel that presents options to open this 'About' screen and to
+          open the 'Backup/Restore' screen. The 'Backup/Restore' screen lets you create a database backup file
+          of all the data you have in CartPartners. This file can be sent to another person that maybe taking
+          over a Group Coordinator on either a temporary or permanent basis. Using the Restore command will
+          let you load or reload data given a previous backup.
         </ThemedText>
       </ThemedView>
     </ScrollView>
