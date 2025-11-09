@@ -10,6 +10,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Switch } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function LineupScreen() {
   const { rounds, players, roundPlayers, setRoundPlayers, setCurrentRoundId, currentRoundId } = useDbStore();
@@ -89,104 +90,110 @@ export default function LineupScreen() {
   const playerLabel = `Player (${selectedPlayers.length} of ${players.length} Selected)`;
 
   return (
-    <ThemedView style={styles.container}>
-      <ThemedView style={styles.header}>
-        <ThemedView style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <ThemedText type="title">Player Line-up</ThemedText>
-          <Pressable
-            onPress={() => {
-              router.push('/(tabs)/lineup/players');
-            }}
-          >
-            <Ionicons name="person" size={28} color={iconColor} />
-          </Pressable>
+    <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+      <ThemedView style={styles.container}>
+        <ThemedView style={styles.header}>
+          <ThemedView style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <ThemedText type="title">Player Line-up</ThemedText>
+            <Pressable
+              onPress={() => {
+                router.push('/(tabs)/lineup/players');
+              }}
+            >
+              <Ionicons name="person" size={28} color={iconColor} />
+            </Pressable>
+          </ThemedView>
+
+          {rounds.length === 0 ? (
+            <ThemedText type="defaultSemiBold" style={{ color: errorText, padding: 10 }}>
+              At least one Rounds must be defined before a line-up of players can be set.
+            </ThemedText>
+          ) : (
+            <>
+              <ThemedText style={{ marginTop: 16, marginBottom: 8 }}>Select Round</ThemedText>
+              <OptionPickerItem
+                containerStyle={{ backgroundColor: backgroundColor, height: 36 }}
+                optionLabel={pickedRound?.label}
+                placeholder="Select Round"
+                onPickerButtonPress={() => setIsRoundPickerVisible(true)}
+              />
+            </>
+          )}
         </ThemedView>
 
-        {rounds.length === 0 ? (
-          <ThemedText type="defaultSemiBold" style={{ color: errorText, padding: 10 }}>
-            At least one Rounds must be defined before a line-up of players can be set.
-          </ThemedText>
+        {players.length === 0 ? (
+          <ThemedView style={[styles.stepContainer, { margin: 12 }]}>
+            <ThemedText>
+              No players available. Go to Players Management screen using the icon on the top right of this
+              screen.
+            </ThemedText>
+          </ThemedView>
         ) : (
           <>
-            <ThemedText style={{ marginTop: 16, marginBottom: 8 }}>Select Round</ThemedText>
-            <OptionPickerItem
-              containerStyle={{ backgroundColor: backgroundColor, height: 36 }}
-              optionLabel={pickedRound?.label}
-              placeholder="Select Round"
-              onPickerButtonPress={() => setIsRoundPickerVisible(true)}
+            <ThemedView
+              style={{
+                padding: 8,
+                flexDirection: 'row',
+                alignItems: 'center',
+                borderBottomWidth: 1,
+                borderColor: '#ddd',
+                gap: 30,
+              }}
+            >
+              <ThemedView style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Switch
+                  value={allSelected}
+                  onValueChange={toggleAllPlayers}
+                  disabled={players.length === 0}
+                />
+              </ThemedView>
+              <ThemedText style={{ fontWeight: '700' }}>{playerLabel}</ThemedText>
+            </ThemedView>
+
+            <FlatList
+              style={styles.list}
+              contentContainerStyle={styles.listContent}
+              data={players}
+              keyExtractor={(item) => String(item.id)}
+              renderItem={({ item }) => (
+                <ThemedView
+                  style={{
+                    padding: 4,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <ThemedView style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Switch
+                      value={selectedPlayers.includes(item.id)}
+                      onValueChange={(_val) => {
+                        void togglePlayer(item.id);
+                      }}
+                    />
+                    <ThemedText style={{ marginLeft: 30 }}>{item.name}</ThemedText>
+                  </ThemedView>
+                </ThemedView>
+              )}
             />
           </>
         )}
-      </ThemedView>
-
-      {players.length === 0 ? (
-        <ThemedView style={[styles.stepContainer, { margin: 12 }]}>
-          <ThemedText>
-            No players available. Go to Players Management screen using the icon on the top right of this
-            screen.
-          </ThemedText>
-        </ThemedView>
-      ) : (
-        <>
-          <ThemedView
-            style={{
-              padding: 8,
-              flexDirection: 'row',
-              alignItems: 'center',
-              borderBottomWidth: 1,
-              borderColor: '#ddd',
-              gap: 30,
-            }}
+        {roundOptions.length > 0 && isRoundPickerVisible && (
+          <BottomSheetContainer
+            isVisible={isRoundPickerVisible}
+            title="Select Round"
+            modalHeight="70%"
+            onClose={() => setIsRoundPickerVisible(false)}
           >
-            <ThemedView style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Switch value={allSelected} onValueChange={toggleAllPlayers} disabled={players.length === 0} />
-            </ThemedView>
-            <ThemedText style={{ fontWeight: '700' }}>{playerLabel}</ThemedText>
-          </ThemedView>
-
-          <FlatList
-            style={styles.list}
-            contentContainerStyle={styles.listContent}
-            data={players}
-            keyExtractor={(item) => String(item.id)}
-            renderItem={({ item }) => (
-              <ThemedView
-                style={{
-                  padding: 4,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                }}
-              >
-                <ThemedView style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Switch
-                    value={selectedPlayers.includes(item.id)}
-                    onValueChange={(_val) => {
-                      void togglePlayer(item.id);
-                    }}
-                  />
-                  <ThemedText style={{ marginLeft: 30 }}>{item.name}</ThemedText>
-                </ThemedView>
-              </ThemedView>
-            )}
-          />
-        </>
-      )}
-      {roundOptions.length > 0 && isRoundPickerVisible && (
-        <BottomSheetContainer
-          isVisible={isRoundPickerVisible}
-          title="Select Round"
-          modalHeight="70%"
-          onClose={() => setIsRoundPickerVisible(false)}
-        >
-          <OptionList
-            options={roundOptions}
-            onSelect={(option) => handleRoundOptionChange(option)}
-            selectedOption={pickedRound}
-          />
-        </BottomSheetContainer>
-      )}
-    </ThemedView>
+            <OptionList
+              options={roundOptions}
+              onSelect={(option) => handleRoundOptionChange(option)}
+              selectedOption={pickedRound}
+            />
+          </BottomSheetContainer>
+        )}
+      </ThemedView>
+    </SafeAreaView>
   );
 }
 

@@ -2,18 +2,16 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { getDatabasePath, restoreDatabaseFromFile, useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import * as Application from 'expo-application';
 import * as DocumentPicker from 'expo-document-picker';
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import React from 'react';
-import { Alert, Platform, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { Alert, Button, Platform, ScrollView, StyleSheet } from 'react-native';
 
 export default function AboutScreen() {
   const { refreshAll } = useDbStore();
-  const iconColor = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
+  const iconButton = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
   const version = Application.nativeApplicationVersion || 'Unknown';
   const buildNumber = Application.nativeBuildVersion
     ? `(${Application.nativeBuildVersion} ${Platform.OS})`
@@ -91,7 +89,7 @@ export default function AboutScreen() {
 
               const now = new Date();
               const timestamp = `${now.getMonth() + 1}-${now.getDate()}-${now.getFullYear()}`;
-              const fileName = `cartpartners-backup-${timestamp}.db`;
+              const fileName = `cartpartners-${timestamp}.db`;
 
               const sourceFile = new File(dbPath);
               const backupFile = new File(Paths.cache, fileName);
@@ -119,59 +117,44 @@ export default function AboutScreen() {
   return (
     <ScrollView style={styles.container}>
       <ThemedView style={styles.content}>
-        <ThemedView style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <ThemedText type="title" style={styles.title}>
-            CartPartners
-          </ThemedText>
-          <ThemedView style={{ flexDirection: 'row', gap: 20 }}>
-            <Pressable onPress={handleExportDb}>
-              <MaterialIcons name="backup-table" size={28} color={iconColor} />
-            </Pressable>
-            <Pressable onPress={handleImportDb}>
-              <MaterialCommunityIcons name="application-import" size={28} color={iconColor} />
-            </Pressable>
-          </ThemedView>
+        <ThemedText type="title" style={styles.title}>
+          Backup Database
+        </ThemedText>
+        <ThemedText style={{ marginTop: 5 }}>
+          Backing-up the CartPartner Database will protect you from losing all your data. It also allows the
+          backup db file to be sent to another person if they are permanently or temporarily serving as Group
+          Coordinator.
+        </ThemedText>
+        <ThemedView
+          style={{
+            margin: 10,
+            marginBottom: 20,
+            borderColor: iconButton,
+            borderWidth: 1,
+            borderRadius: 6,
+          }}
+        >
+          <Button title="Backup Database" onPress={handleExportDb} />
         </ThemedView>
-        <ThemedText style={{ marginBottom: 5 }}>{`CartPartners ${versionText}`}</ThemedText>
-        <ThemedText type="subtitle" style={styles.sectionTitle}>
-          Overview
-        </ThemedText>
-        <ThemedText style={styles.text}>
-          CartPartners is designed to maximize your interaction with the rest of your golfing buddies. It does
-          this by ensuring your cart partners are different from round to round.
+        <ThemedText type="title" style={[styles.title, { marginTop: 20, marginBottom: 5 }]}>
+          Restore Database
         </ThemedText>
 
-        <ThemedText type="subtitle" style={styles.sectionTitle}>
-          App Features
+        <ThemedText>
+          WARNING: Restoring the CartPartner Database will replace all the data that you are currently using
+          with the data from a backed-up database.
         </ThemedText>
-
-        <ThemedText type="subtitle" style={styles.subTitle}>
-          Rounds Tab
-        </ThemedText>
-        <ThemedText style={styles.text}>
-          This is were you define your round by specifying the course and date. Once created tap on the round
-          to open the line-up tab for the round.
-        </ThemedText>
-
-        <ThemedText type="subtitle" style={styles.subTitle}>
-          Line-up Tab
-        </ThemedText>
-        <ThemedText style={styles.text}>
-          This tab is used to specify the players that will be playing for this round. The list of players
-          that is shown comes for all available players with their status set to available. To manage the list
-          of available players press the icon on the top right of the screen.
-        </ThemedText>
-
-        <ThemedText type="subtitle" style={styles.subTitle}>
-          Groups Tab
-        </ThemedText>
-        <ThemedText style={styles.text}>
-          Create and manage the Tee Time Groupings for the specified round. Press Generate to create the
-          Groups for the round. If the Groups have already been created you can use Regenerate to update the
-          set of groups. Once satisfied with the line-up use the airplane icon to create an email to all the
-          player informing them of the groups. You can use the icon on the top right of the screen to manually
-          set the players for any number of groups.
-        </ThemedText>
+        <ThemedView
+          style={{
+            margin: 10,
+            marginBottom: 20,
+            borderColor: iconButton,
+            borderWidth: 1,
+            borderRadius: 6,
+          }}
+        >
+          <Button title="Restore Database from backup" onPress={handleImportDb} />
+        </ThemedView>
       </ThemedView>
     </ScrollView>
   );
