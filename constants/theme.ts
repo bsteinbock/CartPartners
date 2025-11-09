@@ -9,6 +9,8 @@ const tintColorLight = '#0a7ea4';
 const tintColorDark = '#fff';
 export const deleteBackgroundColor = '#C03403';
 
+export const iosKeyboardToolbarOffset = 84;
+
 export const Colors = {
   light: {
     text: '#11181C',

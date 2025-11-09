@@ -1,6 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedTextInput } from '@/components/themed-textinput';
 import { ThemedView } from '@/components/themed-view';
+import { iosKeyboardToolbarOffset } from '@/constants/theme';
 import { Player, useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { useFocusEffect } from 'expo-router';
@@ -257,7 +258,8 @@ export default function MessageScreen() {
           </ThemedView>
         </ThemedView>
       </KeyboardAvoidingView>
-      {Platform.OS === 'ios' && <KeyboardToolbar offset={{ opened: 84 }} />}
+      {Platform.OS === 'ios' && <KeyboardToolbar offset={{ opened: iosKeyboardToolbarOffset }} />}
+      {Platform.OS === 'android' && <KeyboardToolbar />}
     </>
   );
 }
