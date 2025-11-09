@@ -12,7 +12,7 @@ import {
   generateNextRoundGroups,
   getGroupPlayersByRoundId,
   getMailtoStrings,
-  getMobilePhoneNumbers,
+  getMobilePhoneNumbersForGroups,
   groupPlayersMatchActivePlayers,
   reportGroupsWithNames,
 } from '@/lib/cart-utils';
@@ -161,14 +161,69 @@ export default function GroupsScreen() {
     }
   }, [currentRoundGroups, currentRoundPlayerIds]);
 
-  const sendTextMessage = async (addresses: string | string[], message: string) => {
+  const sendTextMessage = async (addresses: string[] | string, message: string) => {
     const isAvailable = await SMS.isAvailableAsync();
     if (!isAvailable) {
       Alert.alert('SMS not available on this device');
       return;
     }
-    //console.log('phones', addresses);
-    const { result } = await SMS.sendSMSAsync(addresses, message);
+
+    // Normalize addresses into an array
+    const recipients = Array.isArray(addresses) ? addresses.filter(Boolean) : [addresses];
+    if (recipients.length === 0) {
+      Alert.alert('No valid phone numbers found');
+      return;
+    }
+
+    // --- Split recipients into batches of 20 ---
+    const chunkSize = 20;
+    let numberGroups: string[][] = [];
+    for (let i = 0; i < recipients.length; i += chunkSize) {
+      numberGroups.push(recipients.slice(i, i + chunkSize));
+    }
+
+    // --- Balance the final groups ---
+    if (numberGroups.length > 1) {
+      const lastGroup = numberGroups[numberGroups.length - 1];
+      const secondLastGroup = numberGroups[numberGroups.length - 2];
+
+      // If the last group is very small (<=5), pull some from the previous one
+      if (lastGroup.length <= 5 && secondLastGroup.length > 5) {
+        const needed = 6 - lastGroup.length; // aim for ~6 or more in the last batch
+        const moved = secondLastGroup.splice(-needed);
+        numberGroups[numberGroups.length - 1] = [...moved, ...lastGroup];
+      }
+    }
+
+    // --- Confirm before sending multiple messages ---
+    if (numberGroups.length > 1) {
+      const proceed = await new Promise<boolean>((resolve) => {
+        Alert.alert(
+          'Multiple Messages Required',
+          `You have ${recipients.length} recipients.\n\nThis will send ${numberGroups.length} separate messages (max 20 recipients each). Proceed?`,
+          [
+            { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+            { text: 'OK', onPress: () => resolve(true) },
+          ],
+        );
+      });
+      if (!proceed) return;
+    }
+
+    try {
+      // --- Send messages sequentially ---
+      for (let i = 0; i < numberGroups.length; i++) {
+        const group = numberGroups[i];
+        if (numberGroups.length > 1) {
+          Alert.alert(`Sending message ${i + 1} of ${numberGroups.length}...`);
+        }
+
+        await SMS.sendSMSAsync(group, message);
+      }
+    } catch (error) {
+      console.error('Error sending SMS:', error);
+      Alert.alert('Error', 'Failed to send one or more messages.');
+    }
   };
 
   const informPlayers = async () => {
@@ -180,7 +235,7 @@ export default function GroupsScreen() {
     const textMessageBody = `Cart Groups - ${pickedRound?.label}\n\n${bodyText}`;
 
     const addresses = getMailtoStrings(currentRoundGroups, players);
-    const mobileNumbers = getMobilePhoneNumbers(currentRoundGroups, players);
+    const mobileNumbers = getMobilePhoneNumbersForGroups(currentRoundGroups, players);
 
     try {
       Alert.alert('Send Groups Summary', 'Select method of sharing', [

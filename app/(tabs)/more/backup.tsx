@@ -9,7 +9,7 @@ import * as Sharing from 'expo-sharing';
 import React from 'react';
 import { Alert, Button, Platform, ScrollView, StyleSheet } from 'react-native';
 
-export default function AboutScreen() {
+export default function BackupScreen() {
   const { refreshAll } = useDbStore();
   const iconButton = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
   const version = Application.nativeApplicationVersion || 'Unknown';

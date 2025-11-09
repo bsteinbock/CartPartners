@@ -332,7 +332,7 @@ export function reportGroupsWithNames(groups: GroupPlayers[], allPlayers: Player
  * @param allPlayers - Array of all Player objects
  * @returns string[] - Array of mobile phone numbers'
  */
-export function getMobilePhoneNumbers(groups: GroupPlayers[], allPlayers: Player[]): string[] {
+export function getMobilePhoneNumbersForGroups(groups: GroupPlayers[], allPlayers: Player[]): string[] {
   const playerMap: Record<number, Player> = {};
   for (const player of allPlayers) {
     playerMap[player.id] = player;
