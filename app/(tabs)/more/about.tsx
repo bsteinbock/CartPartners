@@ -46,17 +46,17 @@ export default function AboutScreen() {
           long-press on a round, you will be taken to a screen where you can edit its details. You can also
           swipe left on a round to delete it and all associated data. A round is defined by specifying the
           course, date, and tee-time information. The tee-time details appear in the announcement sent to
-          players. Tapping a round opens its Line-up tab.
+          players. Tapping a round opens its Lineup tab.
         </ThemedText>
 
         <ThemedText type="subtitle" style={styles.subTitle}>
-          Line-up Tab
+          Lineup Tab
         </ThemedText>
         <ThemedText style={styles.text}>
           Use this tab to specify the players participating in a particular round. The player list includes
           all golfers whose status is set to “available.” To manage the list of available players, tap the
-          icon at the top right of the screen. Once the line-up is finalized, press the Groups icon to open
-          the Groups tab.
+          icon at the top right of the screen. Once the lineup is finalized, press the Groups icon to open the
+          Groups tab.
         </ThemedText>
 
         <ThemedText type="subtitle" style={styles.subTitle}>
@@ -64,7 +64,7 @@ export default function AboutScreen() {
         </ThemedText>
         <ThemedText style={styles.text}>
           Create and manage the tee-time groupings for a round. Press “Generate” to create the groups, or
-          “Regenerate” to update them if they already exist. Once you are satisfied with the line-up, use the
+          “Regenerate” to update them if they already exist. Once you are satisfied with the lineup, use the
           airplane icon to send an email to all players informing them of their groups. You can also use the
           icon at the top right of the screen to manually adjust the players in any group. After generating
           groups, you can modify their order or swap players by selecting a group. When a group is selected,

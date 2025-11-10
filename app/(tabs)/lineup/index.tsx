@@ -95,7 +95,7 @@ export default function LineupScreen() {
       <ThemedView style={styles.container}>
         <ThemedView style={styles.header}>
           <ThemedView style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <ThemedText type="title">Player Line-up</ThemedText>
+            <ThemedText type="title">Player Lineup</ThemedText>
             <Pressable
               onPress={() => {
                 router.push('/(tabs)/lineup/players');
@@ -107,7 +107,7 @@ export default function LineupScreen() {
 
           {rounds.length === 0 ? (
             <ThemedText type="defaultSemiBold" style={{ color: errorText, padding: 10 }}>
-              At least one Rounds must be defined before a line-up of players can be set.
+              At least one Rounds must be defined before a lineup of players can be set.
             </ThemedText>
           ) : (
             <>

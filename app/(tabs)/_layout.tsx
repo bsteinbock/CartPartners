@@ -29,7 +29,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="lineup"
         options={{
-          title: 'Line-up',
+          title: 'Lineup',
           popToTopOnBlur: true,
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="figure.golf" color={color} />,
           headerShown: false,

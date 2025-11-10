@@ -467,8 +467,7 @@ export default function GroupsScreen() {
           </View>
           {rounds.length === 0 ? (
             <ThemedText type="defaultSemiBold" style={{ color: errorText, padding: 10 }}>
-              At least one Rounds must be defined and its line-up of players set before Groups can be
-              generated.
+              At least one round must be defined and its lineup of players set before groups can be generated.
             </ThemedText>
           ) : (
             <>
@@ -481,7 +480,7 @@ export default function GroupsScreen() {
               />
               {currentRoundPlayerIds.length === 0 ? (
                 <ThemedText type="defaultSemiBold" style={{ color: errorText, padding: 10 }}>
-                  The line-up of players for this round has not been set. Please return to the Rounds tab and
+                  The lineup of players for this round has not been set. Please return to the Rounds tab and
                   tap the round to select players.
                 </ThemedText>
               ) : (
@@ -518,9 +517,9 @@ export default function GroupsScreen() {
                   </ThemedView>
                   {showMismatchPlayerWarning && (
                     <ThemedText type="defaultSemiBold" style={{ color: errorText, padding: 10 }}>
-                      The line-up of players for this round has changed since the groups were created. It is
-                      recommended that the groups be regenerate to handle line-up changes. Any previous manual
-                      groups will need to be recreated before pressing the Generate/Regenerate Button.
+                      The lineup of players for this round has changed since the groups were created. It is
+                      recommended that the groups be regenerate to handle lineup changes. Any previous manual
+                      groups will need to be recreated before pressing the Generate/Regenerate button.
                     </ThemedText>
                   )}
                   {currentRoundGroups.length > 0 && manualGroupList.length === 0 && (
@@ -578,7 +577,7 @@ export default function GroupsScreen() {
                       <ThemedView>
                         <ThemedText type="subtitle">Manual Tee Groups</ThemedText>
                         <ThemedText style={{ color: errorText, paddingBottom: 10 }} type="default">
-                          You must press Generate to build groups that include the rest of the players.
+                          Press Generate to build groups that include the remaining players.
                         </ThemedText>
                       </ThemedView>
                       <ThemedView style={{ flex: 1 }}>
