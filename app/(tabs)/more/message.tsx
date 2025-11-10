@@ -180,7 +180,7 @@ export default function MessageScreen() {
                   alignItems: 'center',
                   borderBottomWidth: 1,
                   borderColor: '#ddd',
-                  marginLeft: 20,
+                  marginLeft: 15,
                   paddingBottom: 5,
                   gap: 30,
                 }}

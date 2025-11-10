@@ -138,6 +138,7 @@ export default function LineupScreen() {
                 alignItems: 'center',
                 borderBottomWidth: 1,
                 borderColor: '#ddd',
+                marginLeft: 8,
                 gap: 30,
               }}
             >
