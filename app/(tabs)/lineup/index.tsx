@@ -3,7 +3,7 @@ import { ThemedView } from '@/components/themed-view';
 import BottomSheetContainer from '@/components/ui/BottomSheetContainer';
 import OptionList, { OptionEntry } from '@/components/ui/OptionList';
 import { OptionPickerItem } from '@/components/ui/OptionPickerItem';
-import { useDbStore } from '@/hooks/use-dbStore';
+import { Player, useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { formatDate } from '@/lib/formatters';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -25,6 +25,11 @@ export default function LineupScreen() {
   const router = useRouter();
 
   const [selectedPlayers, setSelectedPlayers] = useState<number[]>([]);
+  const [availablePlayers, setAvailablePlayers] = useState<Player[]>([]);
+
+  useEffect(() => {
+    setAvailablePlayers(players.filter((p) => p.available));
+  }, [players]);
 
   useEffect(() => {
     const activePlayers = roundPlayers
@@ -122,7 +127,7 @@ export default function LineupScreen() {
           )}
         </ThemedView>
 
-        {players.length === 0 ? (
+        {availablePlayers.length === 0 ? (
           <ThemedView style={[styles.stepContainer, { margin: 12 }]}>
             <ThemedText>
               No players available. Go to Players Management screen using the icon on the top right of this
@@ -156,7 +161,7 @@ export default function LineupScreen() {
             <FlatList
               style={styles.list}
               contentContainerStyle={styles.listContent}
-              data={players}
+              data={availablePlayers}
               keyExtractor={(item) => String(item.id)}
               renderItem={({ item }) => (
                 <ThemedView
