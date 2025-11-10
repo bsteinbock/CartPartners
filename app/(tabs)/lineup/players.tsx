@@ -16,6 +16,7 @@ export default function PlayersScreen() {
   const { players, addPlayers, updatePlayer } = useDbStore();
   const iconColor = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
   const textDim = useThemeColor({ light: undefined, dark: undefined }, 'textDim');
+  const switchTrackColor = useThemeColor({ light: undefined, dark: undefined }, 'switchTrackColor');
 
   const startEdit = (id?: number) => {
     if (typeof id === 'undefined') return;
@@ -233,7 +234,11 @@ export default function PlayersScreen() {
                   </Pressable>
                 </View>
                 <View style={{ alignItems: 'center' }}>
-                  <Switch value={!!item.available} onValueChange={() => toggleAvailable(item)} />
+                  <Switch
+                    trackColor={{ true: switchTrackColor }}
+                    value={!!item.available}
+                    onValueChange={() => toggleAvailable(item)}
+                  />
                 </View>
               </View>
             )}

@@ -1,6 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedTextInput } from '@/components/themed-textinput';
 import { ThemedView } from '@/components/themed-view';
+import ThemedButton from '@/components/ui/ThemedButton';
 import { iosKeyboardToolbarOffset } from '@/constants/theme';
 import { Player, useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
@@ -8,7 +9,7 @@ import { useFocusEffect } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import * as SMS from 'expo-sms';
 import React, { useEffect, useState } from 'react';
-import { Alert, Button, Linking, Platform, StyleSheet } from 'react-native';
+import { Alert, Linking, Platform, StyleSheet } from 'react-native';
 import { FlatList, Switch } from 'react-native-gesture-handler';
 import { KeyboardAvoidingView, KeyboardToolbar } from 'react-native-keyboard-controller';
 
@@ -21,6 +22,7 @@ export default function MessageScreen() {
   const [availablePlayers, setAvailablePlayers] = useState<Player[]>([]);
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<number[]>([]);
   const [groupCoordinatorId, setGroupCoordinatorId] = useState<number>(0);
+  const switchTrackColor = useThemeColor({ light: undefined, dark: undefined }, 'switchTrackColor');
 
   useEffect(() => {
     setAvailablePlayers(players.filter((p) => p.available));
@@ -185,6 +187,7 @@ export default function MessageScreen() {
               >
                 <ThemedView style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                   <Switch
+                    trackColor={{ true: switchTrackColor }}
                     value={allSelected}
                     onValueChange={toggleAllPlayers}
                     disabled={players.length === 0}
@@ -209,6 +212,7 @@ export default function MessageScreen() {
                   >
                     <ThemedView style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                       <Switch
+                        trackColor={{ true: switchTrackColor }}
                         value={selectedPlayerIds.includes(item.id)}
                         onValueChange={(_val) => {
                           void togglePlayer(item.id);
@@ -235,7 +239,7 @@ export default function MessageScreen() {
               borderRadius: 6,
             }}
           >
-            <Button
+            <ThemedButton
               title="Email"
               disabled={selectedPlayerIds.length === 0 || message.length === 0 || title.length === 0}
               onPress={sendEmail}
@@ -250,7 +254,7 @@ export default function MessageScreen() {
               borderRadius: 6,
             }}
           >
-            <Button
+            <ThemedButton
               title="Text Msg"
               disabled={selectedPlayerIds.length === 0 || message.length === 0}
               onPress={sendTextMessage}
@@ -259,7 +263,6 @@ export default function MessageScreen() {
         </ThemedView>
       </KeyboardAvoidingView>
       {Platform.OS === 'ios' && <KeyboardToolbar offset={{ opened: iosKeyboardToolbarOffset }} />}
-      {Platform.OS === 'android' && <KeyboardToolbar />}
     </>
   );
 }

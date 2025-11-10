@@ -1,23 +1,27 @@
 // use-DbStore.ts
 import { formatPhoneNumberToE164 } from '@/lib/cart-utils';
-import { File, Paths } from 'expo-file-system';
+import { Directory, File, Paths } from 'expo-file-system';
 import * as SQLite from 'expo-sqlite';
 import { create } from 'zustand';
 
+const DB_SUBDIR = 'db';
 const DB_NAME = 'cart-partners.db';
 
 let db: SQLite.SQLiteDatabase | null = null;
 
-function getDb() {
-  if (!db) {
-    db = SQLite.openDatabaseSync(DB_NAME);
-  }
-  return db;
-}
-
 export function getDatabasePath(): string {
   const db = getDb();
   return db.databasePath;
+}
+
+function getDb() {
+  if (!db) {
+    const directory = new Directory(Paths.document, DB_SUBDIR);
+    if (!directory.exists) directory.create({ idempotent: true });
+
+    db = SQLite.openDatabaseSync(DB_NAME, undefined, directory.uri);
+  }
+  return db;
 }
 
 // ------------------- INIT DB -------------------
@@ -89,7 +93,7 @@ export function initDb() {
 export const restoreDatabaseFromFile = async (selectedFileUri: string): Promise<boolean> => {
   try {
     // Construct file / directory references
-    const currentDbFile = new File(getDatabasePath());
+    const currentDbFile = new File(Paths.document, DB_SUBDIR, DB_NAME);
     const sourceFile = new File(selectedFileUri);
 
     const now = new Date();
@@ -119,7 +123,7 @@ export const restoreDatabaseFromFile = async (selectedFileUri: string): Promise<
 
     const expectedTables = ['players', 'rounds', 'round_players', 'groups', 'group_players'];
 
-    await testDb.closeAsync();
+    testDb.closeSync();
     for (const table of expectedTables) {
       if (!tables.includes(table)) {
         throw new Error(`Invalid database: missing table ${table}`);
@@ -128,7 +132,7 @@ export const restoreDatabaseFromFile = async (selectedFileUri: string): Promise<
 
     // Replace current DB with selectedFile
     if (db) {
-      await db.closeAsync();
+      db.closeSync();
       db = null;
     }
 

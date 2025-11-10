@@ -19,6 +19,7 @@ export default function LineupScreen() {
   const [roundOptions, setRoundOptions] = useState<OptionEntry[]>([]);
   const backgroundColor = useThemeColor({ light: undefined, dark: undefined }, 'background');
   const iconColor = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
+  const switchTrackColor = useThemeColor({ light: undefined, dark: undefined }, 'switchTrackColor');
   const errorText = useThemeColor({ light: undefined, dark: undefined }, 'errorText');
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const router = useRouter();
@@ -142,6 +143,7 @@ export default function LineupScreen() {
             >
               <ThemedView style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <Switch
+                  trackColor={{ true: switchTrackColor }}
                   value={allSelected}
                   onValueChange={toggleAllPlayers}
                   disabled={players.length === 0}
@@ -166,6 +168,7 @@ export default function LineupScreen() {
                 >
                   <ThemedView style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                     <Switch
+                      trackColor={{ true: switchTrackColor }}
                       value={selectedPlayers.includes(item.id)}
                       onValueChange={(_val) => {
                         void togglePlayer(item.id);

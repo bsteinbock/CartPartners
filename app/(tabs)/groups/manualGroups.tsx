@@ -20,6 +20,7 @@ export default function DefineManualGroups() {
   const iconButton = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
   const disabledColor = useThemeColor({ light: undefined, dark: undefined }, 'disabledColor');
   const backgroundColor = useThemeColor({ light: undefined, dark: undefined }, 'background');
+  const switchTrackColor = useThemeColor({ light: undefined, dark: undefined }, 'switchTrackColor');
   const [manualGroupsPlayersNames, setManualGroupsPlayersNames] = useState<string[]>([]);
 
   const router = useRouter();
@@ -140,7 +141,11 @@ export default function DefineManualGroups() {
 
   const renderPlayer = ({ item }: { item: Player }) => (
     <ThemedView style={[styles.playerRow, { borderBottomColor: borderColor, borderBottomWidth: 1 }]}>
-      <Switch value={selectedPlayers.includes(item.id)} onValueChange={() => togglePlayer(item.id)} />
+      <Switch
+        trackColor={{ true: switchTrackColor }}
+        value={selectedPlayers.includes(item.id)}
+        onValueChange={() => togglePlayer(item.id)}
+      />
       <ThemedText style={styles.playerName}>{item.name}</ThemedText>
     </ThemedView>
   );
