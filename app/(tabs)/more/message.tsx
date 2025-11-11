@@ -18,11 +18,12 @@ export default function MessageScreen() {
   const textDim = useThemeColor({ light: undefined, dark: undefined }, 'textDim');
   const [title, setTitle] = useState<string>('');
   const [message, setMessage] = useState<string>('');
-  const { players } = useDbStore();
+  const { players, leagues, currentLeagueId } = useDbStore();
   const [availablePlayers, setAvailablePlayers] = useState<Player[]>([]);
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<number[]>([]);
   const [groupCoordinatorId, setGroupCoordinatorId] = useState<number>(0);
   const switchTrackColor = useThemeColor({ light: undefined, dark: undefined }, 'switchTrackColor');
+  const league = leagues.find((l) => l.id === currentLeagueId);
 
   useEffect(() => {
     setAvailablePlayers(players.filter((p) => p.available));
@@ -193,7 +194,12 @@ export default function MessageScreen() {
                     disabled={players.length === 0}
                   />
                 </ThemedView>
-                <ThemedText style={{ fontWeight: '700' }}>{playerLabel}</ThemedText>
+                <ThemedView>
+                  <ThemedText style={{ fontWeight: '700' }}>{playerLabel}</ThemedText>
+                  <ThemedText type="small" style={{ marginTop: 4 }}>
+                    {league?.name}
+                  </ThemedText>
+                </ThemedView>
               </ThemedView>
 
               <FlatList

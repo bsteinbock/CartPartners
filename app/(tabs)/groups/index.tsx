@@ -3,6 +3,7 @@ import { ThemedView } from '@/components/themed-view';
 import BottomSheetContainer from '@/components/ui/BottomSheetContainer';
 import OptionList, { OptionEntry } from '@/components/ui/OptionList';
 import { OptionPickerItem } from '@/components/ui/OptionPickerItem';
+import ThemedButton from '@/components/ui/ThemedButton';
 import { GroupPlayers, useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import {
@@ -23,16 +24,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import * as SMS from 'expo-sms';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  Alert,
-  Button,
-  FlatList,
-  Linking,
-  Pressable,
-  StyleSheet,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { Alert, FlatList, Linking, Pressable, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function GroupsScreen() {
@@ -48,6 +40,8 @@ export default function GroupsScreen() {
     setCurrentRoundId,
     setManualGroupList,
     manualGroupList,
+    leagues,
+    currentLeagueId,
   } = useDbStore();
   const [currentRoundPlayerIds, setCurrentRoundPlayerIds] = useState<number[]>([]);
   const [isRoundPickerVisible, setIsRoundPickerVisible] = useState<boolean>(false);
@@ -69,6 +63,7 @@ export default function GroupsScreen() {
   const router = useRouter();
   const [groupCoordinatorId, setGroupCoordinatorId] = useState<number>(0);
   const [myMobileNumber, setMyMobileNumber] = useState<string | null>(null);
+  const league = leagues.find((l) => l.id === currentLeagueId);
 
   // useFocusEffect runs every time this screen is focused
   useFocusEffect(
@@ -454,7 +449,11 @@ export default function GroupsScreen() {
       <ThemedView style={{ flex: 1 }}>
         <ThemedView style={{ flex: 1, paddingHorizontal: 12, paddingVertical: 12 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <ThemedText type="title">Tee Groups</ThemedText>
+            <ThemedView>
+              <ThemedText type="title">Tee Groups</ThemedText>
+              <ThemedText type="small">{league?.name}</ThemedText>
+            </ThemedView>
+
             {currentRoundPlayerIds.length > 0 && (
               <Pressable
                 onPress={() => {
@@ -496,7 +495,7 @@ export default function GroupsScreen() {
                     }}
                   >
                     <ThemedView style={{ borderColor: iconButton, borderWidth: 1, borderRadius: 6 }}>
-                      <Button
+                      <ThemedButton
                         title={
                           currentRoundGroups.length > 0 && manualGroupList.length === 0
                             ? 'Regenerate Groups'

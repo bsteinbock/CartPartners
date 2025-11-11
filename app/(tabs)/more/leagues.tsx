@@ -9,6 +9,7 @@ import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import React, { useRef, useState } from 'react';
 import { Modal, StyleSheet, TouchableOpacity } from 'react-native';
 import { FlatList } from 'react-native-gesture-handler';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function LeaguesScreen() {
   const { leagues, addLeague } = useDbStore();
@@ -18,6 +19,7 @@ export default function LeaguesScreen() {
   const iconButton = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
   const disabledColor = useThemeColor({ light: undefined, dark: undefined }, 'disabledColor');
   const border = useThemeColor({ light: undefined, dark: undefined }, 'border');
+  const insets = useSafeAreaInsets();
 
   function openAdd() {
     setNewName('');
@@ -72,7 +74,7 @@ export default function LeaguesScreen() {
       )}
 
       <Modal visible={isAddModalVisible} animationType="slide" transparent>
-        <ThemedView style={styles.modalBackdrop}>
+        <ThemedView style={[styles.modalBackdrop, { paddingTop: insets.top + 60 }]}>
           <ThemedView style={styles.modal}>
             <ThemedText style={styles.modalTitle}>Set League / Outing Name</ThemedText>
             <ThemedTextInput
@@ -143,8 +145,8 @@ const styles = StyleSheet.create({
 
   modalBackdrop: {
     flex: 1,
-    justifyContent: 'center',
     padding: 20,
+    backgroundColor: 'rgba(0,0,0,0.55)',
   },
   modal: {
     borderRadius: 8,

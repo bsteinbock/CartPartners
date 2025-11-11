@@ -13,7 +13,16 @@ import { FlatList, Pressable, StyleSheet, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function LineupScreen() {
-  const { rounds, players, roundPlayers, setRoundPlayers, setCurrentRoundId, currentRoundId } = useDbStore();
+  const {
+    rounds,
+    players,
+    roundPlayers,
+    setRoundPlayers,
+    setCurrentRoundId,
+    currentRoundId,
+    leagues,
+    currentLeagueId,
+  } = useDbStore();
   const [isRoundPickerVisible, setIsRoundPickerVisible] = useState<boolean>(false);
   const [pickedRound, setPickedRound] = useState<OptionEntry | undefined>(undefined);
   const [roundOptions, setRoundOptions] = useState<OptionEntry[]>([]);
@@ -23,6 +32,7 @@ export default function LineupScreen() {
   const errorText = useThemeColor({ light: undefined, dark: undefined }, 'errorText');
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const router = useRouter();
+  const league = leagues.find((l) => l.id === currentLeagueId);
 
   const [selectedPlayers, setSelectedPlayers] = useState<number[]>([]);
   const [availablePlayers, setAvailablePlayers] = useState<Player[]>([]);
@@ -100,7 +110,10 @@ export default function LineupScreen() {
       <ThemedView style={styles.container}>
         <ThemedView style={styles.header}>
           <ThemedView style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <ThemedText type="title">Player Lineup</ThemedText>
+            <ThemedView>
+              <ThemedText type="title">Player Lineup</ThemedText>
+              <ThemedText type="small">{league?.name}</ThemedText>
+            </ThemedView>
             <Pressable
               onPress={() => {
                 router.push('/(tabs)/lineup/players');

@@ -1,11 +1,12 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import ThemedButton from '@/components/ui/ThemedButton';
 import { ManualGroupList, Player, RoundPlayer, useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { formatManualGroupPlayersByNames, getGroupSizes } from '@/lib/cart-utils';
 import { Stack, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, Button, FlatList, StyleSheet, Switch, View } from 'react-native';
+import { Alert, FlatList, StyleSheet, Switch, View } from 'react-native';
 
 export default function DefineManualGroups() {
   const { roundPlayers, currentRoundId, setManualGroupList, manualGroupList, players, setGroupsForRound } =
@@ -184,7 +185,7 @@ export default function DefineManualGroups() {
               borderRadius: 6,
             }}
           >
-            <Button
+            <ThemedButton
               title="Save Selected as Group"
               onPress={saveGroup}
               disabled={selectedPlayers.length !== currentGroupSize || currentGroupSize === 0}
@@ -223,10 +224,10 @@ export default function DefineManualGroups() {
               borderRadius: 6,
             }}
           >
-            <Button title="Finish" onPress={finishGrouping} disabled={manualGroups.length === 0} />
+            <ThemedButton title="Finish" onPress={finishGrouping} disabled={manualGroups.length === 0} />
           </ThemedView>
           <ThemedView style={{ margin: 10, borderColor: iconButton, borderWidth: 1, borderRadius: 6 }}>
-            <Button title="Cancel" onPress={cancelGrouping} />
+            <ThemedButton title="Cancel" onPress={cancelGrouping} />
           </ThemedView>
         </View>
       </ThemedView>

@@ -1,5 +1,6 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import ThemedButton from '@/components/ui/ThemedButton';
 import { getDatabasePath, restoreDatabaseFromFile, useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import * as Application from 'expo-application';
@@ -7,7 +8,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import React from 'react';
-import { Alert, Button, Platform, ScrollView, StyleSheet } from 'react-native';
+import { Alert, Platform, ScrollView, StyleSheet } from 'react-native';
 
 export default function BackupScreen() {
   const { refreshAll } = useDbStore();
@@ -134,7 +135,7 @@ export default function BackupScreen() {
             borderRadius: 6,
           }}
         >
-          <Button title="Backup Database" onPress={handleExportDb} />
+          <ThemedButton title="Backup Database" onPress={handleExportDb} />
         </ThemedView>
         <ThemedText type="title" style={[styles.title, { marginTop: 20, marginBottom: 5 }]}>
           Restore Database
@@ -153,7 +154,7 @@ export default function BackupScreen() {
             borderRadius: 6,
           }}
         >
-          <Button title="Restore Database from backup" onPress={handleImportDb} />
+          <ThemedButton title="Restore Database from backup" onPress={handleImportDb} />
         </ThemedView>
       </ThemedView>
     </ScrollView>

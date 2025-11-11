@@ -531,10 +531,13 @@ export const useDbStore = create<DbState>((set, get) => ({
       db.runSync('DELETE FROM round_players WHERE player_id = ?', [id]);
       db.runSync('DELETE FROM group_players WHERE player_id = ?', [id]);
     });
-    const { fetchPlayers, fetchGroups, fetchRoundPlayers } = useDbStore.getState();
+    const { fetchPlayers, fetchGroups, fetchRoundPlayers, fetchGroupPlayers, setManualGroupList } =
+      useDbStore.getState();
     fetchPlayers();
     fetchGroups();
     fetchRoundPlayers();
+    setManualGroupList([]);
+    fetchGroupPlayers();
   },
 
   // Update an existing player

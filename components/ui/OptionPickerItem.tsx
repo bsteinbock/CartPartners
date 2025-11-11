@@ -1,6 +1,7 @@
 import { useThemeColor } from '@/hooks/use-theme-color';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Pressable, StyleProp, StyleSheet, TextStyle, ViewStyle } from 'react-native';
+import { StyleProp, StyleSheet, TextStyle, ViewStyle } from 'react-native';
+import { Pressable } from 'react-native-gesture-handler';
 import { ThemedText } from '../themed-text';
 import { ThemedTextInput } from '../themed-textinput';
 import { ThemedView } from '../themed-view';
@@ -72,48 +73,25 @@ export const OptionPickerItem: React.FC<OptionPickerItemProps> = ({
   const iconColor = useThemeColor({ light: undefined, dark: undefined }, 'icon');
   const textDim = useThemeColor({ light: undefined, dark: undefined }, 'textDim');
 
-  if (!editable) {
-    return (
-      <Pressable onPress={onPickerButtonPress}>
-        <ThemedView style={[styles.optionPickerRow, containerStyle]}>
-          <ThemedView style={{ flex: 1, gap: 6 }}>
-            {label && <ThemedText>{label}</ThemedText>}
-            <ThemedTextInput
-              style={inputStyle}
-              placeholder={placeholder}
-              placeholderTextColor={textDim}
-              onChangeText={onOptionLabelChange}
-              value={optionLabel}
-              editable={editable}
-            />
-          </ThemedView>
-          <ThemedView style={[styles.pickerButtonContainer, { justifyContent: 'flex-end' }]}>
-            <Ionicons name="ellipsis-horizontal-circle" size={36} color={iconColor} />
-          </ThemedView>
-        </ThemedView>
-      </Pressable>
-    );
-  }
-
   return (
-    <ThemedView style={[styles.optionPickerRow, containerStyle]}>
-      <ThemedView style={{ flex: 1 }}>
-        {label && <ThemedText>{label}</ThemedText>}
-        <ThemedTextInput
-          style={inputStyle}
-          placeholder={placeholder}
-          placeholderTextColor={textDim}
-          onChangeText={onOptionLabelChange}
-          value={optionLabel}
-          editable={editable}
-        />
-      </ThemedView>
-      <Pressable onPress={onPickerButtonPress} style={{ justifyContent: 'flex-end' }}>
-        <ThemedView style={styles.pickerButtonContainer}>
+    <Pressable onPress={onPickerButtonPress}>
+      <ThemedView style={[styles.optionPickerRow, containerStyle]}>
+        <ThemedView style={{ flex: 1, gap: 6 }}>
+          {label && <ThemedText>{label}</ThemedText>}
+          <ThemedTextInput
+            style={inputStyle}
+            placeholder={placeholder}
+            placeholderTextColor={textDim}
+            onChangeText={onOptionLabelChange}
+            value={optionLabel}
+            editable={false}
+          />
+        </ThemedView>
+        <ThemedView style={[styles.pickerButtonContainer, { justifyContent: 'flex-end' }]}>
           <Ionicons name="ellipsis-horizontal-circle" size={36} color={iconColor} />
         </ThemedView>
-      </Pressable>
-    </ThemedView>
+      </ThemedView>
+    </Pressable>
   );
 };
 

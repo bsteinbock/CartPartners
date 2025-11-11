@@ -1,13 +1,16 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert, Button, Keyboard, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Alert, Keyboard, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedTextInput } from '@/components/themed-textinput';
 import { ThemedView } from '@/components/themed-view';
+import ThemedButton from '@/components/ui/ThemedButton';
+import { iosKeyboardToolbarOffset } from '@/constants/theme';
 import { useDbStore } from '@/hooks/use-dbStore';
+import { useThemeColor } from '@/hooks/use-theme-color';
 import { formatDate } from '@/lib/formatters';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
+import { KeyboardAwareScrollView, KeyboardToolbar } from 'react-native-keyboard-controller';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 
 type Params = {
@@ -19,6 +22,7 @@ export default function RoundEditScreen() {
   const { id } = useLocalSearchParams() as Params;
   const isNew = id === 'new' || !id;
   const { rounds, addRound, updateRound, currentLeagueId } = useDbStore();
+  const iconButton = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
 
   const [course, setCourse] = useState('');
   const [teeTimeInfo, setTeeTimeInfo] = useState('');
@@ -98,7 +102,7 @@ export default function RoundEditScreen() {
     <>
       <Stack.Screen options={{ title: 'Rounds' }} />
 
-      <KeyboardAwareScrollView bottomOffset={35}>
+      <KeyboardAwareScrollView bottomOffset={45}>
         <ThemedView style={{ flex: 1, padding: 16 }}>
           <ThemedText type="title">{isNew ? 'Add round' : 'Edit round'}</ThemedText>
           <View style={{ marginTop: 12 }}>
@@ -132,13 +136,31 @@ export default function RoundEditScreen() {
               returnKeyType="next"
             />
           </View>
-          <View style={{ marginTop: 16 }}>
-            <Button title="Save" onPress={onSave} />
-            <View style={{ height: 8 }} />
-            <Button title="Cancel" onPress={() => router.back()} />
+          <View style={{ flexDirection: 'row', justifyContent: 'space-evenly' }}>
+            <ThemedView
+              style={{
+                margin: 10,
+                borderColor: iconButton,
+                borderWidth: 1,
+                borderRadius: 6,
+              }}
+            >
+              <ThemedButton title="Save" onPress={onSave} />
+            </ThemedView>
+            <ThemedView
+              style={{
+                margin: 10,
+                borderColor: iconButton,
+                borderWidth: 1,
+                borderRadius: 6,
+              }}
+            >
+              <ThemedButton title="Cancel" onPress={() => router.back()} />
+            </ThemedView>
           </View>
         </ThemedView>
       </KeyboardAwareScrollView>
+      {Platform.OS === 'ios' && <KeyboardToolbar offset={{ opened: iosKeyboardToolbarOffset }} />}
 
       <DateTimePickerModal
         style={{ alignSelf: 'stretch' }}

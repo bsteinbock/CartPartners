@@ -111,11 +111,14 @@ export default function RoundsScreen() {
               </ThemedView>
             )}
             {rounds.length > 0 && (
-              <FlatList
-                data={rounds}
-                keyExtractor={(item) => String(item.id)}
-                renderItem={({ item }) => <SwipeableRound round={item} />}
-              />
+              <>
+                <ThemedView style={{ height: 1, backgroundColor: borderColor }} />
+                <FlatList
+                  data={rounds}
+                  keyExtractor={(item) => String(item.id)}
+                  renderItem={({ item }) => <SwipeableRound round={item} />}
+                />
+              </>
             )}
           </>
         </ThemedView>

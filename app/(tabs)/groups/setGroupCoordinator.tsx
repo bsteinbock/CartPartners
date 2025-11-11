@@ -3,13 +3,14 @@ import { ThemedView } from '@/components/themed-view';
 import BottomSheetContainer from '@/components/ui/BottomSheetContainer';
 import OptionList, { OptionEntry } from '@/components/ui/OptionList';
 import { OptionPickerItem } from '@/components/ui/OptionPickerItem';
+import ThemedButton from '@/components/ui/ThemedButton';
 import { useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import * as SMS from 'expo-sms';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Button, StyleSheet } from 'react-native';
+import { Alert, StyleSheet } from 'react-native';
 
 export default function SetGroupCoordinatorScreen() {
   const router = useRouter();
@@ -111,7 +112,7 @@ export default function SetGroupCoordinatorScreen() {
           borderRadius: 6,
         }}
       >
-        <Button title="Finish" onPress={handleSaveMyId} disabled={!pickedPlayer} />
+        <ThemedButton title="Finish" onPress={handleSaveMyId} disabled={!pickedPlayer} />
       </ThemedView>
       {playerOptions && isPlayerPickerVisible && (
         <BottomSheetContainer

@@ -1,5 +1,6 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import SwipeablePlayerItem from '@/components/ui/SwipeablePlayer';
 import { Player, useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { displayPhoneNumberFromE164 } from '@/lib/cart-utils';
@@ -9,14 +10,14 @@ import * as DocumentPicker from 'expo-document-picker';
 import { File, Paths } from 'expo-file-system';
 import { useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
-import { Alert, FlatList, Pressable, StyleSheet, Switch, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { FlatList } from 'react-native-gesture-handler';
 
 export default function PlayersScreen() {
   const router = useRouter();
-  const { players, addPlayers, updatePlayer, currentLeagueId } = useDbStore();
+  const { players, addPlayers, updatePlayer, currentLeagueId, leagues } = useDbStore();
   const iconColor = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
-  const textDim = useThemeColor({ light: undefined, dark: undefined }, 'textDim');
-  const switchTrackColor = useThemeColor({ light: undefined, dark: undefined }, 'switchTrackColor');
+  const league = leagues.find((l) => l.id === currentLeagueId);
 
   const startEdit = (id?: number) => {
     if (typeof id === 'undefined') return;
@@ -156,7 +157,10 @@ export default function PlayersScreen() {
             padding: 10,
           }}
         >
-          <ThemedText type="title">Players</ThemedText>
+          <ThemedView>
+            <ThemedText type="title">Players</ThemedText>
+            <ThemedText type="small">{league?.name}</ThemedText>
+          </ThemedView>
           <View style={{ flexDirection: 'row', gap: 30, alignItems: 'center', paddingRight: 10 }}>
             {players.length === 0 && (
               <Pressable onPress={importFromCSV}>
@@ -209,39 +213,7 @@ export default function PlayersScreen() {
                 </ThemedText>
               </ThemedView>
             )}
-            renderItem={({ item }) => (
-              <View
-                style={{
-                  padding: 12,
-                  borderBottomWidth: 1,
-                  borderColor: '#eee',
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                }}
-              >
-                <View style={{ flex: 1, marginRight: 12 }}>
-                  <Pressable onPress={() => startEdit(item.id)}>
-                    <View>
-                      <ThemedText>
-                        {item.name}
-                        {item.nickname ? ` (${item.nickname})` : ''}
-                      </ThemedText>
-                      <ThemedText numberOfLines={2} style={{ color: textDim }}>{`${
-                        item.email ?? 'not specified'
-                      }`}</ThemedText>
-                    </View>
-                  </Pressable>
-                </View>
-                <View style={{ alignItems: 'center' }}>
-                  <Switch
-                    trackColor={{ true: switchTrackColor }}
-                    value={!!item.available}
-                    onValueChange={() => toggleAvailable(item)}
-                  />
-                </View>
-              </View>
-            )}
+            renderItem={({ item }) => <SwipeablePlayerItem player={item} />}
           />
         )}
       </ThemedView>

@@ -1,8 +1,9 @@
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { useCallback, useEffect, useState } from 'react';
-import { Button, FlatList, Platform, Pressable, StyleProp, StyleSheet, TextStyle } from 'react-native';
+import { FlatList, Platform, Pressable, StyleProp, StyleSheet, TextStyle } from 'react-native';
 import { ThemedText } from '../themed-text';
 import { ThemedView } from '../themed-view';
+import ThemedButton from './ThemedButton';
 
 // Define types for the props
 export interface OptionEntry {
@@ -106,8 +107,8 @@ export default function OptionList({
       {showOkCancel && (
         <ThemedView style={{ borderTopColor: borderColor }}>
           <ThemedView style={[styles.saveButtonRow, { borderTopColor: borderColor }]}>
-            <Button title="Save" onPress={onOkSelected} />
-            <Button onPress={() => onCancel && onCancel()} title="Cancel" />
+            <ThemedButton title="Save" onPress={onOkSelected} />
+            <ThemedButton onPress={() => onCancel && onCancel()} title="Cancel" />
           </ThemedView>
         </ThemedView>
       )}

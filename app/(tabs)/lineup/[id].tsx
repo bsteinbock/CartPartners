@@ -1,13 +1,14 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedTextInput } from '@/components/themed-textinput';
 import { ThemedView } from '@/components/themed-view';
+import ThemedButton from '@/components/ui/ThemedButton';
 import { iosKeyboardToolbarOffset } from '@/constants/theme';
 import { useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { displayPhoneNumberFromE164, formatPhoneNumberToE164, generateNickname } from '@/lib/cart-utils';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, Button, Platform, StyleSheet } from 'react-native';
+import { Alert, Platform, StyleSheet } from 'react-native';
 import { KeyboardAwareScrollView, KeyboardToolbar } from 'react-native-keyboard-controller';
 
 export default function PlayerDetailScreen() {
@@ -139,7 +140,7 @@ export default function PlayerDetailScreen() {
                   borderRadius: 6,
                 }}
               >
-                <Button title={isNew ? 'Add Player' : 'Save Changes'} onPress={handleSave} />
+                <ThemedButton title={isNew ? 'Add Player' : 'Save Changes'} onPress={handleSave} />
               </ThemedView>
               <ThemedView
                 style={{
@@ -149,7 +150,7 @@ export default function PlayerDetailScreen() {
                   borderRadius: 6,
                 }}
               >
-                <Button title="Cancel" color={textDim} onPress={() => router.back()} />
+                <ThemedButton title="Cancel" color={textDim} onPress={() => router.back()} />
               </ThemedView>
             </ThemedView>
           </ThemedView>
