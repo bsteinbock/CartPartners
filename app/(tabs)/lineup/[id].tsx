@@ -17,7 +17,7 @@ export default function PlayerDetailScreen() {
   const iconButton = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
   const textDim = useThemeColor({ light: undefined, dark: undefined }, 'textDim');
 
-  const { players, addPlayer, updatePlayer } = useDbStore();
+  const { players, addPlayer, updatePlayer, currentLeagueId } = useDbStore();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [mobileNumber, setMobileNumber] = useState('');
@@ -50,14 +50,17 @@ export default function PlayerDetailScreen() {
     }
 
     if (isNew) {
-      addPlayer({
-        name: name.trim(),
-        email: email.trim(),
-        speedIndex: speed,
-        available: 1,
-        nickname: nickname.trim() ?? generateNickname(name.trim()),
-        mobile_number: formatPhoneNumberToE164(mobileNumber.trim()),
-      });
+      addPlayer(
+        {
+          name: name.trim(),
+          email: email.trim(),
+          speedIndex: speed,
+          available: 1,
+          nickname: nickname.trim() ?? generateNickname(name.trim()),
+          mobile_number: formatPhoneNumberToE164(mobileNumber.trim()),
+        },
+        currentLeagueId,
+      );
       Alert.alert('Player Added', `${name} has been added`);
     } else {
       updatePlayer(Number(id), {

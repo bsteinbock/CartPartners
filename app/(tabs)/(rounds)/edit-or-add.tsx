@@ -18,7 +18,7 @@ export default function RoundEditScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams() as Params;
   const isNew = id === 'new' || !id;
-  const { rounds, addRound, updateRound } = useDbStore();
+  const { rounds, addRound, updateRound, currentLeagueId } = useDbStore();
 
   const [course, setCourse] = useState('');
   const [teeTimeInfo, setTeeTimeInfo] = useState('');
@@ -62,7 +62,7 @@ export default function RoundEditScreen() {
     if (!validate()) return;
     try {
       if (isNew) {
-        addRound(course.trim(), date.toISOString(), teeTimeInfo);
+        addRound(course.trim(), date.toISOString(), teeTimeInfo, currentLeagueId);
       } else {
         const numericId = Number(id);
         if (!Number.isFinite(numericId)) throw new Error('invalid id');

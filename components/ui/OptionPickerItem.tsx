@@ -76,7 +76,7 @@ export const OptionPickerItem: React.FC<OptionPickerItemProps> = ({
     return (
       <Pressable onPress={onPickerButtonPress}>
         <ThemedView style={[styles.optionPickerRow, containerStyle]}>
-          <ThemedView style={{ flex: 1 }}>
+          <ThemedView style={{ flex: 1, gap: 6 }}>
             {label && <ThemedText>{label}</ThemedText>}
             <ThemedTextInput
               style={inputStyle}

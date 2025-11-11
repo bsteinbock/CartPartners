@@ -13,7 +13,7 @@ import { Alert, FlatList, Pressable, StyleSheet, Switch, View } from 'react-nati
 
 export default function PlayersScreen() {
   const router = useRouter();
-  const { players, addPlayers, updatePlayer } = useDbStore();
+  const { players, addPlayers, updatePlayer, currentLeagueId } = useDbStore();
   const iconColor = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
   const textDim = useThemeColor({ light: undefined, dark: undefined }, 'textDim');
   const switchTrackColor = useThemeColor({ light: undefined, dark: undefined }, 'switchTrackColor');
@@ -135,7 +135,7 @@ export default function PlayersScreen() {
       }
 
       if (newPlayers.length > 0) {
-        addPlayers(newPlayers);
+        addPlayers(newPlayers, currentLeagueId);
       }
 
       Alert.alert('Import complete', `${newPlayers.length}Players imported successfully!`);

@@ -24,11 +24,65 @@ function getDb() {
   return db;
 }
 
+// new helpers for meta storage
+function readMeta(key: string): string | null {
+  try {
+    const database = getDb();
+    // guard in case meta table doesn't exist yet
+    const tableCheck = database.getFirstSync<{ name: string }>(
+      `SELECT name FROM sqlite_master WHERE type='table' AND name='meta' LIMIT 1;`,
+    );
+    if (!tableCheck) return null;
+
+    const row = database.getFirstSync<{ value: string }>('SELECT value FROM meta WHERE key = ? LIMIT 1;', [
+      key,
+    ]);
+    return row?.value ?? null;
+  } catch (e) {
+    // meta table missing or other DB error — return null and continue
+    console.warn('readMeta failed, returning null', e);
+    return null;
+  }
+}
+
+function writeMeta(key: string, value: string | null): void {
+  try {
+    const database = getDb();
+    // ensure meta table exists
+    database.execSync(`
+      CREATE TABLE IF NOT EXISTS meta (
+        key TEXT PRIMARY KEY,
+        value TEXT
+      );
+    `);
+
+    if (value === null) {
+      database.runSync('DELETE FROM meta WHERE key = ?;', [key]);
+      return;
+    }
+    const exists = database.getFirstSync<{ key: string }>('SELECT key FROM meta WHERE key = ? LIMIT 1;', [
+      key,
+    ]);
+    if (exists) {
+      database.runSync('UPDATE meta SET value = ? WHERE key = ?;', [value, key]);
+    } else {
+      database.runSync('INSERT INTO meta (key, value) VALUES (?, ?);', [key, value]);
+    }
+  } catch (e) {
+    console.warn('writeMeta failed', e);
+  }
+}
+
 // ------------------- INIT DB -------------------
 export function initDb() {
   const db = getDb();
   db.execSync(`
     PRAGMA journal_mode = WAL;
+
+    CREATE TABLE IF NOT EXISTS leagues (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL
+    );
 
     CREATE TABLE IF NOT EXISTS players (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -37,14 +91,16 @@ export function initDb() {
       mobile_number TEXT DEFAULT '',
       speedIndex REAL NOT NULL,
       email TEXT,
-      available INTEGER NOT NULL DEFAULT 1
+      available INTEGER NOT NULL DEFAULT 1,
+      league_id INTEGER
     );
 
     CREATE TABLE IF NOT EXISTS rounds (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       date TEXT NOT NULL,
       course TEXT NOT NULL,
-      tee_time_info TEXT DEFAULT ''
+      tee_time_info TEXT DEFAULT '',
+      league_id INTEGER
     );
 
     CREATE TABLE IF NOT EXISTS round_players (
@@ -65,6 +121,11 @@ export function initDb() {
       player_id INTEGER NOT NULL,
       PRIMARY KEY (group_id, player_id)
     );
+
+   CREATE TABLE IF NOT EXISTS meta (
+     key TEXT PRIMARY KEY,
+     value TEXT
+   );
   `);
 
   // --- Migration step for existing DBs ---
@@ -78,9 +139,40 @@ export function initDb() {
     db.execSync(`ALTER TABLE players ADD COLUMN mobile_number TEXT DEFAULT '';`);
   }
 
+  if (!playerCols.includes('league_id')) {
+    db.execSync(`ALTER TABLE players ADD COLUMN league_id INTEGER;`);
+  }
+
   const roundCols = db.getAllSync<{ name: string }>(`PRAGMA table_info(rounds);`).map((r) => r.name);
   if (!roundCols.includes('tee_time_info')) {
     db.execSync(`ALTER TABLE rounds ADD COLUMN tee_time_info TEXT DEFAULT '';`);
+  }
+  if (!roundCols.includes('league_id')) {
+    db.execSync(`ALTER TABLE rounds ADD COLUMN league_id INTEGER;`);
+  }
+
+  // ensure leagues table exists for older DBs
+  db.execSync(`
+    CREATE TABLE IF NOT EXISTS leagues (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL
+    );
+  `);
+
+  // Ensure a "Default" league exists and assign existing players/rounds to it if they have no league_id
+  // Only insert a "Default" league and update existing players/rounds if the leagues table is empty
+  const leagueCountRow = db.getFirstSync<{ count: number }>('SELECT COUNT(*) as count FROM leagues;');
+  const leagueCount = leagueCountRow?.count ?? 0;
+  if (leagueCount === 0) {
+    db.runSync('INSERT INTO leagues (name) VALUES (?);', ['Default']);
+    const row = db.getFirstSync<{ id: number }>('SELECT id FROM leagues WHERE name = ? LIMIT 1;', [
+      'Default',
+    ]);
+    const defaultLeagueId = row?.id ?? null;
+    if (defaultLeagueId != null) {
+      db.runSync('UPDATE players SET league_id = ? WHERE league_id IS NULL;', [defaultLeagueId]);
+      db.runSync('UPDATE rounds SET league_id = ? WHERE league_id IS NULL;', [defaultLeagueId]);
+    }
   }
 }
 
@@ -157,8 +249,16 @@ export type Player = {
   speedIndex: number;
   email: string;
   available: number;
+  league_id?: number | null;
 };
-export type Round = { id: number; date: string; course: string; teeTimeInfo: string };
+export type Round = {
+  id: number;
+  date: string;
+  course: string;
+  teeTimeInfo: string;
+  league_id?: number | null;
+};
+export type League = { id: number; name: string };
 export type Group = { id: number; round_id: number; slot_index: number; created_at: string };
 export type RoundPlayer = { round_id: number; player_id: number };
 export type RoundSummary = { round_id: number; numPlayers: number };
@@ -175,25 +275,29 @@ type DbState = {
   roundPlayers: RoundPlayer[];
   roundSummaries: RoundSummary[];
   groupPlayers: GroupPlayers[];
+  leagues: League[];
   manualGroupList: ManualGroupList[]; // only for current round, clear in currentRoundIdChanges
 
   currentRoundId: number | null;
+  currentLeagueId: number | null;
 
   fetchPlayers: () => void;
   fetchRounds: () => void;
+  fetchLeagues: () => void;
   fetchGroups: () => void;
   fetchRoundPlayers: () => void;
   fetchGroupPlayers: () => void;
 
   setRoundPlayers: (roundId: number, playerIds: number[]) => void;
 
-  addPlayer: (player: NewPlayer) => void;
-  addPlayers: (players: NewPlayer[]) => void;
+  addPlayer: (player: NewPlayer, leagueId?: number | null) => void;
+  addPlayers: (players: NewPlayer[], leagueId?: number | null) => void;
+  addLeague: (name: string) => void;
   updatePlayer: (id: number, data: UpdatedPlayer) => void;
   deletePlayer: (id: number) => void;
 
   addGroup: (roundId: number, slotIndex: number) => void;
-  addRound: (date: string, course: string, teeTimeInfo: string) => void;
+  addRound: (date: string, course: string, teeTimeInfo: string, leagueId?: number | null) => void;
   deleteRound: (id: number) => void;
   updateRound: (id: number, data: UpdatedRound) => void;
 
@@ -203,6 +307,9 @@ type DbState = {
   swapGroupSlots: (groupId1: number, slotIndex1: number, groupId2: number, slotIndex2: number) => void;
 
   setCurrentRoundId: (id: number | null) => void;
+  setCurrentLeagueId: (id: number | null) => void;
+  updateLeague: (id: number, name: string) => void;
+  deleteLeague: (id: number) => void;
   setManualGroupList: (groupList: ManualGroupList[]) => void;
 };
 
@@ -210,32 +317,115 @@ type DbState = {
 export const useDbStore = create<DbState>((set, get) => ({
   players: [],
   rounds: [],
+  leagues: [],
   groups: [],
   roundPlayers: [],
   roundSummaries: [],
   groupPlayers: [],
   manualGroupList: [],
+  // initialize currentLeagueId from meta if available (will be null until fetchLeagues runs too)
   currentRoundId: null,
+  currentLeagueId: readMeta('lastActiveLeagueId') ? Number(readMeta('lastActiveLeagueId')) : null,
 
   setCurrentRoundId: (id: number | null) => {
     set({ currentRoundId: id });
     set({ manualGroupList: [] });
   },
 
+  setCurrentLeagueId: (id: number | null) => {
+    // persist to DB meta
+    try {
+      if (id === null) {
+        writeMeta('lastActiveLeagueId', null);
+      } else {
+        writeMeta('lastActiveLeagueId', String(id));
+      }
+    } catch (e) {
+      console.warn('Failed to persist lastActiveLeagueId', e);
+    }
+    set({ currentLeagueId: id });
+    set({ manualGroupList: [] });
+    useDbStore.getState().refreshAll();
+  },
+
+  // --- League functions ---------------------------------------------------
+  fetchLeagues: () => {
+    const db = getDb();
+    const rows = db.getAllSync('SELECT id, name FROM leagues ORDER BY name ASC;') as League[];
+    set({ leagues: rows });
+
+    // if no currentLeagueId set in memory, try to initialize from meta or first league
+    const current = get().currentLeagueId;
+    if (current == null) {
+      const lastActive = readMeta('lastActiveLeagueId');
+      if (lastActive) {
+        const parsed = Number(lastActive);
+        if (!isNaN(parsed) && rows.some((r) => r.id === parsed)) {
+          set({ currentLeagueId: parsed });
+        } else if (rows.length > 0) {
+          set({ currentLeagueId: rows[0].id });
+          writeMeta('lastActiveLeagueId', String(rows[0].id));
+        }
+      } else if (rows.length > 0) {
+        set({ currentLeagueId: rows[0].id });
+        writeMeta('lastActiveLeagueId', String(rows[0].id));
+      }
+    }
+  },
+
+  addLeague: (name: string) => {
+    const db = getDb();
+    db.runSync('INSERT INTO leagues (name) VALUES (?);', [name]);
+    // refresh leagues list
+    useDbStore.getState().refreshAll();
+  },
+
+  updateLeague: (id: number, name: string) => {
+    const db = getDb();
+    db.runSync('UPDATE leagues SET name = ? WHERE id = ?;', [name, id]);
+    // refresh leagues list
+    useDbStore.getState().refreshAll();
+  },
+
+  deleteLeague: (id: number) => {
+    const db = getDb();
+    db.withTransactionSync(() => {
+      // unset league_id on related players and rounds
+      db.runSync('UPDATE players SET league_id = NULL WHERE league_id = ?;', [id]);
+      db.runSync('UPDATE rounds SET league_id = NULL WHERE league_id = ?;', [id]);
+      // delete the league
+      db.runSync('DELETE FROM leagues WHERE id = ?;', [id]);
+    });
+    // refresh related state
+    const { refreshAll } = useDbStore.getState();
+
+    // if deleted league was active, clear meta/currentLeagueId
+    const current = get().currentLeagueId;
+    if (current === id) {
+      writeMeta('lastActiveLeagueId', null);
+      set({ currentLeagueId: null });
+    }
+    refreshAll();
+  },
   // --- Fetchers ------------------------------------------------------------
   fetchPlayers: () => {
     const db = getDb();
-    const rows = db.getAllSync('SELECT * FROM players ORDER BY name ASC;') as Player[];
+    const rows = db.getAllSync('SELECT * FROM players WHERE league_id = ? ORDER BY name ASC;', [
+      get().currentLeagueId ?? 0,
+    ]) as Player[];
     set({ players: rows });
   },
 
   fetchRounds: () => {
     const db = getDb();
-    const rows = db.getAllSync('SELECT * FROM rounds ORDER BY date DESC;') as {
+    const rows = db.getAllSync('SELECT * FROM rounds WHERE league_id = ? ORDER BY date DESC;', [
+      get().currentLeagueId ?? 0,
+    ]) as {
       id: number;
       date: string;
       course: string;
       tee_time_info: string;
+      league_id?: number | null;
     }[];
 
     const rounds: Round[] = rows.map((r) => ({
@@ -243,6 +433,7 @@ export const useDbStore = create<DbState>((set, get) => ({
       date: r.date,
       course: r.course,
       teeTimeInfo: r.tee_time_info ?? '',
+      league_id: (r as any).league_id ?? null,
     }));
 
     set({
@@ -301,16 +492,17 @@ export const useDbStore = create<DbState>((set, get) => ({
   },
 
   // --- Simple Mutations ----------------------------------------------------
-  addPlayer: (player: NewPlayer) => {
+  addPlayer: (player: NewPlayer, leagueId?: number | null) => {
     const db = getDb();
 
     const { name, speedIndex = 1, nickname = '', mobile_number = '', email = '', available = 1 } = player;
     const e164 = formatPhoneNumberToE164(mobile_number);
     const storedNumber = e164 || '';
 
+    const leagueVal = leagueId ?? (player as any).league_id ?? null;
     db.runSync(
-      'INSERT INTO players (name, nickname, mobile_number, speedIndex, email, available) VALUES (?, ?, ?, ?, ?, ?)',
-      [name, nickname, storedNumber, speedIndex, email, available ? 1 : 0],
+      'INSERT INTO players (name, nickname, mobile_number, speedIndex, email, available, league_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [name, nickname, storedNumber, speedIndex, email, available ? 1 : 0, leagueVal],
     );
 
     const { fetchPlayers, fetchGroups, fetchRoundPlayers } = useDbStore.getState();
@@ -379,7 +571,7 @@ export const useDbStore = create<DbState>((set, get) => ({
   },
 
   // Add multiple players at once
-  addPlayers: (players: NewPlayer[]) => {
+  addPlayers: (players: NewPlayer[], leagueId?: number | null) => {
     const db = getDb();
 
     db.withTransactionSync(() => {
@@ -394,9 +586,10 @@ export const useDbStore = create<DbState>((set, get) => ({
         const e164 = formatPhoneNumberToE164(mobile_number);
         const storedNumber = e164 || '';
 
+        const leagueVal = leagueId ?? null;
         db.runSync(
-          'INSERT INTO players (name, nickname, mobile_number, speedIndex, email, available) VALUES (?, ?, ?, ?, ?, ?)',
-          [name, nickname, storedNumber, speedIndex, email, available ? 1 : 0],
+          'INSERT INTO players (name, nickname, mobile_number, speedIndex, email, available, league_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          [name, nickname, storedNumber, speedIndex, email, available ? 1 : 0, leagueVal],
         );
       }
     });
@@ -418,12 +611,13 @@ export const useDbStore = create<DbState>((set, get) => ({
     useDbStore.getState().fetchGroups();
   },
 
-  addRound: (course, date, teeTimeInfo) => {
+  addRound: (course, date, teeTimeInfo, leagueId?: number | null) => {
     const db = getDb();
-    db.runSync('INSERT INTO rounds (date, course, tee_time_info) VALUES (?, ?, ?)', [
+    db.runSync('INSERT INTO rounds (date, course, tee_time_info, league_id) VALUES (?, ?, ?, ?)', [
       date,
       course,
       teeTimeInfo,
+      leagueId ?? null,
     ]);
     useDbStore.getState().fetchRounds();
     useDbStore.getState().fetchRoundPlayers();
@@ -491,6 +685,7 @@ export const useDbStore = create<DbState>((set, get) => ({
       fetchRoundPlayers,
       fetchGroupPlayers,
       setManualGroupList,
+      fetchLeagues,
     } = useDbStore.getState();
 
     fetchPlayers();
@@ -498,6 +693,7 @@ export const useDbStore = create<DbState>((set, get) => ({
     fetchGroups();
     fetchRoundPlayers();
     fetchGroupPlayers();
+    fetchLeagues();
     setManualGroupList([]);
   },
 
@@ -648,3 +844,7 @@ export const useDbStore = create<DbState>((set, get) => ({
     useDbStore.getState().setManualGroupList([]);
   },
 }));
+
+// Ensure DB schema exists and load leagues at module load so "Default" is created when necessary
+initDb();
+useDbStore.getState().fetchLeagues();
