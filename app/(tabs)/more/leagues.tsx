@@ -49,8 +49,8 @@ export default function LeaguesScreen() {
     <ThemedView style={styles.container}>
       <ThemedView style={{ padding: 10, marginBottom: 20 }}>
         <ThemedText>
-          Cart Partners can be used to organize groups for season long leagues, multi-day outings, or special
-          golf events. Players, Rounds, and Groups are kept separate per entry.
+          Cart Partners may be utilized to organize groups for season-long leagues, multi-day outings, or
+          special golf events. Player, round, and group information is maintained separately for each entry.
         </ThemedText>
       </ThemedView>
       <ThemedView style={[styles.header, { borderBottomColor: border }]}>
@@ -130,16 +130,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  addIcon: { color: '#fff', fontSize: 20, lineHeight: 20 },
-  listContent: { paddingVertical: 8 },
-  row: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  separator: { height: StyleSheet.hairlineWidth },
   empty: { padding: 24, alignItems: 'center' },
   emptyThemedText: { color: '#666' },
 

@@ -31,7 +31,9 @@ export default function AboutScreen() {
         </ThemedText>
         <ThemedText style={styles.text}>
           CartPartners is designed to help you stay connected with your golfing buddies by ensuring that your
-          cart partners change from round to round.
+          cart partners change from round to round. CartPartners supports organizing players into leagues or
+          outings, managing player availability, creating rounds, generating tee-time groups, and sending
+          notifications to players via email or text message.
         </ThemedText>
 
         <ThemedText type="subtitle" style={styles.sectionTitle}>
@@ -42,11 +44,12 @@ export default function AboutScreen() {
           Rounds Tab
         </ThemedText>
         <ThemedText style={styles.text}>
-          This tab displays all your defined rounds and includes a button to add a new round. If you
-          long-press on a round, you will be taken to a screen where you can edit its details. You can also
-          swipe left on a round to delete it and all associated data. A round is defined by specifying the
-          course, date, and tee-time information. The tee-time details appear in the announcement sent to
-          players. Tapping a round opens its Lineup tab.
+          This tab displays all your defined rounds and includes a button to add a new round. The picker at
+          the very top of the screen allows you to select a specific league or outing. If you long-press on a
+          round, you will be taken to a screen where you can edit its details. You can also swipe left on a
+          round to delete it and all associated data. A round is defined by specifying the course, date, and
+          tee-time information. The tee-time details appear in the announcement sent to players. Tapping a
+          round opens its Lineup tab.
         </ThemedText>
 
         <ThemedText type="subtitle" style={styles.subTitle}>
@@ -81,7 +84,8 @@ export default function AboutScreen() {
           screen. The Backup/Restore screen allows you to create a database backup file containing all your
           CartPartners data. This file can be shared with another person taking over as Group Coordinator,
           either temporarily or permanently. Using the Restore command lets you load or reload data from a
-          previous backup.
+          previous backup. The Leagues/Outings screen enables you to manage multiple leagues or outings, each
+          with its own set of players and rounds.
         </ThemedText>
       </ThemedView>
     </ScrollView>

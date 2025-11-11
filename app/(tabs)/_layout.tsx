@@ -4,6 +4,7 @@ import React from 'react';
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { Platform } from 'react-native';
 
 export default function TabLayout() {
   const tabIconDefault = useThemeColor({ light: undefined, dark: undefined }, 'tabIconDefault');
@@ -13,8 +14,12 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         tabBarLabelStyle: {
-          fontSize: 16, // 👈 change this to set the label size
-          fontWeight: '600', // optional
+          fontSize: Platform.OS === 'android' ? 15 : 16,
+          fontWeight: '500',
+        },
+        tabBarStyle: {
+          height: Platform.OS === 'android' ? 110 : 86,
+          alignItems: 'center',
         },
         tabBarActiveTintColor: tabIconSelected,
         tabBarInactiveTintColor: tabIconDefault,
