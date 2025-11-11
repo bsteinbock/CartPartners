@@ -399,11 +399,24 @@ export const useDbStore = create<DbState>((set, get) => ({
     // refresh related state
     const { refreshAll } = useDbStore.getState();
 
-    // if deleted league was active, clear meta/currentLeagueId
+    // if deleted league was active, get the first league to set as current if any exist
     const current = get().currentLeagueId;
     if (current === id) {
-      writeMeta('lastActiveLeagueId', null);
-      set({ currentLeagueId: null });
+      const leagues = db.getAllSync<League>('SELECT id, name FROM leagues ORDER BY name ASC;');
+      if (leagues.length > 0) {
+        const firstLeagueId = leagues[0].id;
+        set({ currentLeagueId: firstLeagueId });
+        writeMeta('lastActiveLeagueId', String(firstLeagueId));
+      } else {
+        set({ currentLeagueId: null });
+        writeMeta('lastActiveLeagueId', null);
+      }
+
+      const current = get().currentLeagueId;
+      if (current === id) {
+        writeMeta('lastActiveLeagueId', null);
+        set({ currentLeagueId: null });
+      }
     }
     refreshAll();
   },

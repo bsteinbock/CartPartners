@@ -1,20 +1,23 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedTextInput } from '@/components/themed-textinput';
 import { ThemedView } from '@/components/themed-view';
+import SwipeableLeague from '@/components/ui/SwipeableLeague';
+import ThemedButton from '@/components/ui/ThemedButton';
 import { League, useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
-import { useRouter } from 'expo-router';
+import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import React, { useRef, useState } from 'react';
-import { Button, FlatList, Modal, StyleSheet, TouchableOpacity } from 'react-native';
+import { Modal, StyleSheet, TouchableOpacity } from 'react-native';
+import { FlatList } from 'react-native-gesture-handler';
 
 export default function LeaguesScreen() {
-  const router = useRouter();
   const { leagues, addLeague } = useDbStore();
   const [isAddModalVisible, setAddModalVisible] = useState(false);
   const [newName, setNewName] = useState('');
   const leagueEditIdRef = useRef(0);
   const iconButton = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
   const disabledColor = useThemeColor({ light: undefined, dark: undefined }, 'disabledColor');
+  const border = useThemeColor({ light: undefined, dark: undefined }, 'border');
 
   function openAdd() {
     setNewName('');
@@ -48,30 +51,25 @@ export default function LeaguesScreen() {
           golf events. Players, Rounds, and Groups are kept separate per entry.
         </ThemedText>
       </ThemedView>
-      <ThemedView style={styles.header}>
+      <ThemedView style={[styles.header, { borderBottomColor: border }]}>
         <ThemedText type="subtitle">Leagues / Outings</ThemedText>
         <TouchableOpacity style={styles.addButton} onPress={openAdd}>
-          <ThemedText style={styles.addIcon}>＋</ThemedText>
+          <FontAwesome5 name="plus-circle" size={28} color={iconButton} />
         </TouchableOpacity>
       </ThemedView>
 
-      <FlatList
-        data={leagues}
-        keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={styles.listContent}
-        renderItem={({ item }) => (
-          <TouchableOpacity style={styles.row} onPress={() => onPressLeague(item)} activeOpacity={0.7}>
-            <ThemedText style={styles.rowThemedText}>{item.name}</ThemedText>
-            <ThemedText style={styles.chev}>›</ThemedText>
-          </TouchableOpacity>
-        )}
-        ItemSeparatorComponent={() => <ThemedView style={styles.separator} />}
-        ListEmptyComponent={
-          <ThemedView style={styles.empty}>
-            <ThemedText style={styles.emptyThemedText}>No leagues yet. Tap + to add one.</ThemedText>
-          </ThemedView>
-        }
-      />
+      {leagues.length > 0 && (
+        <FlatList
+          data={leagues}
+          keyExtractor={(item) => String(item.id)}
+          renderItem={({ item }) => <SwipeableLeague league={item} onPress={onPressLeague} />}
+          ListEmptyComponent={
+            <ThemedView style={styles.empty}>
+              <ThemedText style={styles.emptyThemedText}>No leagues yet. Tap + to add one.</ThemedText>
+            </ThemedView>
+          }
+        />
+      )}
 
       <Modal visible={isAddModalVisible} animationType="slide" transparent>
         <ThemedView style={styles.modalBackdrop}>
@@ -94,7 +92,7 @@ export default function LeaguesScreen() {
                   borderRadius: 6,
                 }}
               >
-                <Button title="Cancel" onPress={() => setAddModalVisible(false)} />
+                <ThemedButton title="Cancel" onPress={() => setAddModalVisible(false)} />
               </ThemedView>
 
               <ThemedView
@@ -106,7 +104,7 @@ export default function LeaguesScreen() {
                   borderRadius: 6,
                 }}
               >
-                <Button title="Save" onPress={saveName} disabled={newName.length === 0} />
+                <ThemedButton title="Save" onPress={saveName} disabled={newName.length === 0} />
               </ThemedView>
             </ThemedView>
           </ThemedView>
@@ -123,17 +121,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    justifyContent: 'space-between',
+    borderBottomWidth: 1,
   },
   addButton: {
-    position: 'absolute',
-    right: 16,
-    top: 10,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#007AFF',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -146,9 +137,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  rowThemedText: { fontSize: 16 },
-  chev: { color: '#999', fontSize: 18 },
-  separator: { height: StyleSheet.hairlineWidth, backgroundColor: '#e5e5e5' },
+  separator: { height: StyleSheet.hairlineWidth },
   empty: { padding: 24, alignItems: 'center' },
   emptyThemedText: { color: '#666' },
 
