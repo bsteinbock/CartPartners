@@ -1,7 +1,6 @@
 import { useThemeColor } from '@/hooks/use-theme-color';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { StyleProp, StyleSheet, TextStyle, ViewStyle } from 'react-native';
-import { Pressable } from 'react-native-gesture-handler';
+import { Pressable, StyleProp, StyleSheet, TextStyle, ViewStyle } from 'react-native';
 import { ThemedText } from '../themed-text';
 import { ThemedTextInput } from '../themed-textinput';
 import { ThemedView } from '../themed-view';
@@ -55,7 +54,6 @@ interface OptionPickerItemProps {
   onPickerButtonPress: () => void;
   label?: string;
   placeholder?: string;
-  editable?: boolean;
   containerStyle?: StyleProp<ViewStyle>;
   inputStyle?: StyleProp<TextStyle>;
 }
@@ -66,7 +64,6 @@ export const OptionPickerItem: React.FC<OptionPickerItemProps> = ({
   onPickerButtonPress,
   label,
   placeholder,
-  editable = false,
   containerStyle,
   inputStyle,
 }) => {
@@ -79,6 +76,7 @@ export const OptionPickerItem: React.FC<OptionPickerItemProps> = ({
         <ThemedView style={{ flex: 1, gap: 6 }}>
           {label && <ThemedText>{label}</ThemedText>}
           <ThemedTextInput
+            pointerEvents="none"
             style={inputStyle}
             placeholder={placeholder}
             placeholderTextColor={textDim}
