@@ -7,6 +7,9 @@ import { Platform } from 'react-native';
 
 const tintColorLight = '#0a7ea4';
 const tintColorDark = '#fff';
+const inactiveTabTintColor = '#8E8E93';
+const tabTintColorLight = '#007AFF';
+const tabTintColorDark = '#0A84FF';
 export const deleteBackgroundColor = '#C03403';
 
 export const iosKeyboardToolbarOffset = 84;
@@ -23,8 +26,8 @@ export const Colors = {
     icon: '#687076',
     iconButton: '#007AFF',
     iconButtonDisabled: 'rgba(0,122,255,0.3)',
-    tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
+    tabIconDefault: inactiveTabTintColor,
+    tabIconSelected: tabTintColorLight,
     errorText: '#B00020',
     disabledColor: 'rgba(209,209,214,1.0)',
     switchTrackColor: '#3c7d3cff',
@@ -40,8 +43,8 @@ export const Colors = {
     icon: '#9BA1A6',
     iconButton: '#007AFF',
     iconButtonDisabled: 'rgba(0,122,255,0.3)',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
+    tabIconDefault: inactiveTabTintColor,
+    tabIconSelected: tabTintColorDark,
     errorText: '#FF453A',
     disabledColor: 'rgba(58, 58, 60, 1.0)',
     switchTrackColor: '#4e9a4eff',

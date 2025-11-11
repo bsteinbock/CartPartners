@@ -78,7 +78,6 @@ const SwipeableRoundItem = ({ round }: { round: Round }) => {
             roundRef?.current.close();
             setLineUp(round);
           }}
-          style={{ borderBottomWidth: 1, borderColor: '#eee' }}
         >
           <ThemedView style={styles.itemInfo}>
             <ThemedView>
