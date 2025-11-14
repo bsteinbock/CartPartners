@@ -18,7 +18,7 @@ export default function MessageScreen() {
   const textDim = useThemeColor({ light: undefined, dark: undefined }, 'textDim');
   const [title, setTitle] = useState<string>('');
   const [message, setMessage] = useState<string>('');
-  const { players, leagues, currentLeagueId } = useDbStore();
+  const { league_players, leagues, currentLeagueId } = useDbStore();
   const [availablePlayers, setAvailablePlayers] = useState<Player[]>([]);
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<number[]>([]);
   const [groupCoordinatorId, setGroupCoordinatorId] = useState<number>(0);
@@ -26,7 +26,7 @@ export default function MessageScreen() {
   const league = leagues.find((l) => l.id === currentLeagueId);
 
   useEffect(() => {
-    setAvailablePlayers(players.filter((p) => p.available));
+    setAvailablePlayers(league_players.filter((p) => p.available));
   }, [players]);
 
   useFocusEffect(() => {
@@ -50,17 +50,18 @@ export default function MessageScreen() {
 
   // Select or clear all players
   const toggleAllPlayers = () => {
-    const allIds = players.map((p) => p.id);
+    const allIds = league_players.map((p) => p.id);
     const allSelected = allIds.every((id) => selectedPlayerIds.includes(id));
     const newSelection = allSelected ? [] : allIds;
     setSelectedPlayerIds(newSelection);
   };
 
-  const allSelected = players.length > 0 && players.every((p) => selectedPlayerIds.includes(p.id));
-  const playerLabel = `Player (${selectedPlayerIds.length} of ${players.length} Selected)`;
+  const allSelected =
+    league_players.length > 0 && league_players.every((p) => selectedPlayerIds.includes(p.id));
+  const playerLabel = `Player (${selectedPlayerIds.length} of ${league_players.length} Selected)`;
 
   const sendEmail = () => {
-    const selectedPlayers = players.filter((p) => selectedPlayerIds.includes(p.id));
+    const selectedPlayers = league_players.filter((p) => selectedPlayerIds.includes(p.id));
     const addresses = selectedPlayers.map((player) => player.email ?? '').filter((m) => m.length > 0);
     const subject = encodeURIComponent(title);
     const body = encodeURIComponent(message);
@@ -77,7 +78,7 @@ export default function MessageScreen() {
       return;
     }
 
-    const selectedPlayers = players.filter(
+    const selectedPlayers = league_players.filter(
       (p) => selectedPlayerIds.includes(p.id) && p.id !== groupCoordinatorId,
     );
 
@@ -191,7 +192,7 @@ export default function MessageScreen() {
                     trackColor={{ true: switchTrackColor }}
                     value={allSelected}
                     onValueChange={toggleAllPlayers}
-                    disabled={players.length === 0}
+                    disabled={league_players.length === 0}
                   />
                 </ThemedView>
                 <ThemedView>

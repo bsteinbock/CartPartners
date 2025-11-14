@@ -14,7 +14,7 @@ import { Alert, StyleSheet } from 'react-native';
 
 export default function SetGroupCoordinatorScreen() {
   const router = useRouter();
-  const { players } = useDbStore();
+  const { league_players } = useDbStore();
   const [isPlayerPickerVisible, setIsPlayerPickerVisible] = useState<boolean>(false);
   const [playerOptions, setPlayerOptions] = useState<OptionEntry[]>([]);
   const [pickedPlayer, setPickedPlayer] = useState<OptionEntry | null>(null);
@@ -26,7 +26,7 @@ export default function SetGroupCoordinatorScreen() {
   const disabledColor = useThemeColor({ light: undefined, dark: undefined }, 'disabledColor');
 
   useEffect(() => {
-    const availableOptions = players.map((r) => ({
+    const availableOptions = league_players.map((r) => ({
       label: r.name,
       value: r.id,
     }));
@@ -63,7 +63,7 @@ export default function SetGroupCoordinatorScreen() {
   const handleSaveMyId = useCallback(async () => {
     if (pickedPlayer === null) return;
 
-    const player = players.find((p) => p.id === pickedPlayer.value);
+    const player = league_players.find((p) => p.id === pickedPlayer.value);
     if (player) {
       await SecureStore.setItemAsync('cartPartnerGroupCoordinatorId', player.id.toString());
 

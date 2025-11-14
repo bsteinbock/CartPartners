@@ -255,7 +255,9 @@ function getBestNextPartnerWithFairnessAndSpeedLimit(
  * @returns Array of Player objects matching the given IDs
  */
 export function getPlayerForGroup(playerIds: number[], players: Player[]): Player[] {
-  return playerIds.map((pid) => players.find((p) => p.id === pid)).filter((p): p is Player => Boolean(p)); // filter out undefined
+  return playerIds
+    .map((pid) => league_players.find((p) => p.id === pid))
+    .filter((p): p is Player => Boolean(p)); // filter out undefined
 }
 
 /**
@@ -293,7 +295,7 @@ export function formatManualGroupPlayersByNames(
   return groupPlayers.map((gp) => {
     const names = gp
       .map((pid) => {
-        const player = players.find((p) => p.id === pid);
+        const player = league_players.find((p) => p.id === pid);
         if (!player) return undefined;
         return player.nickname?.trim().length ? player.nickname : player.name;
       })
@@ -429,7 +431,7 @@ export function formatGroupPlayersByNames(groupPlayers: GroupPlayers[], players:
   return groupPlayers.map((gp) => {
     const names = gp.player_ids
       .map((pid) => {
-        const player = players.find((p) => p.id === pid);
+        const player = league_players.find((p) => p.id === pid);
         if (!player) return undefined;
         return player.nickname?.trim().length ? player.nickname : player.name;
       })

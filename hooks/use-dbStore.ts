@@ -314,7 +314,8 @@ export type UpdatedPlayer = Partial<Omit<Player, 'id'>>;
 export type UpdatedRound = Partial<Omit<Round, 'id'>>;
 
 type DbState = {
-  players: Player[];
+  league_players: Player[];
+  all_players: Player[];
   rounds: Round[]; // most recent at index 0
   groups: Group[];
   roundPlayers: RoundPlayer[];
@@ -326,7 +327,8 @@ type DbState = {
   currentRoundId: number | null;
   currentLeagueId: number | null;
 
-  fetchPlayers: () => void;
+  fetchLeaguePlayers: () => void;
+  fetchAllPlayers: () => void;
   fetchRounds: () => void;
   fetchLeagues: () => void;
   fetchGroups: () => void;
@@ -360,7 +362,8 @@ type DbState = {
 
 // ------------------- STORE -------------------
 export const useDbStore = create<DbState>((set, get) => ({
-  players: [],
+  league_players: [],
+  all_players: [],
   rounds: [],
   leagues: [],
   groups: [],
@@ -466,12 +469,18 @@ export const useDbStore = create<DbState>((set, get) => ({
     refreshAll();
   },
   // --- Fetchers ------------------------------------------------------------
-  fetchPlayers: () => {
+  fetchLeaguePlayers: () => {
     const db = getDb();
     const rows = db.getAllSync('SELECT * FROM players WHERE league_id = ? ORDER BY name ASC;', [
       get().currentLeagueId ?? 0,
     ]) as Player[];
-    set({ players: rows });
+    set({ league_players: rows });
+  },
+
+  fetchAllPlayers: () => {
+    const db = getDb();
+    const rows = db.getAllSync('SELECT * FROM players ORDER BY name ASC;') as Player[];
+    set({ all_players: rows });
   },
 
   fetchRounds: () => {
@@ -542,7 +551,7 @@ export const useDbStore = create<DbState>((set, get) => ({
 
       groupPlayers.push({
         group_id: group.id,
-        player_ids: players.map((p) => p.player_id),
+        player_ids: league_players.map((p) => p.player_id),
       });
     }
 
@@ -563,7 +572,7 @@ export const useDbStore = create<DbState>((set, get) => ({
       [name, nickname, storedNumber, speedIndex, email, available ? 1 : 0, leagueVal],
     );
 
-    const { fetchPlayers, fetchGroups, fetchRoundPlayers } = useDbStore.getState();
+    const { fetchLeaguePlayers: fetchPlayers, fetchGroups, fetchRoundPlayers } = useDbStore.getState();
     fetchPlayers();
     fetchGroups();
     fetchRoundPlayers();
@@ -576,9 +585,16 @@ export const useDbStore = create<DbState>((set, get) => ({
       db.runSync('DELETE FROM round_players WHERE player_id = ?', [id]);
       db.runSync('DELETE FROM group_players WHERE player_id = ?', [id]);
     });
-    const { fetchPlayers, fetchGroups, fetchRoundPlayers, fetchGroupPlayers, setManualGroupList } =
-      useDbStore.getState();
-    fetchPlayers();
+    const {
+      fetchLeaguePlayers,
+      fetchAllPlayers,
+      fetchGroups,
+      fetchRoundPlayers,
+      fetchGroupPlayers,
+      setManualGroupList,
+    } = useDbStore.getState();
+    fetchLeaguePlayers();
+    fetchAllPlayers();
     fetchGroups();
     fetchRoundPlayers();
     setManualGroupList([]);
@@ -625,7 +641,7 @@ export const useDbStore = create<DbState>((set, get) => ({
     const sql = `UPDATE players SET ${updates.join(', ')} WHERE id = ?;`;
     db.runSync(sql, params);
 
-    const { fetchPlayers, fetchGroups, fetchRoundPlayers } = useDbStore.getState();
+    const { fetchLeaguePlayers: fetchPlayers, fetchGroups, fetchRoundPlayers } = useDbStore.getState();
     fetchPlayers();
     fetchGroups();
     fetchRoundPlayers();
@@ -655,7 +671,7 @@ export const useDbStore = create<DbState>((set, get) => ({
       }
     });
 
-    const { fetchPlayers, fetchGroups, fetchRoundPlayers } = useDbStore.getState();
+    const { fetchLeaguePlayers: fetchPlayers, fetchGroups, fetchRoundPlayers } = useDbStore.getState();
     fetchPlayers();
     fetchGroups();
     fetchRoundPlayers();
@@ -740,7 +756,7 @@ export const useDbStore = create<DbState>((set, get) => ({
   // --- Refresh All ---------------------------------------------------------
   refreshAll: () => {
     const {
-      fetchPlayers,
+      fetchLeaguePlayers: fetchPlayers,
       fetchRounds,
       fetchGroups,
       fetchRoundPlayers,

@@ -15,7 +15,7 @@ import { FlatList } from 'react-native-gesture-handler';
 
 export default function PlayersScreen() {
   const router = useRouter();
-  const { players, addPlayers, updatePlayer, currentLeagueId, leagues } = useDbStore();
+  const { league_players, addPlayers, updatePlayer, currentLeagueId, leagues } = useDbStore();
   const iconColor = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
   const league = leagues.find((l) => l.id === currentLeagueId);
 
@@ -39,14 +39,14 @@ export default function PlayersScreen() {
   };
 
   const exportToCSV = async () => {
-    if (!players || players.length === 0) {
+    if (!players || league_players.length === 0) {
       Alert.alert('No data', 'There are no players to export.');
       return;
     }
 
     try {
       const header = ['Name', 'Nickname', 'Speed Index', 'Email', 'Mobile Number', 'Available'];
-      const rows = players.map((p) => [
+      const rows = league_players.map((p) => [
         `"${p.name}"`,
         `"${p.nickname || ''}"`,
         p.speedIndex,
@@ -57,7 +57,7 @@ export default function PlayersScreen() {
 
       const csvString = [header.join(','), ...rows.map((r) => r.join(','))].join('\n');
 
-      const file = new File(Paths.cache, 'cartpartners-players.csv');
+      const file = new File(Paths.cache, 'cartpartners-league_players.csv');
       file.create({ overwrite: true });
       file.write(csvString);
 
@@ -73,7 +73,7 @@ export default function PlayersScreen() {
       });
     } catch (err) {
       console.error('Error exporting CSV', err);
-      Alert.alert('Error', 'Failed to export players.');
+      Alert.alert('Error', 'Failed to export league_players.');
     }
   };
 
@@ -126,7 +126,9 @@ export default function PlayersScreen() {
             : 0;
 
         // Check if player exists by name (case-insensitive)
-        const existing = players.find((p) => p.name.trim().toLowerCase() === name.trim().toLowerCase());
+        const existing = league_players.find(
+          (p) => p.name.trim().toLowerCase() === name.trim().toLowerCase(),
+        );
 
         if (existing && existing.id) {
           updatePlayer(existing.id, { speedIndex, email, available, nickname, mobile_number });
@@ -142,7 +144,7 @@ export default function PlayersScreen() {
       Alert.alert('Import complete', `${newPlayers.length}Players imported successfully!`);
     } catch (err) {
       console.error('Import failed', err);
-      Alert.alert('Error', 'Failed to import players.');
+      Alert.alert('Error', 'Failed to import league_players.');
     }
   };
 
@@ -162,12 +164,12 @@ export default function PlayersScreen() {
             <ThemedText type="small">{league?.name}</ThemedText>
           </ThemedView>
           <View style={{ flexDirection: 'row', gap: 30, alignItems: 'center', paddingRight: 10 }}>
-            {players.length === 0 && (
+            {league_players.length === 0 && (
               <Pressable onPress={importFromCSV}>
                 <MaterialCommunityIcons name="application-import" size={28} color={iconColor} />
               </Pressable>
             )}
-            {players.length > 0 && (
+            {league_players.length > 0 && (
               <Pressable onPress={exportToCSV}>
                 <MaterialCommunityIcons name="application-export" size={28} color={iconColor} />
               </Pressable>
@@ -177,7 +179,7 @@ export default function PlayersScreen() {
             </Pressable>
           </View>
         </View>
-        {players.length === 0 && (
+        {league_players.length === 0 && (
           <ThemedView style={{ padding: 12 }}>
             <ThemedText style={{ marginTop: 12 }}>
               No players defined. You can add players manually using the right icon on top of screen.
@@ -192,7 +194,7 @@ export default function PlayersScreen() {
             <ThemedText style={{ marginTop: 12 }}>note: Speed Index:1=fast 5=slow</ThemedText>
           </ThemedView>
         )}
-        {players.length > 0 && (
+        {league_players.length > 0 && (
           <FlatList
             data={players}
             keyExtractor={(item, i) => String(item.id ?? i)}

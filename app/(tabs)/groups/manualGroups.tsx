@@ -9,8 +9,14 @@ import React, { useEffect, useState } from 'react';
 import { Alert, FlatList, StyleSheet, Switch, View } from 'react-native';
 
 export default function DefineManualGroups() {
-  const { roundPlayers, currentRoundId, setManualGroupList, manualGroupList, players, setGroupsForRound } =
-    useDbStore();
+  const {
+    roundPlayers,
+    currentRoundId,
+    setManualGroupList,
+    manualGroupList,
+    league_players,
+    setGroupsForRound,
+  } = useDbStore();
   const [availablePlayerIds, setAvailablePlayerIds] = useState<RoundPlayer[]>([]);
   const [availablePlayers, setAvailablePlayers] = useState<Player[]>([]);
   const [selectedPlayers, setSelectedPlayers] = useState<number[]>([]);
@@ -40,7 +46,7 @@ export default function DefineManualGroups() {
 
   useEffect(() => {
     const currentRoundPlayers = availablePlayerIds
-      .map((ap) => players.find((p) => p.id === ap.player_id))
+      .map((ap) => league_players.find((p) => p.id === ap.player_id))
       .filter((e) => e !== undefined);
     setAvailablePlayers(currentRoundPlayers);
   }, [availablePlayerIds, players]);

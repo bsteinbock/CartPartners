@@ -16,7 +16,8 @@ export default function ModifyGroup() {
   const { groupId } = useLocalSearchParams();
   const numericGroupId = Number(groupId ?? '0');
   const router = useRouter();
-  const { groupPlayers, updateGroupPlayers, roundPlayers, players, groups, currentRoundId } = useDbStore();
+  const { groupPlayers, updateGroupPlayers, roundPlayers, league_players, groups, currentRoundId } =
+    useDbStore();
   const [currentGroupPlayers, setCurrentGroupPlayers] = useState<Player[]>([]);
   const [availablePlayers, setAvailablePlayers] = useState<Player[]>([]);
   const iconButton = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
@@ -38,7 +39,7 @@ export default function ModifyGroup() {
       const groupPlayerIds = getGroupPlayerIdsByRoundId(currentRoundId, groups, groupPlayers);
 
       // now get a list of players that are marked as available but not in the list of groupPlayerIds.
-      const available = players.filter((p) => !groupPlayerIds.includes(p.id));
+      const available = league_players.filter((p) => !groupPlayerIds.includes(p.id));
       setAvailablePlayers(available);
     }
   }, [groupPlayers, players, currentRoundId, groups]);
@@ -61,7 +62,7 @@ export default function ModifyGroup() {
 
   const handlePlayerOptionChange = useCallback(
     (option: OptionEntry) => {
-      const playerToAdd = players.find((p) => p.id === option.value);
+      const playerToAdd = league_players.find((p) => p.id === option.value);
       if (playerToAdd) {
         const updatedPlayers = [...currentGroupPlayers, playerToAdd];
         const updatedPlayerIds = updatedPlayers.map((p) => p.id);

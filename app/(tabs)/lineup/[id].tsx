@@ -18,7 +18,7 @@ export default function PlayerDetailScreen() {
   const iconButton = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
   const textDim = useThemeColor({ light: undefined, dark: undefined }, 'textDim');
 
-  const { players, addPlayer, updatePlayer, currentLeagueId } = useDbStore();
+  const { league_players, addPlayer, updatePlayer, currentLeagueId } = useDbStore();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [mobileNumber, setMobileNumber] = useState('');
@@ -27,7 +27,7 @@ export default function PlayerDetailScreen() {
 
   useEffect(() => {
     if (!isNew && id) {
-      const existing = players.find((p) => p.id === Number(id));
+      const existing = league_players.find((p) => p.id === Number(id));
       if (existing) {
         setName(existing.name);
         setEmail(existing.email || '');

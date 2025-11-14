@@ -32,7 +32,7 @@ export default function GroupsScreen() {
     rounds,
     groups,
     groupPlayers,
-    players,
+    league_players,
     roundPlayers,
     setGroupsForRound,
     swapGroupSlots,
@@ -83,7 +83,7 @@ export default function GroupsScreen() {
 
   useEffect(() => {
     // get mobile number for coordinator
-    const coordinator = players.find((p) => p.id === groupCoordinatorId);
+    const coordinator = league_players.find((p) => p.id === groupCoordinatorId);
     if (coordinator && coordinator.mobile_number) {
       setMyMobileNumber(coordinator.mobile_number);
     } else {
@@ -480,7 +480,7 @@ export default function GroupsScreen() {
               {currentRoundPlayerIds.length === 0 ? (
                 <ThemedText type="defaultSemiBold" style={{ color: errorText, padding: 10 }}>
                   The lineup of players for this round has not been set. Please return to the Rounds tab and
-                  tap the round to select players.
+                  tap the round to select league_players.
                 </ThemedText>
               ) : (
                 <>
@@ -576,7 +576,7 @@ export default function GroupsScreen() {
                       <ThemedView>
                         <ThemedText type="subtitle">Manual Tee Groups</ThemedText>
                         <ThemedText style={{ color: errorText, paddingBottom: 10 }} type="default">
-                          Press Generate to build groups that include the remaining players.
+                          Press Generate to build groups that include the remaining league_players.
                         </ThemedText>
                       </ThemedView>
                       <ThemedView style={{ flex: 1 }}>
