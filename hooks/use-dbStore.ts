@@ -1,13 +1,12 @@
 // use-DbStore.ts
 import { formatPhoneNumberToE164 } from '@/lib/cart-utils';
 import { Directory, File, Paths } from 'expo-file-system';
-import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-
 import * as SQLite from 'expo-sqlite';
 import { create } from 'zustand';
 
 const DB_SUBDIR = 'db';
+const DB_BACKUP_SUBDIR = 'db-backup';
 const DB_NAME = 'cart-partners.db';
 
 let db: SQLite.SQLiteDatabase | null = null;
@@ -181,31 +180,34 @@ export function initDb() {
 
 // --- BACKUP WITH CLOSE AND REOPEN ---
 export async function backupDatabase() {
-  const backupDir = FileSystem.cacheDirectory + 'db-backup/';
+  const backupDir = new Directory(Paths.cache, DB_BACKUP_SUBDIR);
 
-  // 1. Get the DB reference
-  const database = getDb();
-  const dbPath = database.databasePath;
+  // 1. Clean previous backup and create a clean backup directory
+  if (backupDir.exists) {
+    backupDir.delete();
+  }
+  backupDir.create({ idempotent: true, intermediates: true });
 
   // 2. Close the DB before copying (IMPORTANT for iOS)
+  const database = getDb();
+  const dbPath = database.databasePath;
   try {
     database.closeSync();
   } catch (err) {
     console.warn('Failed to close DB (may already be closed):', err);
   }
 
-  // 3. Clean previous backup
-  const info = await FileSystem.getInfoAsync(backupDir);
-  if (info.exists) {
-    await FileSystem.deleteAsync(backupDir, { idempotent: true });
+  // 3. Copy the db to the back-up location
+  const backupFile = new File(backupDir, DB_NAME);
+  const sourceDbFile = new File(dbPath);
+  if (sourceDbFile.exists) {
+    sourceDbFile.copy(backupFile);
+  } else {
+    console.error('Source DB does not exist!');
+    throw new Error('Source DB does not exist!');
   }
-  await FileSystem.makeDirectoryAsync(backupDir, { intermediates: true });
 
-  // 4. Copy the db to the back-up location
-  const dest = backupDir + 'cart-partners' + '.db';
-  await FileSystem.copyAsync({ from: dbPath, to: dest });
-
-  // 5. Reopen the DB so the app can keep using it
+  // 4. Reopen the DB so the app can keep using it
   try {
     db = SQLite.openDatabaseSync(DB_NAME, undefined, new Directory(Paths.document, DB_SUBDIR).uri);
   } catch (err) {
@@ -213,9 +215,9 @@ export async function backupDatabase() {
     throw err;
   }
 
-  // 6. Optionally share the DB
+  // 5. Optionally share the DB
   if (await Sharing.isAvailableAsync()) {
-    await Sharing.shareAsync(`${backupDir}/cart-partners.db`);
+    await Sharing.shareAsync(`${backupFile.uri}`);
   }
 }
 
