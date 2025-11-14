@@ -201,19 +201,9 @@ export async function backupDatabase() {
   }
   await FileSystem.makeDirectoryAsync(backupDir, { intermediates: true });
 
-  const base = dbPath.replace('.db', '');
-  //const files = ['.db', '.db-wal', '.db-shm'];
-  const files = ['.db'];
-
-  for (const ext of files) {
-    const source = base + ext;
-    const dest = backupDir + 'cart-partners' + ext;
-
-    const exists = await FileSystem.getInfoAsync(source).then((i) => i.exists);
-    if (exists) {
-      await FileSystem.copyAsync({ from: source, to: dest });
-    }
-  }
+  // 4. Copy the db to the back-up location
+  const dest = backupDir + 'cart-partners' + '.db';
+  await FileSystem.copyAsync({ from: dbPath, to: dest });
 
   // 5. Reopen the DB so the app can keep using it
   try {
