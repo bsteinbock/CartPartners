@@ -1,12 +1,10 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import ThemedButton from '@/components/ui/ThemedButton';
-import { getDatabasePath, restoreDatabaseFromFile, useDbStore } from '@/hooks/use-dbStore';
+import { backupDatabase, restoreDatabaseFromFile, useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import * as Application from 'expo-application';
 import * as DocumentPicker from 'expo-document-picker';
-import { File, Paths } from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
 import React from 'react';
 import { Alert, Platform, ScrollView, StyleSheet } from 'react-native';
 
@@ -80,30 +78,7 @@ export default function BackupScreen() {
           style: 'default',
           onPress: async () => {
             try {
-              const dbPath = getDatabasePath();
-
-              const canShare = await Sharing.isAvailableAsync();
-              if (!canShare) {
-                Alert.alert('Error', 'Sharing is not available on this device');
-                return;
-              }
-
-              const now = new Date();
-              const timestamp = `${now.getMonth() + 1}-${now.getDate()}-${now.getFullYear()}`;
-              const fileName = `cartpartners-${timestamp}.db`;
-
-              const sourceFile = new File(dbPath);
-              const backupFile = new File(Paths.cache, fileName);
-              if (backupFile.exists) {
-                backupFile.delete();
-              }
-              sourceFile.copy(backupFile);
-
-              await Sharing.shareAsync(backupFile.uri, {
-                mimeType: 'application/x-sqlite3',
-                dialogTitle: 'Export CartPartners Database',
-                UTI: 'public.database', // iOS
-              });
+              await backupDatabase();
             } catch (error) {
               Alert.alert('Error', 'Failed to export database');
               console.error('Export error:', error);

@@ -22,6 +22,7 @@ export default function LeaguesScreen() {
   const insets = useSafeAreaInsets();
 
   function openAdd() {
+    leagueEditIdRef.current = 0;
     setNewName('');
     setAddModalVisible(true);
   }

@@ -1,6 +1,9 @@
 // use-DbStore.ts
 import { formatPhoneNumberToE164 } from '@/lib/cart-utils';
 import { Directory, File, Paths } from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
+
 import * as SQLite from 'expo-sqlite';
 import { create } from 'zustand';
 
@@ -176,6 +179,56 @@ export function initDb() {
   }
 }
 
+// --- BACKUP WITH CLOSE AND REOPEN ---
+export async function backupDatabase() {
+  const backupDir = FileSystem.cacheDirectory + 'db-backup/';
+
+  // 1. Get the DB reference
+  const database = getDb();
+  const dbPath = database.databasePath;
+
+  // 2. Close the DB before copying (IMPORTANT for iOS)
+  try {
+    database.closeSync();
+  } catch (err) {
+    console.warn('Failed to close DB (may already be closed):', err);
+  }
+
+  // 3. Clean previous backup
+  const info = await FileSystem.getInfoAsync(backupDir);
+  if (info.exists) {
+    await FileSystem.deleteAsync(backupDir, { idempotent: true });
+  }
+  await FileSystem.makeDirectoryAsync(backupDir, { intermediates: true });
+
+  const base = dbPath.replace('.db', '');
+  //const files = ['.db', '.db-wal', '.db-shm'];
+  const files = ['.db'];
+
+  for (const ext of files) {
+    const source = base + ext;
+    const dest = backupDir + 'cart-partners' + ext;
+
+    const exists = await FileSystem.getInfoAsync(source).then((i) => i.exists);
+    if (exists) {
+      await FileSystem.copyAsync({ from: source, to: dest });
+    }
+  }
+
+  // 5. Reopen the DB so the app can keep using it
+  try {
+    db = SQLite.openDatabaseSync(DB_NAME, undefined, new Directory(Paths.document, DB_SUBDIR).uri);
+  } catch (err) {
+    console.error('Failed to reopen DB after backup!', err);
+    throw err;
+  }
+
+  // 6. Optionally share the DB
+  if (await Sharing.isAvailableAsync()) {
+    await Sharing.shareAsync(`${backupDir}/cart-partners.db`);
+  }
+}
+
 /**
  * Restore the database from a given file URI.
  * Automatically backs up current DB before restoring.
@@ -190,9 +243,9 @@ export const restoreDatabaseFromFile = async (selectedFileUri: string): Promise<
 
     const now = new Date();
     const timestamp = `${now.getMonth() + 1}-${now.getDate()}-${now.getFullYear()}`;
-    const fileName = `cartpartners-backup-${timestamp}.db`;
+    const fileName = `cp-backup-${timestamp}.db`;
 
-    const backupFile = new File(Paths.cache, fileName);
+    const backupFile = new File(Paths.document, DB_SUBDIR, fileName);
     if (backupFile.exists) {
       backupFile.delete();
     }
