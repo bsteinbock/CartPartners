@@ -44,6 +44,7 @@ export default function RoundsScreen() {
       setPickedOption(undefined);
     }
   }, [currentLeagueId, leagueOptions]);
+
   const createAndOpen = async () => {
     router.push({ pathname: '/edit-or-add', params: { id: 'new' } });
   };
@@ -75,7 +76,6 @@ export default function RoundsScreen() {
             <OptionPickerItem
               optionLabel={pickedOption ? pickedOption.label : 'Unknown League'}
               placeholder="Select League / Outing"
-              editable={false}
               onPickerButtonPress={() => setIsLeaguePickerVisible(true)}
             />
           </ThemedView>
