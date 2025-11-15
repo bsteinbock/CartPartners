@@ -49,12 +49,12 @@ export default function DefineManualGroups() {
       .map((ap) => league_players.find((p) => p.id === ap.player_id))
       .filter((e) => e !== undefined);
     setAvailablePlayers(currentRoundPlayers);
-  }, [availablePlayerIds, players]);
+  }, [availablePlayerIds, league_players]);
 
   useEffect(() => {
     const groupSizes = getGroupSizes(availablePlayerIds.length);
     setGroupSizes(groupSizes);
-  }, [availablePlayerIds, players]);
+  }, [availablePlayerIds]);
 
   useEffect(() => {
     // since we remove the available players when they are added to manual group we should always choose the first group size
@@ -63,10 +63,10 @@ export default function DefineManualGroups() {
 
   useEffect(() => {
     if (manualGroups.length > 0) {
-      const names = formatManualGroupPlayersByNames(manualGroups, players);
+      const names = formatManualGroupPlayersByNames(manualGroups, league_players);
       setManualGroupsPlayersNames(names);
     }
-  }, [manualGroups, players, formatManualGroupPlayersByNames]);
+  }, [manualGroups, formatManualGroupPlayersByNames, league_players]);
 
   const togglePlayer = (playerId: number) => {
     if (selectedPlayers.includes(playerId)) {

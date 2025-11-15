@@ -26,7 +26,6 @@ const SwipeableLeaguePlayerItem = ({
   const { removePlayerFromLeague, updatePlayer, currentLeagueId, leagues } = useDbStore();
   const borderColor = useThemeColor({ light: undefined, dark: undefined }, 'border');
   const iconColor = useThemeColor({ light: undefined, dark: undefined }, 'icon');
-  const switchTrackColor = useThemeColor({ light: undefined, dark: undefined }, 'switchTrackColor');
   const league = leagues.find((l) => l.id === currentLeagueId);
 
   const handleDelete = useCallback(

@@ -14,7 +14,7 @@ import { Alert, StyleSheet } from 'react-native';
 
 export default function SetGroupCoordinatorScreen() {
   const router = useRouter();
-  const { league_players } = useDbStore();
+  const { all_players } = useDbStore();
   const [isPlayerPickerVisible, setIsPlayerPickerVisible] = useState<boolean>(false);
   const [playerOptions, setPlayerOptions] = useState<OptionEntry[]>([]);
   const [pickedPlayer, setPickedPlayer] = useState<OptionEntry | null>(null);
@@ -26,7 +26,7 @@ export default function SetGroupCoordinatorScreen() {
   const disabledColor = useThemeColor({ light: undefined, dark: undefined }, 'disabledColor');
 
   useEffect(() => {
-    const availableOptions = league_players.map((r) => ({
+    const availableOptions = all_players.map((r) => ({
       label: r.name,
       value: r.id,
     }));
@@ -35,7 +35,7 @@ export default function SetGroupCoordinatorScreen() {
     } else {
       setPlayerOptions(availableOptions);
     }
-  }, [players]);
+  }, [all_players]);
 
   const sendTextMessage = async (addresses: string | string[], message: string) => {
     const isAvailable = await SMS.isAvailableAsync();
@@ -63,7 +63,7 @@ export default function SetGroupCoordinatorScreen() {
   const handleSaveMyId = useCallback(async () => {
     if (pickedPlayer === null) return;
 
-    const player = league_players.find((p) => p.id === pickedPlayer.value);
+    const player = all_players.find((p) => p.id === pickedPlayer.value);
     if (player) {
       await SecureStore.setItemAsync('cartPartnerGroupCoordinatorId', player.id.toString());
 
@@ -84,7 +84,7 @@ export default function SetGroupCoordinatorScreen() {
       // navigate back to groups index with my number
       router.back();
     }
-  }, [players, bodyText, mobilePhoneNumbers, router, pickedPlayer]);
+  }, [all_players, bodyText, mobilePhoneNumbers, router, pickedPlayer]);
 
   return (
     <ThemedView style={styles.container}>

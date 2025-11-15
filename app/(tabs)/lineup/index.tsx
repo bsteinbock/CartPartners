@@ -130,7 +130,7 @@ export default function LineupScreen() {
             </ThemedText>
           ) : (
             <>
-              <ThemedText style={{ marginTop: 16, marginBottom: 8 }}>Select Round</ThemedText>
+              <ThemedText style={{ marginTop: 16, marginBottom: 8 }}>Round</ThemedText>
               <OptionPickerItem
                 containerStyle={{ backgroundColor: backgroundColor, height: 36 }}
                 optionLabel={pickedRound?.label}

@@ -4,7 +4,7 @@ import SwipeablePlayerItem from '@/components/ui/SwipeablePlayer';
 import { Player, useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { displayPhoneNumberFromE164 } from '@/lib/cart-utils';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import * as DocumentPicker from 'expo-document-picker';
 import { File, Paths } from 'expo-file-system';
@@ -16,7 +16,16 @@ import { FlatList } from 'react-native-gesture-handler';
 
 export default function PlayersScreen() {
   const router = useRouter();
-  const { addPlayers, updatePlayer, deletePlayer, all_players, refreshAll } = useDbStore();
+  const {
+    addPlayers,
+    updatePlayer,
+    deletePlayer,
+    all_players,
+    refreshAll,
+    currentLeagueId,
+    addPlayersToLeague,
+    league_players,
+  } = useDbStore();
   const iconColor = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
 
   const startEdit = (id?: number) => {
@@ -92,6 +101,23 @@ export default function PlayersScreen() {
   };
 
   const importFromCSV = async () => {
+    if (all_players.length >= 0) {
+      Alert.alert(
+        'Import Players',
+        'Importing players from a CSV file will add new players and update existing ones based on their names. Do you want to proceed?',
+        [
+          { text: 'Cancel' },
+          { text: 'Import', onPress: () => proceedImport(false) },
+          { text: 'Add to Active League', onPress: () => proceedImport(true) },
+        ],
+        { cancelable: true },
+      );
+    } else {
+      proceedImport(false);
+    }
+  };
+
+  const proceedImport = async (addToActiveLeague: boolean) => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: 'text/csv',
@@ -104,7 +130,7 @@ export default function PlayersScreen() {
 
       const fileUri = result.assets[0].uri;
       const csvFile = new File(fileUri);
-
+      const playerIdsToAddToLeague: Set<number> = new Set();
       const fileContent = await csvFile.text();
 
       // Split into lines and parse CSV
@@ -123,6 +149,7 @@ export default function PlayersScreen() {
       }
 
       let newPlayers: Omit<Player, 'id'>[] = [];
+      let numPlayersProcessed = 0;
 
       for (let i = 1; i < lines.length; i++) {
         const cols = lines[i].split(',').map((v) => v.replace(/"/g, '').trim());
@@ -138,37 +165,35 @@ export default function PlayersScreen() {
           (cols[availableIndex] || '').toLowerCase() === 'true'
             ? 1
             : 0;
-
+        numPlayersProcessed++;
         // Check if league_player exists by name (case-insensitive)
-        const existingLeaguePlayer = all_players.find(
+        const existingPlayer = all_players.find(
           (p) => p.name.trim().toLowerCase() === name.trim().toLowerCase(),
         );
 
-        if (existingLeaguePlayer && existingLeaguePlayer.id) {
-          updatePlayer(
-            existingLeaguePlayer.id,
-            { speedIndex, email, available, nickname, mobile_number },
-            false,
-          );
-        } else {
-          // Check if player exists by name (case-insensitive)
-          const existing = all_players.find((p) => p.name.trim().toLowerCase() === name.trim().toLowerCase());
-
-          if (existing && existing.id) {
-            updatePlayer(existing.id, { speedIndex, email, available, nickname, mobile_number }, false);
-          } else {
-            newPlayers.push({ name, speedIndex, email, available, nickname, mobile_number });
+        if (existingPlayer && existingPlayer.id) {
+          updatePlayer(existingPlayer.id, { speedIndex, email, available, nickname, mobile_number }, false);
+          if (addToActiveLeague && currentLeagueId) {
+            if (!league_players.find((lp) => lp.id === existingPlayer.id)) {
+              playerIdsToAddToLeague.add(existingPlayer.id);
+            }
           }
+        } else {
+          newPlayers.push({ name, speedIndex, email, available, nickname, mobile_number });
         }
       }
 
-      if (newPlayers.length > 0) {
-        addPlayers(newPlayers, null, false);
-
-        refreshAll();
+      if (playerIdsToAddToLeague.size > 0 && currentLeagueId) {
+        addPlayersToLeague(Array.from(playerIdsToAddToLeague), currentLeagueId, false);
       }
 
-      Alert.alert('Import complete', `${newPlayers.length}Players imported successfully!`);
+      if (newPlayers.length > 0) {
+        addPlayers(newPlayers, addToActiveLeague ? currentLeagueId : null, false);
+      }
+
+      refreshAll();
+
+      Alert.alert('Import complete', `${numPlayersProcessed} players processed successfully!`);
     } catch (err) {
       console.error('Import failed', err);
       Alert.alert('Error', 'Failed to import league_players.');
@@ -191,11 +216,9 @@ export default function PlayersScreen() {
             <ThemedText type="small">All Player</ThemedText>
           </ThemedView>
           <View style={{ flexDirection: 'row', gap: 30, alignItems: 'center', paddingRight: 10 }}>
-            {all_players.length === 0 && (
-              <Pressable onPress={importFromCSV}>
-                <MaterialCommunityIcons name="application-import" size={28} color={iconColor} />
-              </Pressable>
-            )}
+            <Pressable onPress={importFromCSV}>
+              <MaterialCommunityIcons name="application-import" size={28} color={iconColor} />
+            </Pressable>
             {all_players.length > 0 && (
               <Pressable onPress={exportToCSV}>
                 <MaterialCommunityIcons name="application-export" size={28} color={iconColor} />
@@ -203,7 +226,7 @@ export default function PlayersScreen() {
             )}
 
             <Pressable onPress={addNewPlayer}>
-              <Ionicons name="person-add-sharp" size={28} color={iconColor} />
+              <FontAwesome5 name="plus-circle" size={28} color={iconColor} />
             </Pressable>
           </View>
         </View>

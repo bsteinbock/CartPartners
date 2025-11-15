@@ -151,8 +151,10 @@ export default function PlayersScreen() {
       {playerOptions && isPlayerPickerVisible && (
         <BottomSheetContainer
           isVisible={isPlayerPickerVisible}
-          title="Select Player"
-          modalHeight="50%"
+          title="Select Players"
+          modalHeight="70%"
+          okLabel="Add"
+          okDisabled={selectedPlayerOptions.length === 0}
           onOK={() => {
             const playersToAdd = selectedPlayerOptions
               .map((option) => option.value ?? null)

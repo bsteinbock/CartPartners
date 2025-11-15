@@ -6,7 +6,7 @@ import { OptionPickerItem } from '@/components/ui/OptionPickerItem';
 import SwipeableRound from '@/components/ui/SwipeableRound';
 import { useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
-import Entypo from '@expo/vector-icons/Entypo';
+import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -91,7 +91,7 @@ export default function RoundsScreen() {
           >
             <ThemedText type="title">Rounds</ThemedText>
             <Pressable onPress={createAndOpen}>
-              <Entypo name="add-to-list" size={28} color={iconColor} />
+              <FontAwesome5 name="plus-circle" size={28} color={iconColor} />
             </Pressable>
           </View>
           <>
