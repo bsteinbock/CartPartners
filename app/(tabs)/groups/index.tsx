@@ -89,7 +89,7 @@ export default function GroupsScreen() {
     } else {
       setMyMobileNumber(null);
     }
-  }, [groupCoordinatorId, players]);
+  }, [groupCoordinatorId, league_players]);
 
   useEffect(() => {
     const availableOptions = rounds.map((r) => ({
@@ -128,17 +128,17 @@ export default function GroupsScreen() {
 
   useEffect(() => {
     if (currentRoundGroups.length > 0) {
-      const names = formatGroupPlayersByNames(currentRoundGroups, players);
+      const names = formatGroupPlayersByNames(currentRoundGroups, league_players);
       setGroupPlayerNames(names);
     }
-  }, [currentRoundGroups, players, formatGroupPlayersByNames]);
+  }, [currentRoundGroups, league_players, formatGroupPlayersByNames]);
 
   useEffect(() => {
     if (manualGroupList.length > 0) {
-      const names = formatManualGroupPlayersByNames(manualGroupList, players);
+      const names = formatManualGroupPlayersByNames(manualGroupList, league_players);
       setManualGroupsPlayersNames(names);
     }
-  }, [manualGroupList, players, formatManualGroupPlayersByNames]);
+  }, [manualGroupList, league_players, formatManualGroupPlayersByNames]);
 
   useEffect(() => {
     if (roundPlayers.length > 0) {
@@ -225,12 +225,12 @@ export default function GroupsScreen() {
     if (currentRoundGroups.length === 0) return Alert.alert('No groups to export for this round');
 
     let bodyText = roundTeeTimeInfo ? `${roundTeeTimeInfo}\n\n` : '';
-    const summary = reportGroupsWithNames(currentRoundGroups, players);
+    const summary = reportGroupsWithNames(currentRoundGroups, league_players);
     bodyText += summary;
     const textMessageBody = `Cart Groups - ${pickedRound?.label}\n\n${bodyText}`;
 
-    const addresses = getMailtoStrings(currentRoundGroups, players);
-    const mobileNumbers = getMobilePhoneNumbersForGroups(currentRoundGroups, players);
+    const addresses = getMailtoStrings(currentRoundGroups, league_players);
+    const mobileNumbers = getMobilePhoneNumbersForGroups(currentRoundGroups, league_players);
 
     try {
       Alert.alert('Send Groups Summary', 'Select method of sharing', [
@@ -303,7 +303,7 @@ export default function GroupsScreen() {
     let newGroupList = generateNextRoundGroups({
       playerIds,
       partnerFrequencies,
-      allPlayers: players,
+      allPlayers: league_players,
     });
 
     if (manualGroupList.length) {
@@ -317,7 +317,7 @@ export default function GroupsScreen() {
     currentRoundPlayerIds,
     groupPlayers,
     manualGroupList,
-    players,
+    league_players,
     setGroupsForRound,
     setManualGroupList,
   ]);
@@ -576,7 +576,7 @@ export default function GroupsScreen() {
                       <ThemedView>
                         <ThemedText type="subtitle">Manual Tee Groups</ThemedText>
                         <ThemedText style={{ color: errorText, paddingBottom: 10 }} type="default">
-                          Press Generate to build groups that include the remaining league_players.
+                          Press Generate to build groups that include the remaining players.
                         </ThemedText>
                       </ThemedView>
                       <ThemedView style={{ flex: 1 }}>

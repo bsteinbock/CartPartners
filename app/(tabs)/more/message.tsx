@@ -27,7 +27,7 @@ export default function MessageScreen() {
 
   useEffect(() => {
     setAvailablePlayers(league_players.filter((p) => p.available));
-  }, [players]);
+  }, [league_players]);
 
   useFocusEffect(() => {
     // Load saved number on mount

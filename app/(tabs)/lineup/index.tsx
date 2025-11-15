@@ -39,7 +39,7 @@ export default function LineupScreen() {
 
   useEffect(() => {
     setAvailablePlayers(league_players.filter((p) => p.available));
-  }, [players]);
+  }, [league_players]);
 
   useEffect(() => {
     const activePlayers = roundPlayers

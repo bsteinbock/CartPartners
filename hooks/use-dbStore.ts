@@ -93,8 +93,15 @@ export function initDb() {
       mobile_number TEXT DEFAULT '',
       speedIndex REAL NOT NULL,
       email TEXT,
-      available INTEGER NOT NULL DEFAULT 1,
-      league_id INTEGER
+      available INTEGER NOT NULL DEFAULT 1
+    );
+
+    CREATE TABLE IF NOT EXISTS league_players (
+      league_id INTEGER NOT NULL,
+      player_id INTEGER NOT NULL,
+      PRIMARY KEY (league_id, player_id),
+      FOREIGN KEY (league_id) REFERENCES leagues(id),
+      FOREIGN KEY (player_id) REFERENCES players(id)
     );
 
     CREATE TABLE IF NOT EXISTS rounds (
@@ -124,10 +131,10 @@ export function initDb() {
       PRIMARY KEY (group_id, player_id)
     );
 
-   CREATE TABLE IF NOT EXISTS meta (
-     key TEXT PRIMARY KEY,
-     value TEXT
-   );
+    CREATE TABLE IF NOT EXISTS meta (
+      key TEXT PRIMARY KEY,
+      value TEXT
+    );
   `);
 
   // --- Migration step for existing DBs ---
@@ -139,10 +146,6 @@ export function initDb() {
 
   if (!playerCols.includes('mobile_number')) {
     db.execSync(`ALTER TABLE players ADD COLUMN mobile_number TEXT DEFAULT '';`);
-  }
-
-  if (!playerCols.includes('league_id')) {
-    db.execSync(`ALTER TABLE players ADD COLUMN league_id INTEGER;`);
   }
 
   const roundCols = db.getAllSync<{ name: string }>(`PRAGMA table_info(rounds);`).map((r) => r.name);
@@ -161,6 +164,34 @@ export function initDb() {
     );
   `);
 
+  // Migrate league_id from players table to new league_players table
+  const leaguePlayersTableExists = db.getFirstSync<{ name: string }>(
+    `SELECT name FROM sqlite_master WHERE type='table' AND name='league_players' LIMIT 1;`,
+  );
+
+  if (leaguePlayersTableExists && playerCols.includes('league_id')) {
+    // Migrate existing data from players.league_id to league_players table
+    const playersWithLeague = db.getAllSync<{ id: number; league_id: number | null }>(
+      'SELECT id, league_id FROM players WHERE league_id IS NOT NULL;',
+    );
+
+    db.withTransactionSync(() => {
+      for (const player of playersWithLeague) {
+        db.runSync('INSERT OR IGNORE INTO league_players (league_id, player_id) VALUES (?, ?);', [
+          player.league_id,
+          player.id,
+        ]);
+      }
+    });
+
+    // Drop the league_id column from players if it exists
+    try {
+      db.execSync(`ALTER TABLE players DROP COLUMN league_id;`);
+    } catch (e) {
+      console.warn('Could not drop league_id column from players (may not exist):', e);
+    }
+  }
+
   // Ensure a "Default" league exists and assign existing players/rounds to it if they have no league_id
   // Only insert a "Default" league and update existing players/rounds if the leagues table is empty
   const leagueCountRow = db.getFirstSync<{ count: number }>('SELECT COUNT(*) as count FROM leagues;');
@@ -172,7 +203,16 @@ export function initDb() {
     ]);
     const defaultLeagueId = row?.id ?? null;
     if (defaultLeagueId != null) {
-      db.runSync('UPDATE players SET league_id = ? WHERE league_id IS NULL;', [defaultLeagueId]);
+      // Insert all players into the default league if they're not already assigned
+      const allPlayers = db.getAllSync<{ id: number }>('SELECT id FROM players;');
+      db.withTransactionSync(() => {
+        for (const player of allPlayers) {
+          db.runSync('INSERT OR IGNORE INTO league_players (league_id, player_id) VALUES (?, ?);', [
+            defaultLeagueId,
+            player.id,
+          ]);
+        }
+      });
       db.runSync('UPDATE rounds SET league_id = ? WHERE league_id IS NULL;', [defaultLeagueId]);
     }
   }
@@ -327,7 +367,7 @@ type DbState = {
   currentRoundId: number | null;
   currentLeagueId: number | null;
 
-  fetchLeaguePlayers: () => void;
+  fetchLeaguePlayers: (leagueId?: number | null) => void;
   fetchAllPlayers: () => void;
   fetchRounds: () => void;
   fetchLeagues: () => void;
@@ -338,9 +378,12 @@ type DbState = {
   setRoundPlayers: (roundId: number, playerIds: number[]) => void;
 
   addPlayer: (player: NewPlayer, leagueId?: number | null) => void;
-  addPlayers: (players: NewPlayer[], leagueId?: number | null) => void;
+  addPlayers: (players: NewPlayer[], leagueId?: number | null, refresh?: boolean) => void;
+  addPlayerToLeague: (playerId: number, leagueId: number, refresh?: boolean) => void;
+  addPlayersToLeague: (playerIds: number[], leagueId: number, refresh?: boolean) => void;
+  removePlayerFromLeague: (playerId: number, leagueId: number, refresh?: boolean) => void;
   addLeague: (name: string) => void;
-  updatePlayer: (id: number, data: UpdatedPlayer) => void;
+  updatePlayer: (id: number, data: UpdatedPlayer, refresh?: boolean) => void;
   deletePlayer: (id: number) => void;
 
   addGroup: (roundId: number, slotIndex: number) => void;
@@ -438,8 +481,9 @@ export const useDbStore = create<DbState>((set, get) => ({
   deleteLeague: (id: number) => {
     const db = getDb();
     db.withTransactionSync(() => {
-      // unset league_id on related players and rounds
-      db.runSync('UPDATE players SET league_id = NULL WHERE league_id = ?;', [id]);
+      // Delete league_players associations
+      db.runSync('DELETE FROM league_players WHERE league_id = ?;', [id]);
+      // unset league_id on related rounds
       db.runSync('UPDATE rounds SET league_id = NULL WHERE league_id = ?;', [id]);
       // delete the league
       db.runSync('DELETE FROM leagues WHERE id = ?;', [id]);
@@ -459,21 +503,29 @@ export const useDbStore = create<DbState>((set, get) => ({
         set({ currentLeagueId: null });
         writeMeta('lastActiveLeagueId', null);
       }
-
-      const current = get().currentLeagueId;
-      if (current === id) {
-        writeMeta('lastActiveLeagueId', null);
-        set({ currentLeagueId: null });
-      }
     }
     refreshAll();
   },
+
   // --- Fetchers ------------------------------------------------------------
-  fetchLeaguePlayers: () => {
+  fetchLeaguePlayers: (leagueId?: number | null) => {
     const db = getDb();
-    const rows = db.getAllSync('SELECT * FROM players WHERE league_id = ? ORDER BY name ASC;', [
-      get().currentLeagueId ?? 0,
-    ]) as Player[];
+    const currentLeagueId = leagueId ?? get().currentLeagueId;
+
+    if (!currentLeagueId) {
+      set({ league_players: [] });
+      return;
+    }
+
+    const rows = db.getAllSync<Player>(
+      `SELECT p.id, p.name, p.nickname, p.mobile_number, p.speedIndex, p.email, p.available
+       FROM players p
+       INNER JOIN league_players lp ON p.id = lp.player_id
+       WHERE lp.league_id = ?
+       ORDER BY p.name ASC;`,
+      [currentLeagueId],
+    );
+
     set({ league_players: rows });
   },
 
@@ -551,7 +603,7 @@ export const useDbStore = create<DbState>((set, get) => ({
 
       groupPlayers.push({
         group_id: group.id,
-        player_ids: league_players.map((p) => p.player_id),
+        player_ids: players.map((p) => p.player_id),
       });
     }
 
@@ -559,21 +611,32 @@ export const useDbStore = create<DbState>((set, get) => ({
   },
 
   // --- Simple Mutations ----------------------------------------------------
-  addPlayer: (player: NewPlayer, leagueId?: number | null) => {
+  addPlayer: (player: NewPlayer, leagueId: number | null | undefined) => {
     const db = getDb();
 
     const { name, speedIndex = 1, nickname = '', mobile_number = '', email = '', available = 1 } = player;
     const e164 = formatPhoneNumberToE164(mobile_number);
     const storedNumber = e164 || '';
 
-    const leagueVal = leagueId ?? (player as any).league_id ?? null;
     db.runSync(
-      'INSERT INTO players (name, nickname, mobile_number, speedIndex, email, available, league_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [name, nickname, storedNumber, speedIndex, email, available ? 1 : 0, leagueVal],
+      'INSERT INTO players (name, nickname, mobile_number, speedIndex, email, available) VALUES (?, ?, ?, ?, ?, ?)',
+      [name, nickname, storedNumber, speedIndex, email, available ? 1 : 0],
     );
 
-    const { fetchLeaguePlayers: fetchPlayers, fetchGroups, fetchRoundPlayers } = useDbStore.getState();
-    fetchPlayers();
+    if (leagueId) {
+      // Get the newly inserted player's ID
+      const newPlayer = db.getFirstSync<{ id: number }>('SELECT id FROM players ORDER BY id DESC LIMIT 1;');
+      if (newPlayer) {
+        db.runSync('INSERT INTO league_players (league_id, player_id) VALUES (?, ?);', [
+          leagueId,
+          newPlayer.id,
+        ]);
+      }
+    }
+
+    const { fetchLeaguePlayers, fetchGroups, fetchRoundPlayers, fetchAllPlayers } = useDbStore.getState();
+    fetchLeaguePlayers(leagueId);
+    fetchAllPlayers();
     fetchGroups();
     fetchRoundPlayers();
   },
@@ -584,6 +647,7 @@ export const useDbStore = create<DbState>((set, get) => ({
       db.runSync('DELETE FROM players WHERE id = ?', [id]);
       db.runSync('DELETE FROM round_players WHERE player_id = ?', [id]);
       db.runSync('DELETE FROM group_players WHERE player_id = ?', [id]);
+      db.runSync('DELETE FROM league_players WHERE player_id = ?', [id]);
     });
     const {
       fetchLeaguePlayers,
@@ -602,7 +666,7 @@ export const useDbStore = create<DbState>((set, get) => ({
   },
 
   // Update an existing player
-  updatePlayer: (id: number, data: UpdatedPlayer) => {
+  updatePlayer: (id: number, data: UpdatedPlayer, refresh = true) => {
     const db = getDb();
 
     const updates: string[] = [];
@@ -641,16 +705,18 @@ export const useDbStore = create<DbState>((set, get) => ({
     const sql = `UPDATE players SET ${updates.join(', ')} WHERE id = ?;`;
     db.runSync(sql, params);
 
-    const { fetchLeaguePlayers: fetchPlayers, fetchGroups, fetchRoundPlayers } = useDbStore.getState();
-    fetchPlayers();
-    fetchGroups();
-    fetchRoundPlayers();
+    if (refresh) {
+      const { fetchLeaguePlayers, fetchAllPlayers, fetchGroups, fetchRoundPlayers } = useDbStore.getState();
+      fetchLeaguePlayers(null);
+      fetchAllPlayers();
+      fetchGroups();
+      fetchRoundPlayers();
+    }
   },
 
   // Add multiple players at once
-  addPlayers: (players: NewPlayer[], leagueId?: number | null) => {
+  addPlayers: (players: NewPlayer[], leagueId?: number | null, refresh = true) => {
     const db = getDb();
-
     db.withTransactionSync(() => {
       for (const {
         name,
@@ -663,18 +729,80 @@ export const useDbStore = create<DbState>((set, get) => ({
         const e164 = formatPhoneNumberToE164(mobile_number);
         const storedNumber = e164 || '';
 
-        const leagueVal = leagueId ?? null;
         db.runSync(
-          'INSERT INTO players (name, nickname, mobile_number, speedIndex, email, available, league_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
-          [name, nickname, storedNumber, speedIndex, email, available ? 1 : 0, leagueVal],
+          'INSERT INTO players (name, nickname, mobile_number, speedIndex, email, available) VALUES (?, ?, ?, ?, ?, ?)',
+          [name, nickname, storedNumber, speedIndex, email, available ? 1 : 0],
         );
+
+        if (leagueId) {
+          // Get the newly inserted player's ID
+          const newPlayer = db.getFirstSync<{ id: number }>(
+            'SELECT id FROM players ORDER BY id DESC LIMIT 1;',
+          );
+          if (newPlayer) {
+            db.runSync('INSERT INTO league_players (league_id, player_id) VALUES (?, ?);', [
+              leagueId,
+              newPlayer.id,
+            ]);
+          }
+        }
       }
     });
 
-    const { fetchLeaguePlayers: fetchPlayers, fetchGroups, fetchRoundPlayers } = useDbStore.getState();
-    fetchPlayers();
-    fetchGroups();
-    fetchRoundPlayers();
+    if (refresh) {
+      const { fetchLeaguePlayers, fetchAllPlayers, fetchGroups, fetchRoundPlayers } = useDbStore.getState();
+      fetchAllPlayers();
+      fetchLeaguePlayers();
+      fetchGroups();
+      fetchRoundPlayers();
+    }
+  },
+
+  addPlayerToLeague: (playerId: number, leagueId: number, refresh = true) => {
+    const db = getDb();
+    try {
+      db.runSync('INSERT OR IGNORE INTO league_players (league_id, player_id) VALUES (?, ?);', [
+        leagueId,
+        playerId,
+      ]);
+      if (refresh) useDbStore.getState().fetchLeaguePlayers();
+    } catch (e) {
+      console.error('Failed to add player to league:', e);
+    }
+  },
+
+  addPlayersToLeague: (playerIds: number[], leagueId: number, refresh = true) => {
+    const db = getDb();
+
+    try {
+      db.withTransactionSync(() => {
+        // Insert new player list
+        for (const playerId of playerIds) {
+          db.runSync('INSERT OR IGNORE INTO league_players (league_id, player_id) VALUES (?, ?);', [
+            leagueId,
+            playerId,
+          ]);
+        }
+      });
+
+      if (refresh) {
+        useDbStore.getState().fetchLeaguePlayers();
+        useDbStore.getState().fetchRoundPlayers();
+        useDbStore.getState().setManualGroupList([]);
+      }
+    } catch (e) {
+      console.error('Failed to add players to league:', e);
+    }
+  },
+
+  removePlayerFromLeague: (playerId: number, leagueId: number, refresh = true) => {
+    const db = getDb();
+    try {
+      db.runSync('DELETE FROM league_players WHERE league_id = ? AND player_id = ?;', [leagueId, playerId]);
+      if (refresh) useDbStore.getState().fetchLeaguePlayers();
+    } catch (e) {
+      console.error('Failed to remove player from league:', e);
+    }
   },
 
   addGroup: (roundId, slotIndex) => {
@@ -756,7 +884,8 @@ export const useDbStore = create<DbState>((set, get) => ({
   // --- Refresh All ---------------------------------------------------------
   refreshAll: () => {
     const {
-      fetchLeaguePlayers: fetchPlayers,
+      fetchLeaguePlayers,
+      fetchAllPlayers,
       fetchRounds,
       fetchGroups,
       fetchRoundPlayers,
@@ -765,7 +894,8 @@ export const useDbStore = create<DbState>((set, get) => ({
       fetchLeagues,
     } = useDbStore.getState();
 
-    fetchPlayers();
+    fetchLeaguePlayers();
+    fetchAllPlayers();
     fetchRounds();
     fetchGroups();
     fetchRoundPlayers();

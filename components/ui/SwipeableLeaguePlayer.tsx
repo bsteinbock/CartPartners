@@ -5,7 +5,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useRef } from 'react';
 import { Alert, StyleSheet } from 'react-native';
-import { Pressable, Switch } from 'react-native-gesture-handler';
+import { Pressable } from 'react-native-gesture-handler';
 import { ThemedText } from '../themed-text';
 import { ThemedView } from '../themed-view';
 import { SwipeableComponent } from './SwipeableComponent';
@@ -13,7 +13,7 @@ import { SwipeableComponent } from './SwipeableComponent';
 const RIGHT_ACTION_WIDTH = 80;
 const SWIPE_THRESHOLD_WIDTH = 50;
 
-const SwipeablePlayerItem = ({
+const SwipeableLeaguePlayerItem = ({
   player,
   onPress,
   onDelete,
@@ -106,11 +106,6 @@ const SwipeablePlayerItem = ({
               <ThemedText type="small">{`${player.email || 'No Email'}`}</ThemedText>
             </ThemedView>
             <ThemedView style={{ alignItems: 'center', flexDirection: 'row', gap: 8 }}>
-              <Switch
-                trackColor={{ true: switchTrackColor }}
-                value={!!player.available}
-                onValueChange={() => toggleAvailable(player)}
-              />
               <MaterialIcons name="chevron-right" size={24} color={iconColor} />
             </ThemedView>
           </ThemedView>
@@ -159,4 +154,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default SwipeablePlayerItem;
+export default SwipeableLeaguePlayerItem;

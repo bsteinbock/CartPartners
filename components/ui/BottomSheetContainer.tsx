@@ -8,6 +8,7 @@ import { ThemedView } from '../themed-view';
 type Props = PropsWithChildren<{
   isVisible: boolean;
   onClose: () => void;
+  onOK?: () => void;
   title?: string;
   modalHeight?: DimensionValue;
 }>;
@@ -16,6 +17,7 @@ export default function BottomSheetContainer({
   isVisible,
   children,
   onClose,
+  onOK,
   title,
   modalHeight = '40%',
 }: Props) {
@@ -23,6 +25,7 @@ export default function BottomSheetContainer({
   const backgroundWithAlpha = useThemeColor({ light: undefined, dark: undefined }, 'backgroundWithAlpha');
   const borderColor = useThemeColor({ light: undefined, dark: undefined }, 'border');
   const iconColor = useThemeColor({ light: undefined, dark: undefined }, 'icon');
+  const iconButtonColor = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
 
   if (!isVisible) return null;
 
@@ -49,8 +52,13 @@ export default function BottomSheetContainer({
                   ]}
                 >
                   <ThemedText style={[{ fontWeight: '600' }]}>{title}</ThemedText>
+                  {onOK && (
+                    <Pressable onPress={() => onOK()}>
+                      <MaterialIcons name="check" color={iconButtonColor} size={28} />
+                    </Pressable>
+                  )}
                   <Pressable onPress={() => onClose()}>
-                    <MaterialIcons name="close" color={iconColor} size={22} />
+                    <MaterialIcons name="close" color={iconColor} size={28} />
                   </Pressable>
                 </ThemedView>
               ) : (

@@ -18,7 +18,7 @@ export default function PlayerDetailScreen() {
   const iconButton = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
   const textDim = useThemeColor({ light: undefined, dark: undefined }, 'textDim');
 
-  const { league_players, addPlayer, updatePlayer, currentLeagueId } = useDbStore();
+  const { all_players, addPlayer, updatePlayer } = useDbStore();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [mobileNumber, setMobileNumber] = useState('');
@@ -27,7 +27,7 @@ export default function PlayerDetailScreen() {
 
   useEffect(() => {
     if (!isNew && id) {
-      const existing = league_players.find((p) => p.id === Number(id));
+      const existing = all_players.find((p) => p.id === Number(id));
       if (existing) {
         setName(existing.name);
         setEmail(existing.email || '');
@@ -36,7 +36,7 @@ export default function PlayerDetailScreen() {
         setNickname(existing.nickname || '');
       }
     }
-  }, [id, league_players]);
+  }, [id, all_players]);
 
   const handleSave = () => {
     if (!name.trim()) {
@@ -60,7 +60,7 @@ export default function PlayerDetailScreen() {
           nickname: nickname.trim() ?? generateNickname(name.trim()),
           mobile_number: formatPhoneNumberToE164(mobileNumber.trim()),
         },
-        currentLeagueId,
+        null,
       );
       Alert.alert('Player Added', `${name} has been added`);
     } else {
@@ -85,6 +85,7 @@ export default function PlayerDetailScreen() {
             <ThemedText type="title" style={styles.title}>
               {isNew ? 'Add New Player' : 'Edit Player'}
             </ThemedText>
+            <ThemedText type="small">Master Player List</ThemedText>
 
             <ThemedText style={styles.label}>Name</ThemedText>
             <ThemedTextInput
