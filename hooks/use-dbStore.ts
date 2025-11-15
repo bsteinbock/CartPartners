@@ -137,63 +137,7 @@ export function initDb() {
     );
   `);
 
-  // --- Migration step for existing DBs ---
-  const playerCols = db.getAllSync<{ name: string }>(`PRAGMA table_info(players);`).map((r) => r.name);
-
-  if (!playerCols.includes('nickname')) {
-    db.execSync(`ALTER TABLE players ADD COLUMN nickname TEXT DEFAULT '';`);
-  }
-
-  if (!playerCols.includes('mobile_number')) {
-    db.execSync(`ALTER TABLE players ADD COLUMN mobile_number TEXT DEFAULT '';`);
-  }
-
-  const roundCols = db.getAllSync<{ name: string }>(`PRAGMA table_info(rounds);`).map((r) => r.name);
-  if (!roundCols.includes('tee_time_info')) {
-    db.execSync(`ALTER TABLE rounds ADD COLUMN tee_time_info TEXT DEFAULT '';`);
-  }
-  if (!roundCols.includes('league_id')) {
-    db.execSync(`ALTER TABLE rounds ADD COLUMN league_id INTEGER;`);
-  }
-
-  // ensure leagues table exists for older DBs
-  db.execSync(`
-    CREATE TABLE IF NOT EXISTS leagues (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL
-    );
-  `);
-
-  // Migrate league_id from players table to new league_players table
-  const leaguePlayersTableExists = db.getFirstSync<{ name: string }>(
-    `SELECT name FROM sqlite_master WHERE type='table' AND name='league_players' LIMIT 1;`,
-  );
-
-  if (leaguePlayersTableExists && playerCols.includes('league_id')) {
-    // Migrate existing data from players.league_id to league_players table
-    const playersWithLeague = db.getAllSync<{ id: number; league_id: number | null }>(
-      'SELECT id, league_id FROM players WHERE league_id IS NOT NULL;',
-    );
-
-    db.withTransactionSync(() => {
-      for (const player of playersWithLeague) {
-        db.runSync('INSERT OR IGNORE INTO league_players (league_id, player_id) VALUES (?, ?);', [
-          player.league_id,
-          player.id,
-        ]);
-      }
-    });
-
-    // Drop the league_id column from players if it exists
-    try {
-      db.execSync(`ALTER TABLE players DROP COLUMN league_id;`);
-    } catch (e) {
-      console.warn('Could not drop league_id column from players (may not exist):', e);
-    }
-  }
-
-  // Ensure a "Default" league exists and assign existing players/rounds to it if they have no league_id
-  // Only insert a "Default" league and update existing players/rounds if the leagues table is empty
+  // Only insert a "Default" league if the leagues table is empty
   const leagueCountRow = db.getFirstSync<{ count: number }>('SELECT COUNT(*) as count FROM leagues;');
   const leagueCount = leagueCountRow?.count ?? 0;
   if (leagueCount === 0) {
@@ -201,20 +145,6 @@ export function initDb() {
     const row = db.getFirstSync<{ id: number }>('SELECT id FROM leagues WHERE name = ? LIMIT 1;', [
       'Default',
     ]);
-    const defaultLeagueId = row?.id ?? null;
-    if (defaultLeagueId != null) {
-      // Insert all players into the default league if they're not already assigned
-      const allPlayers = db.getAllSync<{ id: number }>('SELECT id FROM players;');
-      db.withTransactionSync(() => {
-        for (const player of allPlayers) {
-          db.runSync('INSERT OR IGNORE INTO league_players (league_id, player_id) VALUES (?, ?);', [
-            defaultLeagueId,
-            player.id,
-          ]);
-        }
-      });
-      db.runSync('UPDATE rounds SET league_id = ? WHERE league_id IS NULL;', [defaultLeagueId]);
-    }
   }
 }
 
@@ -298,7 +228,15 @@ export const restoreDatabaseFromFile = async (selectedFileUri: string): Promise<
       .getAllSync<{ name: string }>('SELECT name FROM sqlite_master WHERE type="table";')
       .map((row) => row.name);
 
-    const expectedTables = ['players', 'rounds', 'round_players', 'groups', 'group_players'];
+    const expectedTables = [
+      'players',
+      'rounds',
+      'round_players',
+      'groups',
+      'group_players',
+      'leagues',
+      'league_players',
+    ];
 
     testDb.closeSync();
     for (const table of expectedTables) {
