@@ -48,8 +48,8 @@ export default function AboutScreen() {
           the very top of the screen allows you to select a specific league or outing. If you long-press on a
           round, you will be taken to a screen where you can edit its details. You can also swipe left on a
           round to delete it and all associated data. A round is defined by specifying the course, date, and
-          tee-time information. The tee-time details appear in the announcement sent to players. Tapping a
-          round opens its Lineup tab.
+          tee-time information. The tee-time details appear in the announcement sent to league_players.
+          Tapping a round opens its Lineup tab.
         </ThemedText>
 
         <ThemedText type="subtitle" style={styles.subTitle}>

@@ -8,7 +8,7 @@ export default function Layout() {
       }}
     >
       <Stack.Screen name="index" options={{ title: 'Lineup', headerShown: false }} />
-      <Stack.Screen name="players" options={{ title: 'All Players', headerShown: true }} />
+      <Stack.Screen name="players" options={{ title: 'League Players', headerShown: true }} />
       <Stack.Screen name="[id]" options={{ title: 'Define Player', headerShown: true }} />
     </Stack>
   );

@@ -15,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 export default function LineupScreen() {
   const {
     rounds,
-    players,
+    league_players,
     roundPlayers,
     setRoundPlayers,
     setCurrentRoundId,
@@ -38,8 +38,8 @@ export default function LineupScreen() {
   const [availablePlayers, setAvailablePlayers] = useState<Player[]>([]);
 
   useEffect(() => {
-    setAvailablePlayers(players.filter((p) => p.available));
-  }, [players]);
+    setAvailablePlayers(league_players.filter((p) => p.available));
+  }, [league_players]);
 
   useEffect(() => {
     const activePlayers = roundPlayers
@@ -95,15 +95,16 @@ export default function LineupScreen() {
 
   // Select or clear all players
   const toggleAllPlayers = () => {
-    const allIds = players.map((p) => p.id);
+    const allIds = league_players.map((p) => p.id);
     const allSelected = allIds.every((id) => selectedPlayers.includes(id));
     const newSelection = allSelected ? [] : allIds;
     setSelectedPlayers(newSelection);
     persistSelection(newSelection);
   };
 
-  const allSelected = players.length > 0 && players.every((p) => selectedPlayers.includes(p.id));
-  const playerLabel = `Player (${selectedPlayers.length} of ${players.length} Selected)`;
+  const allSelected =
+    league_players.length > 0 && league_players.every((p) => selectedPlayers.includes(p.id));
+  const playerLabel = `Player (${selectedPlayers.length} of ${league_players.length} Selected)`;
 
   return (
     <SafeAreaView style={{ flex: 1 }} edges={['top']}>
@@ -129,7 +130,7 @@ export default function LineupScreen() {
             </ThemedText>
           ) : (
             <>
-              <ThemedText style={{ marginTop: 16, marginBottom: 8 }}>Select Round</ThemedText>
+              <ThemedText style={{ marginTop: 16, marginBottom: 8 }}>Round</ThemedText>
               <OptionPickerItem
                 containerStyle={{ backgroundColor: backgroundColor, height: 36 }}
                 optionLabel={pickedRound?.label}
@@ -165,7 +166,7 @@ export default function LineupScreen() {
                   trackColor={{ true: switchTrackColor }}
                   value={allSelected}
                   onValueChange={toggleAllPlayers}
-                  disabled={players.length === 0}
+                  disabled={league_players.length === 0}
                 />
               </ThemedView>
               <ThemedText style={{ fontWeight: '700' }}>{playerLabel}</ThemedText>

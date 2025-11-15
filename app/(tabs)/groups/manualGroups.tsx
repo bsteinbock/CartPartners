@@ -9,8 +9,14 @@ import React, { useEffect, useState } from 'react';
 import { Alert, FlatList, StyleSheet, Switch, View } from 'react-native';
 
 export default function DefineManualGroups() {
-  const { roundPlayers, currentRoundId, setManualGroupList, manualGroupList, players, setGroupsForRound } =
-    useDbStore();
+  const {
+    roundPlayers,
+    currentRoundId,
+    setManualGroupList,
+    manualGroupList,
+    league_players,
+    setGroupsForRound,
+  } = useDbStore();
   const [availablePlayerIds, setAvailablePlayerIds] = useState<RoundPlayer[]>([]);
   const [availablePlayers, setAvailablePlayers] = useState<Player[]>([]);
   const [selectedPlayers, setSelectedPlayers] = useState<number[]>([]);
@@ -40,15 +46,15 @@ export default function DefineManualGroups() {
 
   useEffect(() => {
     const currentRoundPlayers = availablePlayerIds
-      .map((ap) => players.find((p) => p.id === ap.player_id))
+      .map((ap) => league_players.find((p) => p.id === ap.player_id))
       .filter((e) => e !== undefined);
     setAvailablePlayers(currentRoundPlayers);
-  }, [availablePlayerIds, players]);
+  }, [availablePlayerIds, league_players]);
 
   useEffect(() => {
     const groupSizes = getGroupSizes(availablePlayerIds.length);
     setGroupSizes(groupSizes);
-  }, [availablePlayerIds, players]);
+  }, [availablePlayerIds]);
 
   useEffect(() => {
     // since we remove the available players when they are added to manual group we should always choose the first group size
@@ -57,10 +63,10 @@ export default function DefineManualGroups() {
 
   useEffect(() => {
     if (manualGroups.length > 0) {
-      const names = formatManualGroupPlayersByNames(manualGroups, players);
+      const names = formatManualGroupPlayersByNames(manualGroups, league_players);
       setManualGroupsPlayersNames(names);
     }
-  }, [manualGroups, players, formatManualGroupPlayersByNames]);
+  }, [manualGroups, formatManualGroupPlayersByNames, league_players]);
 
   const togglePlayer = (playerId: number) => {
     if (selectedPlayers.includes(playerId)) {

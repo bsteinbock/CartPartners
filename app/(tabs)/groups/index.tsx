@@ -32,7 +32,7 @@ export default function GroupsScreen() {
     rounds,
     groups,
     groupPlayers,
-    players,
+    league_players,
     roundPlayers,
     setGroupsForRound,
     swapGroupSlots,
@@ -83,13 +83,13 @@ export default function GroupsScreen() {
 
   useEffect(() => {
     // get mobile number for coordinator
-    const coordinator = players.find((p) => p.id === groupCoordinatorId);
+    const coordinator = league_players.find((p) => p.id === groupCoordinatorId);
     if (coordinator && coordinator.mobile_number) {
       setMyMobileNumber(coordinator.mobile_number);
     } else {
       setMyMobileNumber(null);
     }
-  }, [groupCoordinatorId, players]);
+  }, [groupCoordinatorId, league_players]);
 
   useEffect(() => {
     const availableOptions = rounds.map((r) => ({
@@ -128,17 +128,17 @@ export default function GroupsScreen() {
 
   useEffect(() => {
     if (currentRoundGroups.length > 0) {
-      const names = formatGroupPlayersByNames(currentRoundGroups, players);
+      const names = formatGroupPlayersByNames(currentRoundGroups, league_players);
       setGroupPlayerNames(names);
     }
-  }, [currentRoundGroups, players, formatGroupPlayersByNames]);
+  }, [currentRoundGroups, league_players, formatGroupPlayersByNames]);
 
   useEffect(() => {
     if (manualGroupList.length > 0) {
-      const names = formatManualGroupPlayersByNames(manualGroupList, players);
+      const names = formatManualGroupPlayersByNames(manualGroupList, league_players);
       setManualGroupsPlayersNames(names);
     }
-  }, [manualGroupList, players, formatManualGroupPlayersByNames]);
+  }, [manualGroupList, league_players, formatManualGroupPlayersByNames]);
 
   useEffect(() => {
     if (roundPlayers.length > 0) {
@@ -225,12 +225,12 @@ export default function GroupsScreen() {
     if (currentRoundGroups.length === 0) return Alert.alert('No groups to export for this round');
 
     let bodyText = roundTeeTimeInfo ? `${roundTeeTimeInfo}\n\n` : '';
-    const summary = reportGroupsWithNames(currentRoundGroups, players);
+    const summary = reportGroupsWithNames(currentRoundGroups, league_players);
     bodyText += summary;
     const textMessageBody = `Cart Groups - ${pickedRound?.label}\n\n${bodyText}`;
 
-    const addresses = getMailtoStrings(currentRoundGroups, players);
-    const mobileNumbers = getMobilePhoneNumbersForGroups(currentRoundGroups, players);
+    const addresses = getMailtoStrings(currentRoundGroups, league_players);
+    const mobileNumbers = getMobilePhoneNumbersForGroups(currentRoundGroups, league_players);
 
     try {
       Alert.alert('Send Groups Summary', 'Select method of sharing', [
@@ -303,7 +303,7 @@ export default function GroupsScreen() {
     let newGroupList = generateNextRoundGroups({
       playerIds,
       partnerFrequencies,
-      allPlayers: players,
+      allPlayers: league_players,
     });
 
     if (manualGroupList.length) {
@@ -317,7 +317,7 @@ export default function GroupsScreen() {
     currentRoundPlayerIds,
     groupPlayers,
     manualGroupList,
-    players,
+    league_players,
     setGroupsForRound,
     setManualGroupList,
   ]);
@@ -470,7 +470,7 @@ export default function GroupsScreen() {
             </ThemedText>
           ) : (
             <>
-              <ThemedText style={{ marginTop: 16, marginBottom: 8 }}>Select Round</ThemedText>
+              <ThemedText style={{ marginTop: 16, marginBottom: 8 }}>Round</ThemedText>
               <OptionPickerItem
                 containerStyle={{ backgroundColor: backgroundColor, height: 36 }}
                 optionLabel={pickedRound?.label}
@@ -480,7 +480,7 @@ export default function GroupsScreen() {
               {currentRoundPlayerIds.length === 0 ? (
                 <ThemedText type="defaultSemiBold" style={{ color: errorText, padding: 10 }}>
                   The lineup of players for this round has not been set. Please return to the Rounds tab and
-                  tap the round to select players.
+                  tap the round to select league_players.
                 </ThemedText>
               ) : (
                 <>

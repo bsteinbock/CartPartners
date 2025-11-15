@@ -1,23 +1,47 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import SwipeablePlayerItem from '@/components/ui/SwipeablePlayer';
-import { Player, useDbStore } from '@/hooks/use-dbStore';
+import BottomSheetContainer from '@/components/ui/BottomSheetContainer';
+import MultiSelectOptionList from '@/components/ui/MultiSelectOptionList';
+import { OptionEntry } from '@/components/ui/OptionList';
+import SwipeableLeaguePlayerItem from '@/components/ui/SwipeableLeaguePlayer';
+import { useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { displayPhoneNumberFromE164 } from '@/lib/cart-utils';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import { FontAwesome5 } from '@expo/vector-icons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import * as DocumentPicker from 'expo-document-picker';
 import { File, Paths } from 'expo-file-system';
 import { useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { FlatList } from 'react-native-gesture-handler';
 
 export default function PlayersScreen() {
   const router = useRouter();
-  const { players, addPlayers, updatePlayer, currentLeagueId, leagues } = useDbStore();
+  const { league_players, addPlayersToLeague, currentLeagueId, leagues, all_players } = useDbStore();
   const iconColor = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
   const league = leagues.find((l) => l.id === currentLeagueId);
+
+  const [isPlayerPickerVisible, setIsPlayerPickerVisible] = useState<boolean>(false);
+  const [playerOptions, setPlayerOptions] = useState<OptionEntry[]>([]);
+  const [selectedPlayerOptions, setSelectedPlayerOptions] = useState<OptionEntry[]>([]);
+
+  const availablePlayers = useMemo(
+    () => all_players.filter((p) => p.available).filter((p) => !league_players.find((lp) => lp.id === p.id)),
+    [all_players, league_players],
+  );
+
+  useEffect(() => {
+    const availableOptions = availablePlayers.map((r) => ({
+      label: r.name,
+      value: r.id,
+    }));
+    if (availableOptions.length === 0) {
+      setPlayerOptions([]);
+    } else {
+      setPlayerOptions(availableOptions);
+    }
+  }, [availablePlayers]);
 
   const startEdit = (id?: number) => {
     if (typeof id === 'undefined') return;
@@ -28,25 +52,15 @@ export default function PlayersScreen() {
     router.push({ pathname: `/lineup/[id]`, params: { id: 'new' } });
   };
 
-  const toggleAvailable = (p: Player) => {
-    try {
-      if (!p.id) return;
-      updatePlayer(p.id, { available: p.available ? 0 : 1 });
-    } catch (e) {
-      console.warn('Toggle available failed', e);
-      Alert.alert('Error', 'Failed to update availability');
-    }
-  };
-
   const exportToCSV = async () => {
-    if (!players || players.length === 0) {
+    if (!league_players || league_players.length === 0) {
       Alert.alert('No data', 'There are no players to export.');
       return;
     }
 
     try {
       const header = ['Name', 'Nickname', 'Speed Index', 'Email', 'Mobile Number', 'Available'];
-      const rows = players.map((p) => [
+      const rows = league_players.map((p) => [
         `"${p.name}"`,
         `"${p.nickname || ''}"`,
         p.speedIndex,
@@ -57,7 +71,8 @@ export default function PlayersScreen() {
 
       const csvString = [header.join(','), ...rows.map((r) => r.join(','))].join('\n');
 
-      const file = new File(Paths.cache, 'cartpartners-players.csv');
+      const fileName = league ? `${league.name}_players.csv` : 'cartpartners-league_players.csv';
+      const file = new File(Paths.cache, fileName);
       file.create({ overwrite: true });
       file.write(csvString);
 
@@ -73,88 +88,32 @@ export default function PlayersScreen() {
       });
     } catch (err) {
       console.error('Error exporting CSV', err);
-      Alert.alert('Error', 'Failed to export players.');
+      Alert.alert('Error', 'Failed to export league_players.');
     }
   };
 
-  const importFromCSV = async () => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: 'text/csv',
-        copyToCacheDirectory: true,
-      });
-
-      if (result.canceled || !result.assets?.[0]?.uri) {
-        return;
+  const handlePlayerOptionChange = useCallback((option: OptionEntry) => {
+    setSelectedPlayerOptions((prev) => {
+      const exists = prev.find((o) => o.value === option.value);
+      if (exists) {
+        return prev.filter((o) => o.value !== option.value);
+      } else {
+        return [...prev, option];
       }
-
-      const fileUri = result.assets[0].uri;
-      const csvFile = new File(fileUri);
-
-      const fileContent = await csvFile.text();
-
-      // Split into lines and parse CSV
-      const lines = fileContent.trim().split('\n');
-      const header = lines[0].split(',').map((h) => h.trim().replace(/"/g, ''));
-      const nameIndex = header.findIndex((h) => h.toLowerCase() === 'name');
-      const nicknameIndex = header.findIndex((h) => h.toLowerCase() === 'nickname');
-      const mobileNumberIndex = header.findIndex((h) => h.toLowerCase() === 'mobile_number');
-      const speedIndexIdx = header.findIndex((h) => h.toLowerCase().includes('speed'));
-      const emailIndex = header.findIndex((h) => h.toLowerCase() === 'email');
-      const availableIndex = header.findIndex((h) => h.toLowerCase().includes('available'));
-
-      if (nameIndex === -1) {
-        Alert.alert('Invalid CSV', 'The CSV must contain a "Name" column.');
-        return;
-      }
-
-      let newPlayers: Omit<Player, 'id'>[] = [];
-
-      for (let i = 1; i < lines.length; i++) {
-        const cols = lines[i].split(',').map((v) => v.replace(/"/g, '').trim());
-        if (!cols[nameIndex]) continue;
-
-        const name = cols[nameIndex];
-        const speedIndex = parseInt(cols[speedIndexIdx]) || 1;
-        const email = cols[emailIndex] || '';
-        const nickname = cols[nicknameIndex] || '';
-        const mobile_number = displayPhoneNumberFromE164(cols[mobileNumberIndex]) || '';
-        const available =
-          (cols[availableIndex] || '').toLowerCase().startsWith('y') ||
-          (cols[availableIndex] || '').toLowerCase() === 'true'
-            ? 1
-            : 0;
-
-        // Check if player exists by name (case-insensitive)
-        const existing = players.find((p) => p.name.trim().toLowerCase() === name.trim().toLowerCase());
-
-        if (existing && existing.id) {
-          updatePlayer(existing.id, { speedIndex, email, available, nickname, mobile_number });
-        } else {
-          newPlayers.push({ name, speedIndex, email, available, nickname, mobile_number });
-        }
-      }
-
-      if (newPlayers.length > 0) {
-        addPlayers(newPlayers, currentLeagueId);
-      }
-
-      Alert.alert('Import complete', `${newPlayers.length}Players imported successfully!`);
-    } catch (err) {
-      console.error('Import failed', err);
-      Alert.alert('Error', 'Failed to import players.');
-    }
-  };
+    });
+  }, []);
 
   return (
     <>
       <ThemedView style={{ flex: 1 }}>
-        <View
+        <ThemedView
           style={{
             flexDirection: 'row',
             justifyContent: 'space-between',
             alignItems: 'center',
             padding: 10,
+            borderBottomWidth: 1,
+            borderBottomColor: useThemeColor({ light: undefined, dark: undefined }, 'border'),
           }}
         >
           <ThemedView>
@@ -162,61 +121,59 @@ export default function PlayersScreen() {
             <ThemedText type="small">{league?.name}</ThemedText>
           </ThemedView>
           <View style={{ flexDirection: 'row', gap: 30, alignItems: 'center', paddingRight: 10 }}>
-            {players.length === 0 && (
-              <Pressable onPress={importFromCSV}>
-                <MaterialCommunityIcons name="application-import" size={28} color={iconColor} />
-              </Pressable>
-            )}
-            {players.length > 0 && (
+            {league_players.length > 0 && (
               <Pressable onPress={exportToCSV}>
                 <MaterialCommunityIcons name="application-export" size={28} color={iconColor} />
               </Pressable>
             )}
-            <Pressable onPress={addNewPlayer}>
-              <Ionicons name="person-add-sharp" size={28} color={iconColor} />
-            </Pressable>
+            {availablePlayers.length > 0 && (
+              <Pressable onPress={() => setIsPlayerPickerVisible(true)}>
+                <FontAwesome5 name="plus-circle" size={28} color={iconColor} />
+              </Pressable>
+            )}
           </View>
-        </View>
-        {players.length === 0 && (
+        </ThemedView>
+        {league_players.length === 0 && (
           <ThemedView style={{ padding: 12 }}>
             <ThemedText style={{ marginTop: 12 }}>
-              No players defined. You can add players manually using the right icon on top of screen.
+              No players defined. You can add players manually using the '+' icon.
             </ThemedText>
-            <ThemedText style={{ marginTop: 12 }}>
-              You can also import a list of users from a CSV file using the left icon. The accepted format of
-              the CSV file is shown below.
-            </ThemedText>
-            <ThemedText style={{ marginTop: 12 }}>Name,Speed Index,Email,Available</ThemedText>
-            <ThemedText>For example:</ThemedText>
-            <ThemedText>"name",1,"emailname@gmail.com",Yes</ThemedText>
-            <ThemedText style={{ marginTop: 12 }}>note: Speed Index:1=fast 5=slow</ThemedText>
           </ThemedView>
         )}
-        {players.length > 0 && (
+        {league_players.length > 0 && (
           <FlatList
-            data={players}
+            data={league_players}
             keyExtractor={(item, i) => String(item.id ?? i)}
-            ListHeaderComponent={() => (
-              <ThemedView
-                style={{
-                  padding: 8,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  borderBottomWidth: 1,
-                  borderColor: '#ddd',
-                }}
-              >
-                <ThemedText style={{ fontWeight: '700' }}>Name</ThemedText>
-                <ThemedText style={{ fontWeight: '700', textAlign: 'right', flex: 1, paddingRight: 20 }}>
-                  Available
-                </ThemedText>
-              </ThemedView>
-            )}
-            renderItem={({ item }) => <SwipeablePlayerItem player={item} />}
+            renderItem={({ item }) => <SwipeableLeaguePlayerItem player={item} />}
           />
         )}
       </ThemedView>
+      {playerOptions && isPlayerPickerVisible && (
+        <BottomSheetContainer
+          isVisible={isPlayerPickerVisible}
+          title="Select Players"
+          modalHeight="70%"
+          okLabel="Add"
+          okDisabled={selectedPlayerOptions.length === 0}
+          onOK={() => {
+            const playersToAdd = selectedPlayerOptions
+              .map((option) => option.value ?? null)
+              .filter((v): v is number => v !== null);
+            setIsPlayerPickerVisible(false);
+            addPlayersToLeague(playersToAdd, currentLeagueId!);
+            setSelectedPlayerOptions([]);
+          }}
+          onClose={() => {
+            setIsPlayerPickerVisible(false);
+          }}
+        >
+          <MultiSelectOptionList
+            options={playerOptions}
+            selectedOptions={selectedPlayerOptions}
+            onSelect={(option) => handlePlayerOptionChange(option)}
+          />
+        </BottomSheetContainer>
+      )}
     </>
   );
 }

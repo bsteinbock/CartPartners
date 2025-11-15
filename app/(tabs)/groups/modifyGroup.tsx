@@ -16,7 +16,15 @@ export default function ModifyGroup() {
   const { groupId } = useLocalSearchParams();
   const numericGroupId = Number(groupId ?? '0');
   const router = useRouter();
-  const { groupPlayers, updateGroupPlayers, roundPlayers, players, groups, currentRoundId } = useDbStore();
+  const {
+    groupPlayers,
+    updateGroupPlayers,
+    roundPlayers,
+    all_players,
+    league_players,
+    groups,
+    currentRoundId,
+  } = useDbStore();
   const [currentGroupPlayers, setCurrentGroupPlayers] = useState<Player[]>([]);
   const [availablePlayers, setAvailablePlayers] = useState<Player[]>([]);
   const iconButton = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
@@ -27,10 +35,10 @@ export default function ModifyGroup() {
     // get group from groupId and load
     const group = groupPlayers.find((g) => g.group_id === Number(groupId));
     if (group) {
-      const memberPlayers = getPlayerForGroup(group.player_ids, players);
+      const memberPlayers = getPlayerForGroup(group.player_ids, all_players);
       setCurrentGroupPlayers(memberPlayers);
     }
-  }, [groupId, groupPlayers]);
+  }, [groupId, groupPlayers, all_players]);
 
   useEffect(() => {
     // get a list of all player ids in all groups of the current round
@@ -38,10 +46,10 @@ export default function ModifyGroup() {
       const groupPlayerIds = getGroupPlayerIdsByRoundId(currentRoundId, groups, groupPlayers);
 
       // now get a list of players that are marked as available but not in the list of groupPlayerIds.
-      const available = players.filter((p) => !groupPlayerIds.includes(p.id));
+      const available = league_players.filter((p) => !groupPlayerIds.includes(p.id));
       setAvailablePlayers(available);
     }
-  }, [groupPlayers, players, currentRoundId, groups]);
+  }, [groupPlayers, league_players, currentRoundId, groups]);
 
   useEffect(() => {
     const availableOptions = availablePlayers.map((r) => ({
@@ -61,7 +69,7 @@ export default function ModifyGroup() {
 
   const handlePlayerOptionChange = useCallback(
     (option: OptionEntry) => {
-      const playerToAdd = players.find((p) => p.id === option.value);
+      const playerToAdd = league_players.find((p) => p.id === option.value);
       if (playerToAdd) {
         const updatedPlayers = [...currentGroupPlayers, playerToAdd];
         const updatedPlayerIds = updatedPlayers.map((p) => p.id);
@@ -69,7 +77,7 @@ export default function ModifyGroup() {
         setIsPlayerPickerVisible(false);
       }
     },
-    [currentGroupPlayers, numericGroupId, players, updateGroupPlayers],
+    [currentGroupPlayers, numericGroupId, league_players, updateGroupPlayers],
   );
 
   return (

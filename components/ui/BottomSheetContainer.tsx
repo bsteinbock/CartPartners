@@ -8,21 +8,29 @@ import { ThemedView } from '../themed-view';
 type Props = PropsWithChildren<{
   isVisible: boolean;
   onClose: () => void;
+  onOK?: () => void;
   title?: string;
+  okLabel?: string;
   modalHeight?: DimensionValue;
+  okDisabled?: boolean;
 }>;
 
 export default function BottomSheetContainer({
   isVisible,
   children,
   onClose,
+  onOK,
   title,
+  okLabel = 'OK',
   modalHeight = '40%',
+  okDisabled = false,
 }: Props) {
   const background = useThemeColor({ light: undefined, dark: undefined }, 'background');
   const backgroundWithAlpha = useThemeColor({ light: undefined, dark: undefined }, 'backgroundWithAlpha');
   const borderColor = useThemeColor({ light: undefined, dark: undefined }, 'border');
   const iconColor = useThemeColor({ light: undefined, dark: undefined }, 'icon');
+  const iconButtonColor = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
+  const buttonDisabledColor = useThemeColor({ light: undefined, dark: undefined }, 'disabledColor');
 
   if (!isVisible) return null;
 
@@ -49,9 +57,29 @@ export default function BottomSheetContainer({
                   ]}
                 >
                   <ThemedText style={[{ fontWeight: '600' }]}>{title}</ThemedText>
-                  <Pressable onPress={() => onClose()}>
-                    <MaterialIcons name="close" color={iconColor} size={22} />
-                  </Pressable>
+                  <ThemedView
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 20,
+                    }}
+                  >
+                    {onOK && (
+                      <Pressable onPress={() => onOK()} disabled={okDisabled}>
+                        <ThemedText
+                          style={{
+                            color: okDisabled ? buttonDisabledColor : iconButtonColor,
+                            fontWeight: '600',
+                          }}
+                        >
+                          {okLabel}
+                        </ThemedText>
+                      </Pressable>
+                    )}
+                    <Pressable onPress={() => onClose()}>
+                      <MaterialIcons name="close" color={iconColor} size={28} />
+                    </Pressable>
+                  </ThemedView>
                 </ThemedView>
               ) : (
                 <ThemedView style={{ height: 10 }} />
@@ -73,7 +101,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
   },
   titleContainer: {
-    height: 40,
+    minHeight: 50,
     borderTopRightRadius: 10,
     borderTopLeftRadius: 10,
     paddingHorizontal: 20,
