@@ -2,12 +2,13 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import BottomSheetContainer from '@/components/ui/BottomSheetContainer';
 import MultiSelectOptionList from '@/components/ui/MultiSelectOptionList';
-import { OptionEntry } from '@/components/ui/OptionList';
+import OptionList, { OptionEntry } from '@/components/ui/OptionList';
+import { OptionPickerItem } from '@/components/ui/OptionPickerItem';
 import SwipeableLeaguePlayerItem from '@/components/ui/SwipeableLeaguePlayer';
 import { useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { displayPhoneNumberFromE164 } from '@/lib/cart-utils';
-import { FontAwesome5 } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { File, Paths } from 'expo-file-system';
 import { useRouter } from 'expo-router';
@@ -18,21 +19,27 @@ import { FlatList } from 'react-native-gesture-handler';
 
 export default function PlayersScreen() {
   const router = useRouter();
-  const { league_players, addPlayersToLeague, currentLeagueId, leagues, all_players } = useDbStore();
+  const { league_players, setCurrentLeagueId, currentLeagueId, leagues, all_players, addPlayersToLeague } =
+    useDbStore();
   const iconColor = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
+  const borderColor = useThemeColor({ light: undefined, dark: undefined }, 'border');
   const league = leagues.find((l) => l.id === currentLeagueId);
+
+  const [isLeaguePickerVisible, setIsLeaguePickerVisible] = useState<boolean>(false);
+  const [leagueOptions, setLeagueOptions] = useState<OptionEntry[]>([]);
+  const [pickedOption, setPickedOption] = useState<OptionEntry | undefined>(undefined);
 
   const [isPlayerPickerVisible, setIsPlayerPickerVisible] = useState<boolean>(false);
   const [playerOptions, setPlayerOptions] = useState<OptionEntry[]>([]);
   const [selectedPlayerOptions, setSelectedPlayerOptions] = useState<OptionEntry[]>([]);
 
-  const availablePlayers = useMemo(
+  const availablePlayersToAdd = useMemo(
     () => all_players.filter((p) => p.available).filter((p) => !league_players.find((lp) => lp.id === p.id)),
     [all_players, league_players],
   );
 
   useEffect(() => {
-    const availableOptions = availablePlayers.map((r) => ({
+    const availableOptions = availablePlayersToAdd.map((r) => ({
       label: r.name,
       value: r.id,
     }));
@@ -41,16 +48,28 @@ export default function PlayersScreen() {
     } else {
       setPlayerOptions(availableOptions);
     }
-  }, [availablePlayers]);
+  }, [availablePlayersToAdd]);
 
-  const startEdit = (id?: number) => {
-    if (typeof id === 'undefined') return;
-    router.push(`/lineup/${id}`);
-  };
+  useEffect(() => {
+    const availableOptions = leagues.map((r) => ({
+      label: r.name,
+      value: r.id,
+    }));
+    if (availableOptions.length === 0) {
+      setLeagueOptions([]);
+    } else {
+      setLeagueOptions(availableOptions);
+    }
+  }, [leagues]);
 
-  const addNewPlayer = () => {
-    router.push({ pathname: `/lineup/[id]`, params: { id: 'new' } });
-  };
+  useEffect(() => {
+    if (currentLeagueId && leagueOptions.length > 0) {
+      const found = leagueOptions.find((o) => o.value === currentLeagueId);
+      setPickedOption(found);
+    } else {
+      setPickedOption(undefined);
+    }
+  }, [currentLeagueId, leagueOptions]);
 
   const exportToCSV = async () => {
     if (!league_players || league_players.length === 0) {
@@ -92,6 +111,17 @@ export default function PlayersScreen() {
     }
   };
 
+  const handleLeagueOptionChange = useCallback(
+    (option: OptionEntry) => {
+      const leagueToSetActive = leagues.find((p) => p.id === option.value);
+      if (leagueToSetActive) {
+        setCurrentLeagueId(leagueToSetActive.id);
+        setIsLeaguePickerVisible(false);
+      }
+    },
+    [leagues, setCurrentLeagueId],
+  );
+
   const handlePlayerOptionChange = useCallback((option: OptionEntry) => {
     setSelectedPlayerOptions((prev) => {
       const exists = prev.find((o) => o.value === option.value);
@@ -108,6 +138,22 @@ export default function PlayersScreen() {
       <ThemedView style={{ flex: 1 }}>
         <ThemedView
           style={{
+            paddingHorizontal: 12,
+            paddingBottom: 12,
+            marginTop: 4,
+            borderBottomWidth: StyleSheet.hairlineWidth,
+            borderBottomColor: borderColor,
+          }}
+        >
+          <OptionPickerItem
+            optionLabel={pickedOption ? pickedOption.label : 'Unknown League'}
+            placeholder="Select League / Outing"
+            onPickerButtonPress={() => setIsLeaguePickerVisible(true)}
+          />
+        </ThemedView>
+
+        <ThemedView
+          style={{
             flexDirection: 'row',
             justifyContent: 'space-between',
             alignItems: 'center',
@@ -118,7 +164,6 @@ export default function PlayersScreen() {
         >
           <ThemedView>
             <ThemedText type="title">Players</ThemedText>
-            <ThemedText type="small">{league?.name}</ThemedText>
           </ThemedView>
           <View style={{ flexDirection: 'row', gap: 30, alignItems: 'center', paddingRight: 10 }}>
             {league_players.length > 0 && (
@@ -126,9 +171,9 @@ export default function PlayersScreen() {
                 <MaterialCommunityIcons name="application-export" size={28} color={iconColor} />
               </Pressable>
             )}
-            {availablePlayers.length > 0 && (
+            {availablePlayersToAdd.length > 0 && (
               <Pressable onPress={() => setIsPlayerPickerVisible(true)}>
-                <FontAwesome5 name="plus-circle" size={28} color={iconColor} />
+                <Ionicons name="person-add-sharp" size={28} color={iconColor} />
               </Pressable>
             )}
           </View>
@@ -148,6 +193,20 @@ export default function PlayersScreen() {
           />
         )}
       </ThemedView>
+      {leagueOptions && isLeaguePickerVisible && (
+        <BottomSheetContainer
+          isVisible={isLeaguePickerVisible}
+          title="Select League / Outing"
+          modalHeight="50%"
+          onClose={() => setIsLeaguePickerVisible(false)}
+        >
+          <OptionList
+            options={leagueOptions}
+            selectedOption={pickedOption}
+            onSelect={(option) => handleLeagueOptionChange(option)}
+          />
+        </BottomSheetContainer>
+      )}
       {playerOptions && isPlayerPickerVisible && (
         <BottomSheetContainer
           isVisible={isPlayerPickerVisible}

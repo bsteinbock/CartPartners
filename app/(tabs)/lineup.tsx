@@ -1,14 +1,14 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import BottomSheetContainer from '@/components/ui/BottomSheetContainer';
+import MultiSelectOptionList from '@/components/ui/MultiSelectOptionList';
 import OptionList, { OptionEntry } from '@/components/ui/OptionList';
 import { OptionPickerItem } from '@/components/ui/OptionPickerItem';
 import { Player, useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { formatDate } from '@/lib/formatters';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useRouter } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -16,11 +16,13 @@ export default function LineupScreen() {
   const {
     rounds,
     league_players,
+    all_players,
     roundPlayers,
     setRoundPlayers,
     setCurrentRoundId,
     currentRoundId,
     leagues,
+    addPlayersToLeague,
     currentLeagueId,
   } = useDbStore();
   const [isRoundPickerVisible, setIsRoundPickerVisible] = useState<boolean>(false);
@@ -31,15 +33,24 @@ export default function LineupScreen() {
   const switchTrackColor = useThemeColor({ light: undefined, dark: undefined }, 'switchTrackColor');
   const errorText = useThemeColor({ light: undefined, dark: undefined }, 'errorText');
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const router = useRouter();
   const league = leagues.find((l) => l.id === currentLeagueId);
 
   const [selectedPlayers, setSelectedPlayers] = useState<number[]>([]);
+
+  const [isPlayerPickerVisible, setIsPlayerPickerVisible] = useState<boolean>(false);
+  const [playerOptions, setPlayerOptions] = useState<OptionEntry[]>([]);
+  const [selectedPlayerOptions, setSelectedPlayerOptions] = useState<OptionEntry[]>([]);
   const [availablePlayers, setAvailablePlayers] = useState<Player[]>([]);
+  const availablePlayersToAdd = useMemo(
+    () => all_players.filter((p) => p.available).filter((p) => !league_players.find((lp) => lp.id === p.id)),
+    [all_players, league_players],
+  );
 
   useEffect(() => {
-    setAvailablePlayers(league_players.filter((p) => p.available));
-  }, [league_players]);
+    setAvailablePlayers(
+      league_players.filter((p) => p.available || roundPlayers.some((rp) => rp.player_id === p.id)),
+    );
+  }, [league_players, roundPlayers]);
 
   useEffect(() => {
     const activePlayers = roundPlayers
@@ -47,6 +58,18 @@ export default function LineupScreen() {
       .map((rp) => rp.player_id);
     setSelectedPlayers(activePlayers);
   }, [currentRoundId, roundPlayers]);
+
+  useEffect(() => {
+    const availableOptions = availablePlayersToAdd.map((r) => ({
+      label: r.name,
+      value: r.id,
+    }));
+    if (availableOptions.length === 0) {
+      setPlayerOptions([]);
+    } else {
+      setPlayerOptions(availableOptions);
+    }
+  }, [availablePlayersToAdd]);
 
   useEffect(() => {
     const availableOptions = rounds.map((r) => ({
@@ -106,6 +129,17 @@ export default function LineupScreen() {
     league_players.length > 0 && league_players.every((p) => selectedPlayers.includes(p.id));
   const playerLabel = `Player (${selectedPlayers.length} of ${league_players.length} Selected)`;
 
+  const handlePlayerOptionChange = useCallback((option: OptionEntry) => {
+    setSelectedPlayerOptions((prev) => {
+      const exists = prev.find((o) => o.value === option.value);
+      if (exists) {
+        return prev.filter((o) => o.value !== option.value);
+      } else {
+        return [...prev, option];
+      }
+    });
+  }, []);
+
   return (
     <SafeAreaView style={{ flex: 1 }} edges={['top']}>
       <ThemedView style={styles.container}>
@@ -115,13 +149,11 @@ export default function LineupScreen() {
               <ThemedText type="title">Player Lineup</ThemedText>
               <ThemedText type="small">{league?.name}</ThemedText>
             </ThemedView>
-            <Pressable
-              onPress={() => {
-                router.push('/(tabs)/lineup/players');
-              }}
-            >
-              <Ionicons name="person" size={28} color={iconColor} />
-            </Pressable>
+            {availablePlayersToAdd.length > 0 && (
+              <Pressable onPress={() => setIsPlayerPickerVisible(true)}>
+                <Ionicons name="person-add-sharp" size={28} color={iconColor} />
+              </Pressable>
+            )}
           </ThemedView>
 
           {rounds.length === 0 ? (
@@ -212,6 +244,32 @@ export default function LineupScreen() {
               options={roundOptions}
               onSelect={(option) => handleRoundOptionChange(option)}
               selectedOption={pickedRound}
+            />
+          </BottomSheetContainer>
+        )}
+        {playerOptions && isPlayerPickerVisible && (
+          <BottomSheetContainer
+            isVisible={isPlayerPickerVisible}
+            title="Select Players"
+            modalHeight="70%"
+            okLabel="Add"
+            okDisabled={selectedPlayerOptions.length === 0}
+            onOK={() => {
+              const playersToAdd = selectedPlayerOptions
+                .map((option) => option.value ?? null)
+                .filter((v): v is number => v !== null);
+              setIsPlayerPickerVisible(false);
+              addPlayersToLeague(playersToAdd, currentLeagueId!);
+              setSelectedPlayerOptions([]);
+            }}
+            onClose={() => {
+              setIsPlayerPickerVisible(false);
+            }}
+          >
+            <MultiSelectOptionList
+              options={playerOptions}
+              selectedOptions={selectedPlayerOptions}
+              onSelect={(option) => handlePlayerOptionChange(option)}
             />
           </BottomSheetContainer>
         )}

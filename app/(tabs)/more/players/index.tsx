@@ -271,7 +271,6 @@ export default function PlayersScreen() {
                 player={item}
                 onPress={() => {
                   router.push({ pathname: '/more/players/[id]', params: { id: String(item.id) } });
-                  console.log('Edit player', item.id);
                 }}
                 onDelete={handleDelete}
               />

@@ -49,10 +49,6 @@ const SwipeableLeaguePlayerItem = ({
       onPress();
       return;
     }
-
-    if (p && typeof p.id !== 'undefined') {
-      router.push({ pathname: '/lineup/[id]', params: { id: String(p.id) } });
-    }
   };
 
   const RightAction = () => {
