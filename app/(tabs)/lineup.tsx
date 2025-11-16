@@ -41,16 +41,24 @@ export default function LineupScreen() {
   const [playerOptions, setPlayerOptions] = useState<OptionEntry[]>([]);
   const [selectedPlayerOptions, setSelectedPlayerOptions] = useState<OptionEntry[]>([]);
   const [availablePlayers, setAvailablePlayers] = useState<Player[]>([]);
-  const availablePlayersToAdd = useMemo(
-    () => all_players.filter((p) => p.available).filter((p) => !league_players.find((lp) => lp.id === p.id)),
-    [all_players, league_players],
-  );
 
   useEffect(() => {
-    setAvailablePlayers(
-      league_players.filter((p) => p.available || roundPlayers.some((rp) => rp.player_id === p.id)),
-    );
-  }, [league_players, roundPlayers]);
+    // Create a set of players using all_players that are specified by player_id in roundPlayers for the current round
+    // or are marked as available in league_players
+    const availableSet = new Set<number>();
+    roundPlayers
+      .filter((rp) => rp.round_id === currentRoundId)
+      .forEach((rp) => availableSet.add(rp.player_id));
+    league_players.filter((p) => p.available).forEach((p) => availableSet.add(p.id));
+    const availableList = all_players.filter((p) => availableSet.has(p.id));
+    setAvailablePlayers(availableList);
+  }, [league_players, all_players, roundPlayers, currentRoundId]);
+
+  const availablePlayersToAdd = useMemo(
+    () =>
+      all_players.filter((p) => p.available).filter((p) => !availablePlayers.find((lp) => lp.id === p.id)),
+    [all_players, availablePlayers],
+  );
 
   useEffect(() => {
     const activePlayers = roundPlayers
@@ -118,7 +126,7 @@ export default function LineupScreen() {
 
   // Select or clear all players
   const toggleAllPlayers = () => {
-    const allIds = league_players.map((p) => p.id);
+    const allIds = availablePlayers.map((p) => p.id);
     const allSelected = allIds.every((id) => selectedPlayers.includes(id));
     const newSelection = allSelected ? [] : allIds;
     setSelectedPlayers(newSelection);
@@ -126,8 +134,8 @@ export default function LineupScreen() {
   };
 
   const allSelected =
-    league_players.length > 0 && league_players.every((p) => selectedPlayers.includes(p.id));
-  const playerLabel = `Player (${selectedPlayers.length} of ${league_players.length} Selected)`;
+    league_players.length > 0 && availablePlayers.every((p) => selectedPlayers.includes(p.id));
+  const playerLabel = `Player (${selectedPlayers.length} of ${availablePlayers.length} Selected)`;
 
   const handlePlayerOptionChange = useCallback((option: OptionEntry) => {
     setSelectedPlayerOptions((prev) => {

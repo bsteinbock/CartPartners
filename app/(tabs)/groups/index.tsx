@@ -33,6 +33,7 @@ export default function GroupsScreen() {
     groups,
     groupPlayers,
     league_players,
+    all_players,
     roundPlayers,
     setGroupsForRound,
     swapGroupSlots,
@@ -128,10 +129,10 @@ export default function GroupsScreen() {
 
   useEffect(() => {
     if (currentRoundGroups.length > 0) {
-      const names = formatGroupPlayersByNames(currentRoundGroups, league_players);
+      const names = formatGroupPlayersByNames(currentRoundGroups, all_players);
       setGroupPlayerNames(names);
     }
-  }, [currentRoundGroups, league_players, formatGroupPlayersByNames]);
+  }, [currentRoundGroups, all_players, formatGroupPlayersByNames]);
 
   useEffect(() => {
     if (manualGroupList.length > 0) {
@@ -303,7 +304,7 @@ export default function GroupsScreen() {
     let newGroupList = generateNextRoundGroups({
       playerIds,
       partnerFrequencies,
-      allPlayers: league_players,
+      allPlayers: all_players,
     });
 
     if (manualGroupList.length) {
@@ -317,7 +318,7 @@ export default function GroupsScreen() {
     currentRoundPlayerIds,
     groupPlayers,
     manualGroupList,
-    league_players,
+    all_players,
     setGroupsForRound,
     setManualGroupList,
   ]);
