@@ -85,32 +85,32 @@ export default function AboutScreen() {
           "About".
         </ThemedText>
 
-        <ThemedText style={[styles.text, { marginTop: 6 }]}>
+        <ThemedText style={[styles.text, { marginTop: 10 }]}>
           The "Notify Players" screen lets you notify any group of players via email or text message. The list
           of players is specific to the current/active league. The league name is shown above the player
           selection area.
         </ThemedText>
 
-        <ThemedText style={[styles.text, { marginTop: 6 }]}>
+        <ThemedText style={[styles.text, { marginTop: 10 }]}>
           The "Leagues/Outings" screen enables you to manage multiple leagues or outings, each with its own
           set of players and rounds.
         </ThemedText>
 
-        <ThemedText style={[styles.text, { marginTop: 6 }]}>
+        <ThemedText style={[styles.text, { marginTop: 10 }]}>
           The "Manage All Players" screen allows you to add, edit, or delete players from the master player
           list. This list contains all players known to the app, regardless of their association with any
           league or outing. You can also import or export the player list as a CSV file for easy sharing or
           backup.
         </ThemedText>
 
-        <ThemedText style={[styles.text, { marginTop: 6 }]}>
+        <ThemedText style={[styles.text, { marginTop: 10 }]}>
           The "League Players" screen allows you to define the list of players specific to a particular league
           or outing. You can add players from the master player list to the league. You can also swipe to
           delete players from the league. You can also export the players to a CSV file for use in other
           applications.
         </ThemedText>
 
-        <ThemedText style={[styles.text, { marginTop: 6 }]}>
+        <ThemedText style={[styles.text, { marginTop: 10 }]}>
           The "Backup/Restore" screen allows you to create a database backup file containing all your
           CartPartners data. This file can be shared with another person taking over as Group Coordinator,
           either temporarily or permanently. Using the Restore command lets you load or reload data from a
