@@ -205,6 +205,102 @@ export function generateNextRoundGroups(params: Partial<GroupParams>): number[][
     bestGroup.push(leftover);
   }
 
+  // --- Additional pass to reduce slow-player clustering when requested ---
+  if (avoidSlowPairs) {
+    // compute slow counts per group
+    const slowCounts = groups.map((g) => g.filter((id) => getSpeedIndex(id) > slowThreshold).length);
+
+    // For any group with more than one slow player, try swaps that both reduce slow clustering
+    // and minimize repeated pairings (using partnerFrequencies).
+    for (let i = 0; i < groups.length; i++) {
+      // keep trying until this group has at most 1 slow player or no candidates remain
+      while (slowCounts[i] > 1) {
+        let performedSwap = false;
+
+        // find a slow player in group i to consider moving
+        const slowPlayerIdx = groups[i].findIndex((id) => getSpeedIndex(id) > slowThreshold);
+        if (slowPlayerIdx === -1) break;
+        const slowPlayerId = groups[i][slowPlayerIdx];
+
+        let bestSwap: {
+          targetGroupIndex: number;
+          targetMemberIndex: number;
+          totalConflict: number;
+        } | null = null;
+
+        // Evaluate possible swaps across all other groups
+        for (let j = 0; j < groups.length; j++) {
+          if (j === i) continue;
+
+          // prefer groups with fewer slow players (but still allow others if beneficial)
+          // iterate candidates in group j who are not slow
+          for (let candidateIdx = 0; candidateIdx < groups[j].length; candidateIdx++) {
+            const candidateId = groups[j][candidateIdx];
+            if (getSpeedIndex(candidateId) > slowThreshold) continue; // don't swap with another slow
+
+            // compute conflict score if slowPlayer moved into group j (excluding candidate)
+            let conflictSlowNew = 0;
+            for (const m of groups[j]) {
+              if (m === candidateId) continue;
+              conflictSlowNew += partnerFrequencies[slowPlayerId]?.[m] || 0;
+            }
+
+            // compute conflict score for candidate moved into group i (excluding slowPlayer)
+            let conflictCandidateNew = 0;
+            for (const m of groups[i]) {
+              if (m === slowPlayerId) continue;
+              conflictCandidateNew += partnerFrequencies[candidateId]?.[m] || 0;
+            }
+
+            const totalConflict = conflictSlowNew + conflictCandidateNew;
+
+            // Only consider swaps that tend to improve slow distribution:
+            // prefer swaps where target group slow count is strictly less than source,
+            // or that at least reduces the max slow count between the two groups.
+            const newSlowCountSource =
+              groups[i].filter((id) => id !== slowPlayerId && getSpeedIndex(id) > slowThreshold).length +
+              (getSpeedIndex(candidateId) > slowThreshold ? 1 : 0);
+            const newSlowCountTarget =
+              groups[j].filter((id) => id !== candidateId && getSpeedIndex(id) > slowThreshold).length +
+              (getSpeedIndex(slowPlayerId) > slowThreshold ? 1 : 0);
+
+            // only accept swaps that don't make target worse than source currently is
+            if (newSlowCountTarget > slowCounts[i]) continue;
+
+            if (
+              !bestSwap ||
+              // prefer groups with fewer current slows, then lower conflict
+              slowCounts[j] < slowCounts[bestSwap.targetGroupIndex] ||
+              (slowCounts[j] === slowCounts[bestSwap.targetGroupIndex] &&
+                totalConflict < bestSwap.totalConflict)
+            ) {
+              bestSwap = { targetGroupIndex: j, targetMemberIndex: candidateIdx, totalConflict };
+            }
+          }
+        }
+
+        if (bestSwap) {
+          const j = bestSwap.targetGroupIndex;
+          const candidateIdx = bestSwap.targetMemberIndex;
+          const candidateId = groups[j][candidateIdx];
+
+          // perform swap
+          groups[i][slowPlayerIdx] = candidateId;
+          groups[j][candidateIdx] = slowPlayerId;
+
+          // update slowCounts
+          slowCounts[i] = groups[i].filter((id) => getSpeedIndex(id) > slowThreshold).length;
+          slowCounts[j] = groups[j].filter((id) => getSpeedIndex(id) > slowThreshold).length;
+
+          performedSwap = true;
+        }
+
+        // if no suitable swap found, break to avoid infinite loop
+        if (!performedSwap) break;
+      }
+    }
+  }
+
   return groups;
 }
 

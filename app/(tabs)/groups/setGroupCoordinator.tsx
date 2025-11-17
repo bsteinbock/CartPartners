@@ -106,7 +106,7 @@ export default function SetGroupCoordinatorScreen() {
         style={{
           margin: 10,
           marginTop: 20,
-          borderColor: myNumber.length < 10 ? disabledColor : iconButton,
+          borderColor: pickedPlayer?.value ? disabledColor : iconButton,
           borderWidth: 1,
           borderRadius: 6,
         }}
