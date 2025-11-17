@@ -8,9 +8,37 @@ import { Player, useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { formatDate } from '@/lib/formatters';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+// Memoized player item component for better FlatList performance
+const PlayerItem = memo<{
+  player: Player;
+  isSelected: boolean;
+  onToggle: (playerId: number) => void;
+  switchTrackColor: string;
+}>(function PlayerItem({ player, isSelected, onToggle, switchTrackColor }) {
+  const handleToggle = useCallback(() => {
+    onToggle(player.id);
+  }, [player.id, onToggle]);
+
+  return (
+    <ThemedView
+      style={{
+        padding: 4,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+      }}
+    >
+      <ThemedView style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <Switch trackColor={{ true: switchTrackColor }} value={isSelected} onValueChange={handleToggle} />
+        <ThemedText style={{ marginLeft: 30 }}>{player.name}</ThemedText>
+      </ThemedView>
+    </ThemedView>
+  );
+});
 
 export default function LineupScreen() {
   const {
@@ -218,26 +246,17 @@ export default function LineupScreen() {
               data={availablePlayers}
               keyExtractor={(item) => String(item.id)}
               renderItem={({ item }) => (
-                <ThemedView
-                  style={{
-                    padding: 4,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                  }}
-                >
-                  <ThemedView style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <Switch
-                      trackColor={{ true: switchTrackColor }}
-                      value={selectedPlayers.includes(item.id)}
-                      onValueChange={(_val) => {
-                        void togglePlayer(item.id);
-                      }}
-                    />
-                    <ThemedText style={{ marginLeft: 30 }}>{item.name}</ThemedText>
-                  </ThemedView>
-                </ThemedView>
+                <PlayerItem
+                  player={item}
+                  isSelected={selectedPlayers.includes(item.id)}
+                  onToggle={togglePlayer}
+                  switchTrackColor={switchTrackColor}
+                />
               )}
+              removeClippedSubviews={true}
+              maxToRenderPerBatch={10}
+              updateCellsBatchingPeriod={50}
+              windowSize={10}
             />
           </>
         )}

@@ -490,7 +490,7 @@ export const useDbStore = create<DbState>((set, get) => ({
       date: r.date,
       course: r.course,
       teeTimeInfo: r.tee_time_info ?? '',
-      league_id: (r as any).league_id ?? null,
+      league_id: r.league_id ?? null,
     }));
 
     set({
@@ -608,7 +608,7 @@ export const useDbStore = create<DbState>((set, get) => ({
     const db = getDb();
 
     const updates: string[] = [];
-    const params: any[] = [];
+    const params: (string | number)[] = [];
 
     if (data.name !== undefined) {
       updates.push('name = ?');
@@ -773,7 +773,7 @@ export const useDbStore = create<DbState>((set, get) => ({
 
     // Only update provided fields
     const updates: string[] = [];
-    const params: any[] = [];
+    const params: (string | number)[] = [];
 
     if (data.date) {
       updates.push('date = ?');
