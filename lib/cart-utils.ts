@@ -112,68 +112,123 @@ export function buildPlayingPartnerFrequencies(
 }
 
 /**
- * Generate new groups for the next round, with optional constraints like:
+ * Given a list of player IDs, return the corresponding Player objects.
+ * @param playerIds - Array of player IDs from group specification
+ * @param players - Array of all Player objects
+ * @returns Array of Player objects matching the given IDs
+ */
+export function getPlayerForGroup(playerIds: number[], players: Player[]): Player[] {
+  return playerIds.map((pid) => players.find((p) => p.id === pid)).filter((p): p is Player => Boolean(p)); // filter out undefined
+}
+
+/**
+ * Generate groups for a round, with optional constraints like:
  * - Avoid multiple "slow" players (speedIndex > slowThreshold)
  */
-export function generateNextRoundGroups(params: Partial<GroupParams>): number[][] {
-  // --- ✅ Safely unpack parameters with defaults ---
+export function generateGroupsForRound(params: Partial<GroupParams>): number[][] {
   const {
-    playerIds = [], // list of player IDs to group
-    partnerFrequencies = {}, // Map of playerId → { partnerId → timesPlayedTogether }
-    allPlayers, // needed to lookup speed index
+    playerIds = [],
+    partnerFrequencies = {},
+    allPlayers,
     fairnessWeight = 1.0,
-    shuffle = true, // this promotes different starting groups between rounds
-    avoidSlowPairs = true, // try to avoid having a very slow group
-    slowThreshold = 4, // any speed value above this is considered slow.
+    shuffle = true,
+    avoidSlowPairs = true,
+    slowThreshold = 4,
   } = params;
 
-  if (!playerIds.length) {
-    throw new Error('generateNextRoundGroups: playerIds array is required.');
+  if (!playerIds.length) throw new Error('generateGroupsForRound: playerIds array is required.');
+
+  // precompute helper maps to avoid repeated work
+  const uniquePartnerCounts: Record<number, number> = {};
+  const totalInteractions: Record<number, number> = {};
+  for (const id of playerIds) {
+    const map = partnerFrequencies[id] || {};
+    uniquePartnerCounts[id] = Object.keys(map).length;
+    totalInteractions[id] = Object.values(map).reduce((s, v) => s + v, 0);
   }
 
-  if (!partnerFrequencies) {
-    throw new Error('generateNextRoundGroups: partnerFrequencies map is required.');
-  }
-
-  // --- Determine group sizes ---
   const groupSizes = getGroupSizes(playerIds.length);
   const remainingPlayers = shuffle ? [...playerIds].sort(() => Math.random() - 0.5) : [...playerIds];
   const groups: number[][] = [];
 
-  // --- function to get player speed index
-  const getSpeedIndex = (id: number): number => allPlayers?.find((p) => p.id === id)?.speedIndex ?? 0;
+  const speedCache: Record<number, number> = {};
+  const getSpeedIndex = (id: number) => {
+    if (speedCache[id] !== undefined) return speedCache[id];
+    const val = allPlayers?.find((p) => p.id === id)?.speedIndex ?? 0;
+    speedCache[id] = val;
+    return val;
+  };
 
-  // --- Build remaining groups automatically ---
-  for (let i = groups.length; i < groupSizes.length; i++) {
-    const size = groupSizes[i];
+  // Build groups
+  for (let gi = 0; gi < groupSizes.length; gi++) {
+    const size = groupSizes[gi];
     if (remainingPlayers.length === 0) break;
 
-    const starter = getLeastConnectedPlayer(remainingPlayers, partnerFrequencies);
-    const group = [starter];
+    // pick starter (least connected among remaining)
+    const starter = getLeastConnectedPlayer(remainingPlayers, partnerFrequencies, totalInteractions);
+    const group: number[] = [starter];
     remainingPlayers.splice(remainingPlayers.indexOf(starter), 1);
 
+    // Prepare incremental candidate scores for the remainingPlayers
+    // score = initial fairness component (unique partner count * fairnessWeight) + cumulative repeat interactions with current group
+    const candidateScores: Record<number, number> = {};
+    for (const c of remainingPlayers) {
+      candidateScores[c] = (uniquePartnerCounts[c] || 0) * fairnessWeight;
+      // no repeat interactions yet, will update when group grows
+    }
+
+    // add starter effect: update candidate scores by starter interactions
+    for (const c of remainingPlayers) {
+      candidateScores[c] += partnerFrequencies[c]?.[starter] ?? 0;
+    }
+
     while (group.length < size && remainingPlayers.length > 0) {
-      const nextPlayer = getBestNextPartnerWithFairnessAndSpeedLimit(
-        group,
-        remainingPlayers,
-        partnerFrequencies,
-        fairnessWeight,
-        avoidSlowPairs,
-        slowThreshold,
-        getSpeedIndex,
-      );
-      group.push(nextPlayer);
-      remainingPlayers.splice(remainingPlayers.indexOf(nextPlayer), 1);
+      // choose best candidate (lowest score) respecting slow-player constraints
+      let bestCandidate: number | null = null;
+      let bestScore = Infinity;
+      const groupHasSlow = avoidSlowPairs && group.some((id) => getSpeedIndex(id) > slowThreshold);
+
+      for (const candidate of remainingPlayers) {
+        const candidateIsSlow = getSpeedIndex(candidate) > slowThreshold;
+        if (avoidSlowPairs && groupHasSlow && candidateIsSlow) continue; // skip if would create slow cluster
+
+        const score = candidateScores[candidate];
+        if (score < bestScore) {
+          bestScore = score;
+          bestCandidate = candidate;
+        }
+      }
+
+      // if no candidate found due to slow constraints, relax and pick minimum score
+      if (bestCandidate === null) {
+        for (const candidate of remainingPlayers) {
+          const score = candidateScores[candidate];
+          if (score < bestScore) {
+            bestScore = score;
+            bestCandidate = candidate;
+          }
+        }
+      }
+
+      if (bestCandidate == null) break;
+
+      // select bestCandidate
+      group.push(bestCandidate);
+      remainingPlayers.splice(remainingPlayers.indexOf(bestCandidate), 1);
+
+      // update candidateScores: for each remaining candidate c, add partnerFrequencies[c][bestCandidate]
+      for (const c of remainingPlayers) {
+        candidateScores[c] += partnerFrequencies[c]?.[bestCandidate] ?? 0;
+      }
     }
 
     groups.push(group);
   }
 
-  // --- Handle leftover players ---
+  // assign any leftover players to groups minimizing partner conflicts (same as before)
   for (const leftover of remainingPlayers) {
     let bestGroup = groups[0];
     let minConflicts = Infinity;
-
     for (const group of groups) {
       const conflicts = group.reduce((sum, member) => sum + (partnerFrequencies[leftover]?.[member] || 0), 0);
       if (conflicts < minConflicts) {
@@ -181,105 +236,203 @@ export function generateNextRoundGroups(params: Partial<GroupParams>): number[][
         bestGroup = group;
       }
     }
-
     bestGroup.push(leftover);
   }
 
-  // --- Additional pass to reduce slow-player clustering when requested ---
+  // optional slow-cluster pass (simple, fast)
   if (avoidSlowPairs) {
-    // compute slow counts per group
-    const slowCounts = groups.map((g) => g.filter((id) => getSpeedIndex(id) > slowThreshold).length);
+    simpleSlowClusterAdjustment(groups, partnerFrequencies, getSpeedIndex, slowThreshold);
+  }
 
-    // For any group with more than one slow player, try swaps that both reduce slow clustering
-    // and minimize repeated pairings (using partnerFrequencies).
-    for (let i = 0; i < groups.length; i++) {
-      // keep trying until this group has at most 1 slow player or no candidates remain
-      while (slowCounts[i] > 1) {
-        let performedSwap = false;
+  return groups;
+}
 
-        // find a slow player in group i to consider moving
-        const slowPlayerIdx = groups[i].findIndex((id) => getSpeedIndex(id) > slowThreshold);
-        if (slowPlayerIdx === -1) break;
-        const slowPlayerId = groups[i][slowPlayerIdx];
+/**
+ * Utility to find the least-connected player overall (fewest repeat partners).
+ */
+function getLeastConnectedPlayer(
+  playerIds: number[],
+  partnerFrequencies: Record<number, Record<number, number>>,
+  precomputedTotals?: Record<number, number>,
+): number {
+  // precomputedTotals: sum of interactions for each player (if provided)
+  let minScore = Infinity;
+  let best = playerIds[0];
 
-        let bestSwap: {
-          targetGroupIndex: number;
-          targetMemberIndex: number;
-          totalConflict: number;
-        } | null = null;
+  for (const id of playerIds) {
+    const score = precomputedTotals
+      ? precomputedTotals[id] ?? 0
+      : Object.values(partnerFrequencies[id] || {}).reduce((a, b) => a + b, 0);
+    if (score < minScore) {
+      minScore = score;
+      best = id;
+    }
+  }
+  return best;
+}
 
-        // Evaluate possible swaps across all other groups
-        for (let j = 0; j < groups.length; j++) {
-          if (j === i) continue;
+/**
+ * Simple slow-cluster adjustment:
+ * - For groups with >1 slow players, try to swap extras with groups that have 0 slow players.
+ * - Only accept a swap if the partner-repeat "cost" does not increase.
+ * - Conservative, fast, and optional post-process step.
+ */
+/**
+ * Post-process to reduce "slow player" clustering across groups.
+ *
+ * Behavior summary
+ * - Inputs:
+ *   - `groups`: array of groups (each an array of player IDs). This function mutates the array in-place.
+ *   - `partnerFrequencies`: map playerId -> (partnerId -> times played together). Used as a cost metric.
+ *   - `getSpeedIndex(id)`: accessor returning numeric speedIndex for a player id.
+ *   - `slowThreshold`: numeric threshold above which a player is considered "slow".
+ *   - `slowSwapCostTolerance` (optional, default=1): allow small increases in partner-repeat cost when performing a swap.
+ *
+ * - Goal: minimize the number of groups that contain more than one slow player (i.e. reduce "extra" slows
+ *   beyond one per group) while avoiding large increases in partner-repeat cost (players meeting again).
+ *
+ * - Algorithm (greedy, local swaps):
+ *   1. Compute `slowCount` per group (how many slow players each group contains).
+ *   2. Repeatedly search for the single best swap of a slow player in a "source" group (where slowCount>1)
+ *      with a non-slow player from any other "target" group that:
+ *        - reduces the combined "extra slow" metric for the two groups (deltaExtra < 0), and
+ *        - produces a partner-repeat `swappedCost` that is <= `currentCost + slowSwapCostTolerance`.
+ *   3. The best swap is chosen by preferring (in order): larger reduction in extra-slow metric, then
+ *      smaller increase in partner-repeat cost.
+ *   4. Apply the swap and update `slowCount`; repeat until no improving swap is found.
+ *
+ * - Acceptance criteria: conservative by default — only swaps that reduce extra-slow count are considered,
+ *   and cost increases are bounded by `slowSwapCostTolerance`. This prevents making swaps that alleviate
+ *   slow clustering at the expense of greatly increasing repeat partners.
+ *
+ * - Complexity: this is an O(G^2 * P) search per iteration (G = #groups, P = avg players per group) and
+ *   typically converges quickly because it performs only improving swaps.
+ *
+ * - Side effects: mutates `groups` in-place and returns the same array for convenience.
+ */
+function simpleSlowClusterAdjustment(
+  groups: number[][],
+  partnerFrequencies: Record<number, Record<number, number>>,
+  getSpeedIndex: (id: number) => number,
+  slowThreshold: number,
+  slowSwapCostTolerance = 1,
+): number[][] {
+  if (!groups || groups.length < 2) return groups;
 
-          // prefer groups with fewer slow players (but still allow others if beneficial)
-          // iterate candidates in group j who are not slow
-          for (let candidateIdx = 0; candidateIdx < groups[j].length; candidateIdx++) {
-            const candidateId = groups[j][candidateIdx];
-            if (getSpeedIndex(candidateId) > slowThreshold) continue; // don't swap with another slow
+  const isSlow = (id: number) => getSpeedIndex(id) > slowThreshold;
 
-            // compute conflict score if slowPlayer moved into group j (excluding candidate)
-            let conflictSlowNew = 0;
-            for (const m of groups[j]) {
-              if (m === candidateId) continue;
-              conflictSlowNew += partnerFrequencies[slowPlayerId]?.[m] || 0;
-            }
+  // Helper: sum of partner repeats between player and members of a group
+  const groupConflictCost = (player: number, group: number[]) =>
+    group.reduce((sum, m) => sum + (partnerFrequencies[player]?.[m] ?? 0), 0);
 
-            // compute conflict score for candidate moved into group i (excluding slowPlayer)
-            let conflictCandidateNew = 0;
-            for (const m of groups[i]) {
-              if (m === slowPlayerId) continue;
-              conflictCandidateNew += partnerFrequencies[candidateId]?.[m] || 0;
-            }
+  // track slow counts per group
+  const slowCount = groups.map((g) => g.filter(isSlow).length);
+  //console.log('Initial slow counts per group:', slowCount);
 
-            const totalConflict = conflictSlowNew + conflictCandidateNew;
+  // metric: how many "extra" slow players exist beyond 1 per group (computed inline where needed)
+  let improved = true;
+  while (improved) {
+    improved = false;
 
-            // Only consider swaps that tend to improve slow distribution:
-            // prefer swaps where target group slow count is strictly less than source,
-            // or that at least reduces the max slow count between the two groups.
-            const newSlowCountSource =
-              groups[i].filter((id) => id !== slowPlayerId && getSpeedIndex(id) > slowThreshold).length +
-              (getSpeedIndex(candidateId) > slowThreshold ? 1 : 0);
-            const newSlowCountTarget =
-              groups[j].filter((id) => id !== candidateId && getSpeedIndex(id) > slowThreshold).length +
-              (getSpeedIndex(slowPlayerId) > slowThreshold ? 1 : 0);
+    // collect candidate source groups (those with >1 slow)
+    const sources = slowCount.map((c, i) => (c > 1 ? i : -1)).filter((i) => i >= 0);
 
-            // only accept swaps that don't make target worse than source currently is
-            if (newSlowCountTarget > slowCounts[i]) continue;
+    // best swap tracked across all candidates
+    let bestSwap: {
+      srcIdx: number;
+      tgtIdx: number;
+      slowPlayer: number;
+      nonSlowPlayer: number;
+      deltaExtra: number;
+      currentCost: number;
+      swappedCost: number;
+    } | null = null;
 
-            if (
-              !bestSwap ||
-              // prefer groups with fewer current slows, then lower conflict
-              slowCounts[j] < slowCounts[bestSwap.targetGroupIndex] ||
-              (slowCounts[j] === slowCounts[bestSwap.targetGroupIndex] &&
-                totalConflict < bestSwap.totalConflict)
-            ) {
-              bestSwap = { targetGroupIndex: j, targetMemberIndex: candidateIdx, totalConflict };
+    for (const srcIdx of sources) {
+      const srcGroup = groups[srcIdx];
+      const slowPlayers = srcGroup.filter(isSlow);
+
+      for (const slowPlayer of slowPlayers) {
+        for (let tgtIdx = 0; tgtIdx < groups.length; tgtIdx++) {
+          if (tgtIdx === srcIdx) continue;
+          const tgtGroup = groups[tgtIdx];
+          const nonSlowCandidates = tgtGroup.filter((p) => !isSlow(p));
+          if (nonSlowCandidates.length === 0) continue;
+
+          for (const nonSlowPlayer of nonSlowCandidates) {
+            // predicted slow counts after swap
+            const srcNew = slowCount[srcIdx] - 1;
+            const tgtNew = slowCount[tgtIdx] + 1;
+
+            const beforeExtra = Math.max(0, slowCount[srcIdx] - 1) + Math.max(0, slowCount[tgtIdx] - 1);
+            const afterExtra = Math.max(0, srcNew - 1) + Math.max(0, tgtNew - 1);
+            const deltaExtra = afterExtra - beforeExtra; // negative means improvement
+
+            // compute cost before and after swap
+            const currentCost =
+              groupConflictCost(
+                slowPlayer,
+                srcGroup.filter((m) => m !== slowPlayer),
+              ) +
+              groupConflictCost(
+                nonSlowPlayer,
+                tgtGroup.filter((m) => m !== nonSlowPlayer),
+              );
+
+            const swappedCost =
+              groupConflictCost(
+                nonSlowPlayer,
+                srcGroup.filter((m) => m !== slowPlayer),
+              ) +
+              groupConflictCost(
+                slowPlayer,
+                tgtGroup.filter((m) => m !== nonSlowPlayer),
+              );
+
+            // Prefer swaps that reduce the extraSlowMetric (deltaExtra < 0).
+            // Allow small increases in partner-repeat cost up to `slowSwapCostTolerance`.
+            if (deltaExtra < 0 && swappedCost <= currentCost + slowSwapCostTolerance) {
+              if (
+                !bestSwap ||
+                deltaExtra < bestSwap.deltaExtra ||
+                (deltaExtra === bestSwap.deltaExtra &&
+                  swappedCost - currentCost < bestSwap.swappedCost - bestSwap.currentCost)
+              ) {
+                bestSwap = {
+                  srcIdx,
+                  tgtIdx,
+                  slowPlayer,
+                  nonSlowPlayer,
+                  deltaExtra,
+                  currentCost,
+                  swappedCost,
+                };
+              }
             }
           }
         }
+      }
+    }
 
-        if (bestSwap) {
-          const j = bestSwap.targetGroupIndex;
-          const candidateIdx = bestSwap.targetMemberIndex;
-          const candidateId = groups[j][candidateIdx];
+    // If we found a beneficial swap, perform it and loop again
+    if (bestSwap) {
+      const { srcIdx, tgtIdx, slowPlayer, nonSlowPlayer } = bestSwap;
+      const srcPos = groups[srcIdx].indexOf(slowPlayer);
+      const tgtPos = groups[tgtIdx].indexOf(nonSlowPlayer);
+      if (srcPos >= 0 && tgtPos >= 0) {
+        groups[srcIdx][srcPos] = nonSlowPlayer;
+        groups[tgtIdx][tgtPos] = slowPlayer;
 
-          // perform swap
-          groups[i][slowPlayerIdx] = candidateId;
-          groups[j][candidateIdx] = slowPlayerId;
+        slowCount[srcIdx] = Math.max(0, slowCount[srcIdx] - 1);
+        slowCount[tgtIdx] = slowCount[tgtIdx] + 1;
 
-          // update slowCounts
-          slowCounts[i] = groups[i].filter((id) => getSpeedIndex(id) > slowThreshold).length;
-          slowCounts[j] = groups[j].filter((id) => getSpeedIndex(id) > slowThreshold).length;
-
-          performedSwap = true;
-        }
-
-        // if no suitable swap found, break to avoid infinite loop
-        if (!performedSwap) break;
+        improved = true;
       }
     }
   }
+
+  //const finalSlowCount = groups.map((g) => g.filter(isSlow).length);
+  //console.log('Final slow counts per group:', finalSlowCount);
 
   return groups;
 }
@@ -318,38 +471,6 @@ function getBestNextPartnerWithFairnessAndSpeedLimit(
     if (totalScore < lowestScore) {
       lowestScore = totalScore;
       bestPlayer = candidate;
-    }
-  }
-
-  return bestPlayer;
-}
-
-/**
- * Given a list of player IDs, return the corresponding Player objects.
- * @param playerIds - Array of player IDs from group specification
- * @param players - Array of all Player objects
- * @returns Array of Player objects matching the given IDs
- */
-export function getPlayerForGroup(playerIds: number[], players: Player[]): Player[] {
-  return playerIds.map((pid) => players.find((p) => p.id === pid)).filter((p): p is Player => Boolean(p)); // filter out undefined
-}
-
-/**
- * Utility to find the least-connected player overall (fewest repeat partners).
- */
-function getLeastConnectedPlayer(
-  playerIds: number[],
-  partnerFrequencies: Record<number, Record<number, number>>,
-): number {
-  let minScore = Infinity;
-  let bestPlayer = playerIds[0];
-
-  for (const id of playerIds) {
-    const partners = partnerFrequencies[id] || {};
-    const totalInteractions = Object.values(partners).reduce((a, b) => a + b, 0);
-    if (totalInteractions < minScore) {
-      minScore = totalInteractions;
-      bestPlayer = id;
     }
   }
 

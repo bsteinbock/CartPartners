@@ -10,7 +10,7 @@ import {
   buildPlayingPartnerFrequencies,
   formatGroupPlayersByNames,
   formatManualGroupPlayersByNames,
-  generateNextRoundGroups,
+  generateGroupsForRound,
   getGroupPlayersByRoundId,
   getMailtoStrings,
   getMobilePhoneNumbersForGroups,
@@ -297,7 +297,7 @@ export default function GroupsScreen() {
 
     const partnerFrequencies = buildPlayingPartnerFrequencies(playerIds, groupPlayers);
 
-    let newGroupList = generateNextRoundGroups({
+    let newGroupList = generateGroupsForRound({
       playerIds,
       partnerFrequencies,
       allPlayers: all_players,
