@@ -10,17 +10,17 @@ interface ThemedButtonProps {
   disabled?: boolean;
 }
 
-const ThemedButton: React.FC<ThemedButtonProps> = ({ title, onPress, disabled = false }) => {
+const ThemedButton: React.FC<ThemedButtonProps> = ({ title, onPress, disabled = false, color }) => {
   const iconButton = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
   const textDim = useThemeColor({ light: undefined, dark: undefined }, 'textDim');
-
+  const textColor = color ? color : iconButton;
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled}
       style={({ pressed }) => [styles.button, pressed && !disabled && styles.pressed]}
     >
-      <ThemedText style={[styles.text, { color: disabled ? textDim : iconButton }]}>{title}</ThemedText>
+      <ThemedText style={[styles.text, { color: disabled ? textDim : textColor }]}>{title}</ThemedText>
     </Pressable>
   );
 };

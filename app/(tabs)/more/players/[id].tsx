@@ -6,7 +6,8 @@ import { iosKeyboardToolbarOffset } from '@/constants/theme';
 import { useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { displayPhoneNumberFromE164, formatPhoneNumberToE164, generateNickname } from '@/lib/cart-utils';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Header } from '@react-navigation/elements';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Alert, Platform, StyleSheet } from 'react-native';
 import { KeyboardAwareScrollView, KeyboardToolbar } from 'react-native-keyboard-controller';
@@ -79,6 +80,22 @@ export default function PlayerDetailScreen() {
 
   return (
     <>
+      {Platform.OS === 'android' && (
+        <Stack.Screen
+          options={{
+            header: (props) => (
+              <Header
+                title="Define Players"
+                {...props}
+                headerStyle={{
+                  height: 36,
+                }}
+              />
+            ),
+            headerShown: true,
+          }}
+        />
+      )}
       <ThemedView style={{ flex: 1 }}>
         <KeyboardAwareScrollView keyboardShouldPersistTaps="handled">
           <ThemedView style={styles.container}>
@@ -158,7 +175,6 @@ export default function PlayerDetailScreen() {
         </KeyboardAwareScrollView>
       </ThemedView>
       {Platform.OS === 'ios' && <KeyboardToolbar offset={{ opened: iosKeyboardToolbarOffset }} />}
-      {Platform.OS === 'android' && <KeyboardToolbar />}
     </>
   );
 }

@@ -23,6 +23,7 @@ export default function RoundEditScreen() {
   const isNew = id === 'new' || !id;
   const { rounds, addRound, updateRound, currentLeagueId } = useDbStore();
   const iconButton = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
+  const disabledColor = useThemeColor({ light: undefined, dark: undefined }, 'disabledColor');
 
   const [course, setCourse] = useState('');
   const [teeTimeInfo, setTeeTimeInfo] = useState('');
@@ -53,16 +54,7 @@ export default function RoundEditScreen() {
     }
   }, [id, isNew, rounds]);
 
-  const validate = () => {
-    const errs: string[] = [];
-    const n = course.trim();
-    if (!n) errs.push('Course is required');
-    setErrors(errs);
-    return errs.length === 0;
-  };
-
-  const onSave = async () => {
-    if (!validate()) return;
+  const onSave = () => {
     try {
       if (isNew) {
         addRound(course.trim(), date.toISOString(), teeTimeInfo, currentLeagueId);
@@ -101,7 +93,7 @@ export default function RoundEditScreen() {
     <>
       <Stack.Screen options={{ title: 'Rounds' }} />
 
-      <KeyboardAwareScrollView bottomOffset={45}>
+      <KeyboardAwareScrollView bottomOffset={45} keyboardShouldPersistTaps="handled">
         <ThemedView style={{ flex: 1, padding: 16 }}>
           <ThemedText type="title">{isNew ? 'Add round' : 'Edit round'}</ThemedText>
           <View style={{ marginTop: 12 }}>
@@ -139,12 +131,12 @@ export default function RoundEditScreen() {
             <ThemedView
               style={{
                 margin: 10,
-                borderColor: iconButton,
+                borderColor: course.trim() === '' ? disabledColor : iconButton,
                 borderWidth: 1,
                 borderRadius: 6,
               }}
             >
-              <ThemedButton title="Save" onPress={onSave} />
+              <ThemedButton title="Save" disabled={course.trim() === ''} onPress={onSave} />
             </ThemedView>
             <ThemedView
               style={{
