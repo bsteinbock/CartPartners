@@ -3,19 +3,13 @@ import { ThemedView } from '@/components/themed-view';
 import ThemedButton from '@/components/ui/ThemedButton';
 import { backupDatabase, restoreDatabaseFromFile, useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
-import * as Application from 'expo-application';
 import * as DocumentPicker from 'expo-document-picker';
 import React from 'react';
-import { Alert, Platform, ScrollView, StyleSheet } from 'react-native';
+import { Alert, ScrollView, StyleSheet } from 'react-native';
 
 export default function BackupScreen() {
   const { refreshAll } = useDbStore();
   const iconButton = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
-  const version = Application.nativeApplicationVersion || 'Unknown';
-  const buildNumber = Application.nativeBuildVersion
-    ? `(${Application.nativeBuildVersion} ${Platform.OS})`
-    : `(${Platform.OS})`;
-  const versionText = `Version: ${version}${buildNumber}`;
 
   const handleImportDb = async () => {
     Alert.alert(

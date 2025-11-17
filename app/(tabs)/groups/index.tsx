@@ -286,10 +286,6 @@ export default function GroupsScreen() {
     }
   };
 
-  const selectRound = async (id: number) => {
-    setCurrentRoundId(id);
-  };
-
   const generateGroups = useCallback(() => {
     let playerIds = [...currentRoundPlayerIds];
 

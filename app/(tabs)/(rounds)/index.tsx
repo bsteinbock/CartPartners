@@ -15,8 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function RoundsScreen() {
   const router = useRouter();
-  const { rounds, roundSummaries, setCurrentRoundId, leagues, setCurrentLeagueId, currentLeagueId } =
-    useDbStore();
+  const { rounds, leagues, setCurrentLeagueId, currentLeagueId } = useDbStore();
   const iconColor = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
   const borderColor = useThemeColor({ light: undefined, dark: undefined }, 'border');
 
@@ -140,7 +139,3 @@ export default function RoundsScreen() {
     </>
   );
 }
-
-const styles = StyleSheet.create({
-  titleContainer: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12 },
-});

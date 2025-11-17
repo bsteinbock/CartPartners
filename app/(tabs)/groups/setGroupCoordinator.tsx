@@ -20,7 +20,6 @@ export default function SetGroupCoordinatorScreen() {
   const [pickedPlayer, setPickedPlayer] = useState<OptionEntry | null>(null);
 
   const { bodyText, mobileNumbers } = useLocalSearchParams<{ bodyText: string; mobileNumbers: string }>();
-  const [myNumber, setMyNumber] = useState('');
   const backgroundColor = useThemeColor({ light: undefined, dark: undefined }, 'background');
   const iconButton = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
   const disabledColor = useThemeColor({ light: undefined, dark: undefined }, 'disabledColor');
@@ -44,7 +43,7 @@ export default function SetGroupCoordinatorScreen() {
       return;
     }
 
-    const { result } = await SMS.sendSMSAsync(
+    await SMS.sendSMSAsync(
       addresses, // recipient(s)
       message,
     );
@@ -92,8 +91,8 @@ export default function SetGroupCoordinatorScreen() {
         Set Group Coordinator
       </ThemedText>
       <ThemedText style={styles.title}>
-        This info is used so your number is excluded when sending text messages. Since you don't want to text
-        yourself.
+        This info is used so your number is excluded when sending text messages. Since you don&apos;t want to
+        text yourself.
       </ThemedText>
 
       <ThemedText style={{ marginTop: 16, marginBottom: 8 }}>Group Coordinator</ThemedText>

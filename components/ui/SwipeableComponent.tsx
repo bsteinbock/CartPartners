@@ -25,18 +25,17 @@ interface SwipeableProps {
 }
 
 // Convert to forwardRef and add ref type
-export const SwipeableComponent = forwardRef<SwipeableHandles, SwipeableProps>(
-  (
-    {
-      children,
-      threshold,
-      actionWidth, // max visible translation
-      renderLeftActions,
-      renderRightActions,
-      containerStyle,
-    },
-    ref,
-  ) => {
+export const SwipeableComponent = forwardRef<SwipeableHandles, SwipeableProps>(function SwipeableComponent(
+  {
+    children,
+    threshold,
+    actionWidth, // max visible translation
+    renderLeftActions,
+    renderRightActions,
+    containerStyle,
+  },
+  ref,
+) {
     const translateX = useSharedValue(0);
     const gestureOffset = useSharedValue(0); // tracks full gesture
     const isOpen = useSharedValue(false);
@@ -137,8 +136,7 @@ export const SwipeableComponent = forwardRef<SwipeableHandles, SwipeableProps>(
         </GestureDetector>
       </View>
     );
-  },
-);
+  });
 
 const styles = StyleSheet.create({
   root: {

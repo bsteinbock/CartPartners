@@ -7,7 +7,7 @@ import { Player, useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { getGroupPlayerIdsByRoundId, getPlayerForGroup } from '@/lib/cart-utils';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { StyleSheet } from 'react-native';
 import { FlatList, Pressable } from 'react-native-gesture-handler';
@@ -15,16 +15,8 @@ import { FlatList, Pressable } from 'react-native-gesture-handler';
 export default function ModifyGroup() {
   const { groupId } = useLocalSearchParams();
   const numericGroupId = Number(groupId ?? '0');
-  const router = useRouter();
-  const {
-    groupPlayers,
-    updateGroupPlayers,
-    roundPlayers,
-    all_players,
-    league_players,
-    groups,
-    currentRoundId,
-  } = useDbStore();
+  const { groupPlayers, updateGroupPlayers, all_players, league_players, groups, currentRoundId } =
+    useDbStore();
   const [currentGroupPlayers, setCurrentGroupPlayers] = useState<Player[]>([]);
   const [availablePlayers, setAvailablePlayers] = useState<Player[]>([]);
   const iconButton = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');

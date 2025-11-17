@@ -2,7 +2,6 @@ import { deleteBackgroundColor } from '@/constants/theme';
 import { Player, useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
 import React, { useCallback, useRef } from 'react';
 import { Alert, StyleSheet } from 'react-native';
 import { Pressable } from 'react-native-gesture-handler';
@@ -22,8 +21,7 @@ const SwipeableGroupPlayer = ({
   player: Player;
   groupPlayerIds: number[];
 }) => {
-  const router = useRouter();
-  const { roundSummaries, updateGroupPlayers } = useDbStore();
+  const { updateGroupPlayers } = useDbStore();
   const borderColor = useThemeColor({ light: undefined, dark: undefined }, 'border');
   const iconColor = useThemeColor({ light: undefined, dark: undefined }, 'icon');
 

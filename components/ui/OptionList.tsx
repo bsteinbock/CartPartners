@@ -32,7 +32,6 @@ export default function OptionList({
   centerOptions = true,
   boldSelectedOption = true,
 }: Props) {
-  const [isOkToSaveSelectedValue, setIsOkToSaveSelectedValue] = useState<boolean>(false);
   const [pickedOption, setPickedOption] = useState<OptionEntry | undefined>(undefined);
 
   const onOkSelected = useCallback(() => {
@@ -43,7 +42,7 @@ export default function OptionList({
     (item: OptionEntry) => {
       setPickedOption(item);
       if (showOkCancel) {
-        setIsOkToSaveSelectedValue(!!item);
+        // When OK/Cancel buttons are shown, wait for OK press
       } else {
         onSelect(item);
       }

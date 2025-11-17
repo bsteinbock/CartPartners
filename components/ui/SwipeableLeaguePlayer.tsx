@@ -2,7 +2,6 @@ import { deleteBackgroundColor } from '@/constants/theme';
 import { Player, useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
 import React, { useCallback, useRef } from 'react';
 import { Alert, StyleSheet } from 'react-native';
 import { Pressable } from 'react-native-gesture-handler';
@@ -22,8 +21,7 @@ const SwipeableLeaguePlayerItem = ({
   onPress?: () => void;
   onDelete?: (player: Player) => void;
 }) => {
-  const router = useRouter();
-  const { removePlayerFromLeague, updatePlayer, currentLeagueId, leagues } = useDbStore();
+  const { removePlayerFromLeague, currentLeagueId, leagues } = useDbStore();
   const borderColor = useThemeColor({ light: undefined, dark: undefined }, 'border');
   const iconColor = useThemeColor({ light: undefined, dark: undefined }, 'icon');
   const league = leagues.find((l) => l.id === currentLeagueId);
@@ -69,16 +67,6 @@ const SwipeableLeaguePlayerItem = ({
   };
 
   const roundRef = useRef<any>(null);
-
-  const toggleAvailable = (p: Player) => {
-    try {
-      if (!p.id) return;
-      updatePlayer(p.id, { available: p.available ? 0 : 1 });
-    } catch (e) {
-      console.warn('Toggle available failed', e);
-      Alert.alert('Error', 'Failed to update availability');
-    }
-  };
 
   return (
     <SwipeableComponent
