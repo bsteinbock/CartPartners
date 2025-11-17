@@ -11,14 +11,12 @@ import { displayPhoneNumberFromE164 } from '@/lib/cart-utils';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { File, Paths } from 'expo-file-system';
-import { useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { FlatList } from 'react-native-gesture-handler';
 
 export default function PlayersScreen() {
-  const router = useRouter();
   const { league_players, setCurrentLeagueId, currentLeagueId, leagues, all_players, addPlayersToLeague } =
     useDbStore();
   const iconColor = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
@@ -181,7 +179,7 @@ export default function PlayersScreen() {
         {league_players.length === 0 && (
           <ThemedView style={{ padding: 12 }}>
             <ThemedText style={{ marginTop: 12 }}>
-              No players defined. You can add players manually using the '+' icon.
+              No players defined. You can add players manually using the &apos;+&apos; icon.
             </ThemedText>
           </ThemedView>
         )}
@@ -236,10 +234,3 @@ export default function PlayersScreen() {
     </>
   );
 }
-
-const styles = StyleSheet.create({
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-});

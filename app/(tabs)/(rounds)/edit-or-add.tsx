@@ -27,7 +27,6 @@ export default function RoundEditScreen() {
   const [course, setCourse] = useState('');
   const [teeTimeInfo, setTeeTimeInfo] = useState('');
   const [date, setDate] = useState(new Date());
-  const [errors, setErrors] = useState<string[]>([]);
   const [datePickerVisible, setDatePickerVisible] = useState(false);
 
   const courseRef = useRef<any>(null);
@@ -97,7 +96,7 @@ export default function RoundEditScreen() {
   const hideDatePicker = () => {
     setDatePickerVisible(false);
   };
-  const title = isNew ? 'Add round' : 'Edit round';
+
   return (
     <>
       <Stack.Screen options={{ title: 'Rounds' }} />

@@ -57,7 +57,7 @@ export default function AboutScreen() {
           Use this tab to specify the players participating in a particular round. The picker at the top of
           the screen shows the current round and allows you to select a different one. The player list
           includes all golfers whose status is set to “available.” To add a player from the master player list
-          to the round's lineup, tap the icon at the top right of the screen. Once the lineup is finalized,
+          to the round&apos;s lineup, tap the icon at the top right of the screen. Once the lineup is finalized,
           press the Groups icon at the bottom of the screen to open the Groups tab.
         </ThemedText>
 
@@ -80,38 +80,38 @@ export default function AboutScreen() {
 
         <ThemedText style={styles.text}>
           The More tab provides access to additional screens not directly related to creating groups. The icon
-          at the top left of the screen opens a panel with options to view the following screens: "Notify
-          Players", "Leagues/Outings", "Manage All Players", "League Players", "Backup / Restore", and
-          "About".
+          at the top left of the screen opens a panel with options to view the following screens: &quot;Notify
+          Players&quot;, &quot;Leagues/Outings&quot;, &quot;Manage All Players&quot;, &quot;League
+          Players&quot;, &quot;Backup / Restore&quot;, and &quot;About&quot;.
         </ThemedText>
 
         <ThemedText style={[styles.text, { marginTop: 10 }]}>
-          The "Notify Players" screen lets you notify any group of players via email or text message. The list
-          of players is specific to the current/active league. The league name is shown above the player
-          selection area.
+          The &quot;Notify Players&quot; screen lets you notify any group of players via email or text message.
+          The list of players is specific to the current/active league. The league name is shown above the
+          player selection area.
         </ThemedText>
 
         <ThemedText style={[styles.text, { marginTop: 10 }]}>
-          The "Leagues/Outings" screen enables you to manage multiple leagues or outings, each with its own
-          set of players and rounds.
+          The &quot;Leagues/Outings&quot; screen enables you to manage multiple leagues or outings, each with
+          its own set of players and rounds.
         </ThemedText>
 
         <ThemedText style={[styles.text, { marginTop: 10 }]}>
-          The "Manage All Players" screen allows you to add, edit, or delete players from the master player
-          list. This list contains all players known to the app, regardless of their association with any
+          The &quot;Manage All Players&quot; screen allows you to add, edit, or delete players from the master
+          player list. This list contains all players known to the app, regardless of their association with any
           league or outing. You can also import or export the player list as a CSV file for easy sharing or
           backup.
         </ThemedText>
 
         <ThemedText style={[styles.text, { marginTop: 10 }]}>
-          The "League Players" screen allows you to define the list of players specific to a particular league
-          or outing. You can add players from the master player list to the league. You can also swipe to
-          delete players from the league. You can also export the players to a CSV file for use in other
-          applications.
+          The &quot;League Players&quot; screen allows you to define the list of players specific to a
+          particular league or outing. You can add players from the master player list to the league. You can
+          also swipe to delete players from the league. You can also export the players to a CSV file for use in
+          other applications.
         </ThemedText>
 
         <ThemedText style={[styles.text, { marginTop: 10 }]}>
-          The "Backup/Restore" screen allows you to create a database backup file containing all your
+          The &quot;Backup/Restore&quot; screen allows you to create a database backup file containing all your
           CartPartners data. This file can be shared with another person taking over as Group Coordinator,
           either temporarily or permanently. Using the Restore command lets you load or reload data from a
           previous backup. Caution: Restoring a backup will overwrite all existing data in the app.

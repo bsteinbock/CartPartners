@@ -1,5 +1,5 @@
 import { useThemeColor } from '@/hooks/use-theme-color';
-import { FlatList, Platform, Pressable, StyleProp, StyleSheet, TextStyle } from 'react-native';
+import { FlatList, Platform, Pressable, StyleProp, TextStyle } from 'react-native';
 import { ThemedText } from '../themed-text';
 import { ThemedView } from '../themed-view';
 
@@ -69,31 +69,3 @@ export default function MultiSelectOptionList({
     </ThemedView>
   );
 }
-
-const styles = StyleSheet.create({
-  listContainer: {
-    borderTopRightRadius: 10,
-    borderTopLeftRadius: 10,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-    width: '100%',
-    borderBottomWidth: 1,
-    borderColor: 'white',
-  },
-  saveButtonRow: {
-    paddingHorizontal: 10,
-    borderTopWidth: 2,
-    marginTop: 10,
-    paddingTop: 10,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  saveButton: {
-    flex: 1,
-    marginRight: 5,
-  },
-  cancelButton: {
-    flex: 1,
-    marginLeft: 5,
-  },
-});

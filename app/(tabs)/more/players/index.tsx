@@ -11,7 +11,7 @@ import { File, Paths } from 'expo-file-system';
 import { useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { useCallback } from 'react';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, View } from 'react-native';
 import { FlatList } from 'react-native-gesture-handler';
 
 export default function PlayersScreen() {
@@ -28,11 +28,6 @@ export default function PlayersScreen() {
   } = useDbStore();
   const iconColor = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
 
-  const startEdit = (id?: number) => {
-    if (typeof id === 'undefined') return;
-    router.push(`/more/players/${id}`);
-  };
-
   const handleDelete = useCallback(
     (player: Player) => {
       Alert.alert(
@@ -48,16 +43,6 @@ export default function PlayersScreen() {
 
   const addNewPlayer = () => {
     router.push({ pathname: `/more/players/[id]`, params: { id: 'new' } });
-  };
-
-  const toggleAvailable = (p: Player) => {
-    try {
-      if (!p.id) return;
-      updatePlayer(p.id, { available: p.available ? 0 : 1 }, true);
-    } catch (e) {
-      console.warn('Toggle available failed', e);
-      Alert.alert('Error', 'Failed to update availability');
-    }
   };
 
   const exportToCSV = async () => {
@@ -241,7 +226,7 @@ export default function PlayersScreen() {
             </ThemedText>
             <ThemedText style={{ marginTop: 12 }}>Name,Speed Index,Email,Mobile#,Available</ThemedText>
             <ThemedText>For example:</ThemedText>
-            <ThemedText>"name",1,"emailname@gmail.com","123-456-7890",Yes</ThemedText>
+            <ThemedText>&quot;name&quot;,1,&quot;emailname@gmail.com&quot;,&quot;123-456-7890&quot;,Yes</ThemedText>
             <ThemedText style={{ marginTop: 12 }}>note: Speed Index:1=fast 5=slow</ThemedText>
           </ThemedView>
         )}
@@ -281,10 +266,3 @@ export default function PlayersScreen() {
     </>
   );
 }
-
-const styles = StyleSheet.create({
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-});
