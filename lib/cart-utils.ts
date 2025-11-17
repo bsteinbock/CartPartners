@@ -118,8 +118,8 @@ export function buildPlayingPartnerFrequencies(
 export function generateNextRoundGroups(params: Partial<GroupParams>): number[][] {
   // --- ✅ Safely unpack parameters with defaults ---
   const {
-    playerIds = [],
-    partnerFrequencies = {},
+    playerIds = [], // list of player IDs to group
+    partnerFrequencies = {}, // Map of playerId → { partnerId → timesPlayedTogether }
     allPlayers, // needed to lookup speed index
     fairnessWeight = 1.0,
     shuffle = true, // this promotes different starting groups between rounds
