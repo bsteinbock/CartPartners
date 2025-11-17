@@ -336,12 +336,7 @@ export default function GroupsScreen() {
     } else {
       generateGroups();
     }
-  }, [
-    currentRoundPlayerIds,
-    currentRoundGroups,
-    showMismatchPlayerWarning,
-    generateGroups,
-  ]);
+  }, [currentRoundPlayerIds, currentRoundGroups, showMismatchPlayerWarning, generateGroups]);
 
   // Render each group in the FlatList
   const renderGroup = ({ item, index }: { item: GroupPlayers; index: number }) => {

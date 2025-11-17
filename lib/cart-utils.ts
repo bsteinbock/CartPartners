@@ -19,7 +19,6 @@ export interface GroupParams {
   shuffle?: boolean;
   avoidSlowPairs?: boolean;
   slowThreshold?: number;
-  manuallySpecified?: number[];
 }
 
 export function getGroupSizes(numPlayers: number): number[] {
@@ -115,19 +114,17 @@ export function buildPlayingPartnerFrequencies(
 /**
  * Generate new groups for the next round, with optional constraints like:
  * - Avoid multiple "slow" players (speedIndex > slowThreshold)
- * - Use a manually specified first group
  */
 export function generateNextRoundGroups(params: Partial<GroupParams>): number[][] {
   // --- ✅ Safely unpack parameters with defaults ---
   const {
     playerIds = [],
     partnerFrequencies = {},
-    allPlayers,
+    allPlayers, // needed to lookup speed index
     fairnessWeight = 1.0,
-    shuffle = true,
-    avoidSlowPairs = false,
-    slowThreshold = 4,
-    manuallySpecified,
+    shuffle = true, // this promotes different starting groups between rounds
+    avoidSlowPairs = true, // try to avoid having a very slow group
+    slowThreshold = 4, // any speed value above this is considered slow.
   } = params;
 
   if (!playerIds.length) {
@@ -143,25 +140,8 @@ export function generateNextRoundGroups(params: Partial<GroupParams>): number[][
   const remainingPlayers = shuffle ? [...playerIds].sort(() => Math.random() - 0.5) : [...playerIds];
   const groups: number[][] = [];
 
+  // --- function to get player speed index
   const getSpeedIndex = (id: number): number => allPlayers?.find((p) => p.id === id)?.speedIndex ?? 0;
-
-  // --- ✅ Handle manually specified first group ---
-  if (manuallySpecified && manuallySpecified.length > 0) {
-    const expectedSize = groupSizes[0];
-    if (manuallySpecified.length !== expectedSize) {
-      throw new Error(
-        `manuallySpecified group must have exactly ${expectedSize} players (got ${manuallySpecified.length}).`,
-      );
-    }
-
-    // Remove specified players from remaining pool
-    for (const id of manuallySpecified) {
-      const idx = remainingPlayers.indexOf(id);
-      if (idx !== -1) remainingPlayers.splice(idx, 1);
-    }
-
-    groups.push([...manuallySpecified]);
-  }
 
   // --- Build remaining groups automatically ---
   for (let i = groups.length; i < groupSizes.length; i++) {
