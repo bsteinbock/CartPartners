@@ -104,7 +104,7 @@ export default function GroupsScreen() {
       setPickedRound(latestRound);
       setRoundOptions(availableOptions);
     }
-  }, [rounds]);
+  }, [rounds, currentRoundId]);
 
   useEffect(() => {
     const latestRound = roundOptions.find((o) => o.value === currentRoundId) ?? roundOptions[0];
@@ -125,21 +125,21 @@ export default function GroupsScreen() {
     if (currentRoundId !== null) {
       setCurrentRoundGroups(getGroupPlayersByRoundId(currentRoundId, groups, groupPlayers));
     }
-  }, [currentRoundId, groups, groupPlayers, getGroupPlayersByRoundId]);
+  }, [currentRoundId, groups, groupPlayers]);
 
   useEffect(() => {
     if (currentRoundGroups.length > 0) {
       const names = formatGroupPlayersByNames(currentRoundGroups, all_players);
       setGroupPlayerNames(names);
     }
-  }, [currentRoundGroups, all_players, formatGroupPlayersByNames]);
+  }, [currentRoundGroups, all_players]);
 
   useEffect(() => {
     if (manualGroupList.length > 0) {
       const names = formatManualGroupPlayersByNames(manualGroupList, league_players);
       setManualGroupsPlayersNames(names);
     }
-  }, [manualGroupList, league_players, formatManualGroupPlayersByNames]);
+  }, [manualGroupList, league_players]);
 
   useEffect(() => {
     if (roundPlayers.length > 0) {
@@ -344,7 +344,6 @@ export default function GroupsScreen() {
     currentRoundPlayerIds,
     currentRoundGroups,
     showMismatchPlayerWarning,
-    generateNextRoundGroups,
     generateGroups,
   ]);
 
@@ -412,19 +411,22 @@ export default function GroupsScreen() {
 
   // Debounced DB save helper - we debounce calls by 250 ms to prevent SQLite from being hammered
   // if the user quickly taps multiple players in a row.
-  const persistSwap = (
-    groupId1: number,
-    swapIndex1: number,
-    groupId2: number,
-    swapIndex2: number,
-    newSelectionIndex: number,
-  ) => {
-    if (debounceTimer.current) clearTimeout(debounceTimer.current);
-    debounceTimer.current = setTimeout(() => {
-      swapGroupSlots(groupId1, swapIndex1, groupId2, swapIndex2);
-      setSelectedGroupIndex(newSelectionIndex);
-    }, 100);
-  };
+  const persistSwap = useCallback(
+    (
+      groupId1: number,
+      swapIndex1: number,
+      groupId2: number,
+      swapIndex2: number,
+      newSelectionIndex: number,
+    ) => {
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+      debounceTimer.current = setTimeout(() => {
+        swapGroupSlots(groupId1, swapIndex1, groupId2, swapIndex2);
+        setSelectedGroupIndex(newSelectionIndex);
+      }, 100);
+    },
+    [swapGroupSlots],
+  );
 
   const moveGroup = useCallback(
     async (direction: 'up' | 'down') => {
@@ -434,7 +436,7 @@ export default function GroupsScreen() {
       const group2 = currentRoundGroups[swapIndex];
       persistSwap(group1.group_id, selectedGroupIndex, group2.group_id, swapIndex, swapIndex);
     },
-    [currentRoundId, selectedGroupIndex, persistSwap, currentRoundGroups],
+    [selectedGroupIndex, persistSwap, currentRoundGroups],
   );
 
   const modifyGroup = () => {

@@ -91,7 +91,7 @@ export default function LineupScreen() {
       setPickedRound(latestRound);
       setRoundOptions(availableOptions);
     }
-  }, [rounds]);
+  }, [rounds, currentRoundId]);
 
   useEffect(() => {
     const latestRound = roundOptions.find((o) => o.value === currentRoundId) ?? roundOptions[0];

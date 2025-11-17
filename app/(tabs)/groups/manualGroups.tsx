@@ -66,7 +66,7 @@ export default function DefineManualGroups() {
       const names = formatManualGroupPlayersByNames(manualGroups, league_players);
       setManualGroupsPlayersNames(names);
     }
-  }, [manualGroups, formatManualGroupPlayersByNames, league_players]);
+  }, [manualGroups, league_players]);
 
   const togglePlayer = (playerId: number) => {
     if (selectedPlayers.includes(playerId)) {

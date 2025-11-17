@@ -52,7 +52,7 @@ export default function RoundEditScreen() {
         console.warn('Load round failed', e);
       }
     }
-  }, [id]);
+  }, [id, isNew, rounds]);
 
   const validate = () => {
     const errs: string[] = [];

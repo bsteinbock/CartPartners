@@ -20,7 +20,7 @@ export default function RootLayout() {
   useEffect(() => {
     initDb(); // <-- ensures DB and tables exist
     refreshAll(); // <-- load initial data
-  }, []);
+  }, [refreshAll]);
 
   return (
     <SafeAreaProvider>
