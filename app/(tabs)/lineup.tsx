@@ -126,6 +126,15 @@ export default function LineupScreen() {
     setPickedRound(latestRound);
   }, [currentRoundId, roundOptions]);
 
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+    };
+  }, []);
+
   const handleRoundOptionChange = (option: OptionEntry) => {
     setPickedRound(option);
     setCurrentRoundId(option.value);
