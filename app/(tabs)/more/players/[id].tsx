@@ -36,7 +36,7 @@ export default function PlayerDetailScreen() {
         setNickname(existing.nickname || '');
       }
     }
-  }, [id, all_players]);
+  }, [id, all_players, isNew]);
 
   const handleSave = () => {
     if (!name.trim()) {
