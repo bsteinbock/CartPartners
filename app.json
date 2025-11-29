@@ -58,7 +58,8 @@
       ],
       "expo-sqlite",
       "expo-web-browser",
-      "expo-secure-store"
+      "expo-secure-store",
+      "react-native-legal"
     ],
     "experiments": {
       "typedRoutes": true,

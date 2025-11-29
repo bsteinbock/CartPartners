@@ -1,8 +1,10 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import ThemedButton from '@/components/ui/ThemedButton';
 import * as Application from 'expo-application';
 import React from 'react';
 import { Platform, ScrollView, StyleSheet } from 'react-native';
+import { ReactNativeLegal } from 'react-native-legal';
 
 export default function AboutScreen() {
   const version = Application.nativeApplicationVersion || 'Unknown';
@@ -10,6 +12,10 @@ export default function AboutScreen() {
     ? `(${Application.nativeBuildVersion} ${Platform.OS})`
     : `(${Platform.OS})`;
   const versionText = `Version: ${version}${buildNumber}`;
+
+  const showLicenses = () => {
+    ReactNativeLegal.launchLicenseListScreen('Open Source Software Licenses');
+  };
 
   return (
     <ScrollView style={styles.container}>
@@ -57,8 +63,8 @@ export default function AboutScreen() {
           Use this tab to specify the players participating in a particular round. The picker at the top of
           the screen shows the current round and allows you to select a different one. The player list
           includes all golfers whose status is set to “available.” To add a player from the master player list
-          to the round&apos;s lineup, tap the icon at the top right of the screen. Once the lineup is finalized,
-          press the Groups icon at the bottom of the screen to open the Groups tab.
+          to the round&apos;s lineup, tap the icon at the top right of the screen. Once the lineup is
+          finalized, press the Groups icon at the bottom of the screen to open the Groups tab.
         </ThemedText>
 
         <ThemedText type="subtitle" style={styles.subTitle}>
@@ -86,9 +92,9 @@ export default function AboutScreen() {
         </ThemedText>
 
         <ThemedText style={[styles.text, { marginTop: 10 }]}>
-          The &quot;Notify Players&quot; screen lets you notify any group of players via email or text message.
-          The list of players is specific to the current/active league. The league name is shown above the
-          player selection area.
+          The &quot;Notify Players&quot; screen lets you notify any group of players via email or text
+          message. The list of players is specific to the current/active league. The league name is shown
+          above the player selection area.
         </ThemedText>
 
         <ThemedText style={[styles.text, { marginTop: 10 }]}>
@@ -98,24 +104,29 @@ export default function AboutScreen() {
 
         <ThemedText style={[styles.text, { marginTop: 10 }]}>
           The &quot;Manage All Players&quot; screen allows you to add, edit, or delete players from the master
-          player list. This list contains all players known to the app, regardless of their association with any
-          league or outing. You can also import or export the player list as a CSV file for easy sharing or
-          backup.
+          player list. This list contains all players known to the app, regardless of their association with
+          any league or outing. You can also import or export the player list as a CSV file for easy sharing
+          or backup.
         </ThemedText>
 
         <ThemedText style={[styles.text, { marginTop: 10 }]}>
           The &quot;League Players&quot; screen allows you to define the list of players specific to a
           particular league or outing. You can add players from the master player list to the league. You can
-          also swipe to delete players from the league. You can also export the players to a CSV file for use in
-          other applications.
+          also swipe to delete players from the league. You can also export the players to a CSV file for use
+          in other applications.
         </ThemedText>
 
         <ThemedText style={[styles.text, { marginTop: 10 }]}>
-          The &quot;Backup/Restore&quot; screen allows you to create a database backup file containing all your
-          CartPartners data. This file can be shared with another person taking over as Group Coordinator,
-          either temporarily or permanently. Using the Restore command lets you load or reload data from a
-          previous backup. Caution: Restoring a backup will overwrite all existing data in the app.
+          The &quot;Backup/Restore&quot; screen allows you to create a database backup file containing all
+          your CartPartners data. This file can be shared with another person taking over as Group
+          Coordinator, either temporarily or permanently. Using the Restore command lets you load or reload
+          data from a previous backup. Caution: Restoring a backup will overwrite all existing data in the
+          app.
         </ThemedText>
+
+        <ThemedView style={styles.licenseButtonContainer}>
+          <ThemedButton title="Show Source Licenses" onPress={showLicenses} />
+        </ThemedView>
       </ThemedView>
     </ScrollView>
   );
@@ -138,6 +149,12 @@ const styles = StyleSheet.create({
   subTitle: {
     marginTop: 15,
     marginBottom: 5,
+  },
+  licenseButtonContainer: {
+    marginTop: 15,
+    marginBottom: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   text: {
     lineHeight: 24,
