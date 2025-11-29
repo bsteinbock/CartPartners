@@ -2,7 +2,7 @@ import { deleteBackgroundColor } from '@/constants/theme';
 import { League, useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { MaterialIcons } from '@expo/vector-icons';
-import React, { useCallback, useRef } from 'react';
+import React, { useRef } from 'react';
 import { Alert, StyleSheet } from 'react-native';
 import { Pressable } from 'react-native-gesture-handler';
 import { ThemedText } from '../themed-text';
@@ -17,21 +17,18 @@ const SwipeableLeagueItem = ({ league, onPress }: { league: League; onPress: (le
   const borderColor = useThemeColor({ light: undefined, dark: undefined }, 'border');
   const iconColor = useThemeColor({ light: undefined, dark: undefined }, 'icon');
 
-  const handleDelete = useCallback(
-    (league: League) => {
-      if (leagues.length <= 1) {
-        Alert.alert('Cannot Delete League', 'At least one league must exist.');
-        return;
-      }
-      Alert.alert(
-        'Delete League',
-        `Are you sure you want to delete the league "${league.name}" and ALL its rounds and players?`,
-        [{ text: 'Cancel' }, { text: 'Delete', onPress: () => deleteLeague(league.id) }],
-        { cancelable: true },
-      );
-    },
-    [deleteLeague, leagues],
-  );
+  const handleDelete = (league: League) => {
+    if (leagues.length <= 1) {
+      Alert.alert('Cannot Delete League', 'At least one league must exist.');
+      return;
+    }
+    Alert.alert(
+      'Delete League',
+      `Are you sure you want to delete the league "${league.name}" and ALL its rounds and players?`,
+      [{ text: 'Cancel' }, { text: 'Delete', onPress: () => deleteLeague(league.id) }],
+      { cancelable: true },
+    );
+  };
 
   const RightAction = () => {
     return (

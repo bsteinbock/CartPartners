@@ -3,7 +3,7 @@ import { Player, useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useRef } from 'react';
+import React, { useRef } from 'react';
 import { Alert, StyleSheet } from 'react-native';
 import { Pressable, Switch } from 'react-native-gesture-handler';
 import { ThemedText } from '../themed-text';
@@ -29,21 +29,18 @@ const SwipeablePlayerItem = ({
   const switchTrackColor = useThemeColor({ light: undefined, dark: undefined }, 'switchTrackColor');
   const league = leagues.find((l) => l.id === currentLeagueId);
 
-  const handleDelete = useCallback(
-    (player: Player) => {
-      Alert.alert(
-        'Delete Player',
-        `Are you sure you want to delete ${player.name}? This action cannot be undone. It
+  const handleDelete = (player: Player) => {
+    Alert.alert(
+      'Delete Player',
+      `Are you sure you want to delete ${player.name}? This action cannot be undone. It
          will remove the player from the league ${league?.name}.`,
-        [
-          { text: 'Cancel' },
-          { text: 'Delete', onPress: () => removePlayerFromLeague(player.id, league?.id ?? 0) },
-        ],
-        { cancelable: true },
-      );
-    },
-    [removePlayerFromLeague, league],
-  );
+      [
+        { text: 'Cancel' },
+        { text: 'Delete', onPress: () => removePlayerFromLeague(player.id, league?.id ?? 0) },
+      ],
+      { cancelable: true },
+    );
+  };
 
   const openEdit = (p: Player) => {
     if (onPress) {

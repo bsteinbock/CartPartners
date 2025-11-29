@@ -1,5 +1,5 @@
 import { useThemeColor } from '@/hooks/use-theme-color';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { FlatList, Platform, Pressable, StyleProp, StyleSheet, TextStyle } from 'react-native';
 import { ThemedText } from '../themed-text';
 import { ThemedView } from '../themed-view';
@@ -34,31 +34,30 @@ export default function OptionList({
 }: Props) {
   const [pickedOption, setPickedOption] = useState<OptionEntry | undefined>(undefined);
 
-  const onOkSelected = useCallback(() => {
+  const onOkSelected = () => {
     if (pickedOption) onSelect(pickedOption);
-  }, [pickedOption, onSelect]);
+  };
 
-  const onOptionSelected = useCallback(
-    (item: OptionEntry) => {
-      setPickedOption(item);
-      if (showOkCancel) {
-        // When OK/Cancel buttons are shown, wait for OK press
-      } else {
-        onSelect(item);
-      }
-    },
-    [showOkCancel, onSelect],
-  );
+  const onOptionSelected = (item: OptionEntry) => {
+    setPickedOption(item);
+    if (showOkCancel) {
+      // When OK/Cancel buttons are shown, wait for OK press
+    } else {
+      onSelect(item);
+    }
+  };
 
   useEffect(() => {
     if (options && selectedOption) {
       const match = options.find((o) => o.label === selectedOption.label);
       if (match) {
-        if (showOkCancel) onOptionSelected(match);
-        else setPickedOption(match);
+        setPickedOption(match);
+        if (!showOkCancel) {
+          onSelect(match);
+        }
       }
     }
-  }, [selectedOption, options, showOkCancel, onOptionSelected]);
+  }, [selectedOption, options, showOkCancel, onSelect]);
 
   const borderColor = useThemeColor({ light: undefined, dark: undefined }, 'border');
 

@@ -8,7 +8,7 @@ import { Player, useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { formatDate } from '@/lib/formatters';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { memo, useEffect, useRef, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -19,9 +19,9 @@ const PlayerItem = memo<{
   onToggle: (playerId: number) => void;
   switchTrackColor: string;
 }>(function PlayerItem({ player, isSelected, onToggle, switchTrackColor }) {
-  const handleToggle = useCallback(() => {
+  const handleToggle = () => {
     onToggle(player.id);
-  }, [player.id, onToggle]);
+  };
 
   return (
     <ThemedView
@@ -82,11 +82,9 @@ export default function LineupScreen() {
     setAvailablePlayers(availableList);
   }, [league_players, all_players, roundPlayers, currentRoundId]);
 
-  const availablePlayersToAdd = useMemo(
-    () =>
-      all_players.filter((p) => p.available).filter((p) => !availablePlayers.find((lp) => lp.id === p.id)),
-    [all_players, availablePlayers],
-  );
+  const availablePlayersToAdd = all_players
+    .filter((p) => p.available)
+    .filter((p) => !availablePlayers.find((lp) => lp.id === p.id));
 
   useEffect(() => {
     const activePlayers = roundPlayers
@@ -174,7 +172,7 @@ export default function LineupScreen() {
     league_players.length > 0 && availablePlayers.every((p) => selectedPlayers.includes(p.id));
   const playerLabel = `Player (${selectedPlayers.length} of ${availablePlayers.length} Selected)`;
 
-  const handlePlayerOptionChange = useCallback((option: OptionEntry) => {
+  const handlePlayerOptionChange = (option: OptionEntry) => {
     setSelectedPlayerOptions((prev) => {
       const exists = prev.find((o) => o.value === option.value);
       if (exists) {
@@ -183,7 +181,7 @@ export default function LineupScreen() {
         return [...prev, option];
       }
     });
-  }, []);
+  };
 
   return (
     <SafeAreaView style={{ flex: 1 }} edges={['top']}>

@@ -8,7 +8,7 @@ import { useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { FlatList, Pressable } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -48,16 +48,13 @@ export default function RoundsScreen() {
     router.push({ pathname: '/edit-or-add', params: { id: 'new' } });
   };
 
-  const handleLeagueOptionChange = useCallback(
-    (option: OptionEntry) => {
-      const leagueToSetActive = leagues.find((p) => p.id === option.value);
-      if (leagueToSetActive) {
-        setCurrentLeagueId(leagueToSetActive.id);
-        setIsLeaguePickerVisible(false);
-      }
-    },
-    [leagues, setCurrentLeagueId],
-  );
+  const handleLeagueOptionChange = (option: OptionEntry) => {
+    const leagueToSetActive = leagues.find((p) => p.id === option.value);
+    if (leagueToSetActive) {
+      setCurrentLeagueId(leagueToSetActive.id);
+      setIsLeaguePickerVisible(false);
+    }
+  };
 
   return (
     <>

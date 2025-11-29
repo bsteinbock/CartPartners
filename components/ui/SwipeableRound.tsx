@@ -4,7 +4,7 @@ import { useThemeColor } from '@/hooks/use-theme-color';
 import { formatDate } from '@/lib/formatters';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useRef } from 'react';
+import React, { useRef } from 'react';
 import { Alert, StyleSheet } from 'react-native';
 import { Pressable } from 'react-native-gesture-handler';
 import { ThemedText } from '../themed-text';
@@ -20,17 +20,14 @@ const SwipeableRoundItem = ({ round }: { round: Round }) => {
   const borderColor = useThemeColor({ light: undefined, dark: undefined }, 'border');
   const iconColor = useThemeColor({ light: undefined, dark: undefined }, 'icon');
 
-  const handleDelete = useCallback(
-    (itemId: number) => {
-      Alert.alert(
-        'Delete Round',
-        'Are you sure you want to delete this round?',
-        [{ text: 'Cancel' }, { text: 'Delete', onPress: () => deleteRound(itemId) }],
-        { cancelable: true },
-      );
-    },
-    [deleteRound],
-  );
+  const handleDelete = (itemId: number) => {
+    Alert.alert(
+      'Delete Round',
+      'Are you sure you want to delete this round?',
+      [{ text: 'Cancel' }, { text: 'Delete', onPress: () => deleteRound(itemId) }],
+      { cancelable: true },
+    );
+  };
 
   const setLineUp = (r: any) => {
     if (r && typeof r.id !== 'undefined') {

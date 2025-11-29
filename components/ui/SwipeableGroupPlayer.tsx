@@ -2,7 +2,7 @@ import { deleteBackgroundColor } from '@/constants/theme';
 import { Player, useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { MaterialIcons } from '@expo/vector-icons';
-import React, { useCallback, useRef } from 'react';
+import React, { useRef } from 'react';
 import { Alert, StyleSheet } from 'react-native';
 import { Pressable } from 'react-native-gesture-handler';
 import { ThemedText } from '../themed-text';
@@ -25,25 +25,19 @@ const SwipeableGroupPlayer = ({
   const borderColor = useThemeColor({ light: undefined, dark: undefined }, 'border');
   const iconColor = useThemeColor({ light: undefined, dark: undefined }, 'icon');
 
-  const deletePlayer = useCallback(
-    (playerId: number) => {
-      const updatedPlayerIds = groupPlayerIds.filter((id) => id !== playerId);
-      updateGroupPlayers(groupId, updatedPlayerIds);
-    },
-    [groupId, groupPlayerIds, updateGroupPlayers],
-  );
+  const deletePlayer = (playerId: number) => {
+    const updatedPlayerIds = groupPlayerIds.filter((id) => id !== playerId);
+    updateGroupPlayers(groupId, updatedPlayerIds);
+  };
 
-  const handleDelete = useCallback(
-    (player: Player) => {
-      Alert.alert(
-        'Remove Player',
-        'Are you sure you want to remover the player from the group?',
-        [{ text: 'Cancel' }, { text: 'Delete', onPress: () => deletePlayer(player.id) }],
-        { cancelable: true },
-      );
-    },
-    [deletePlayer],
-  );
+  const handleDelete = (player: Player) => {
+    Alert.alert(
+      'Remove Player',
+      'Are you sure you want to remover the player from the group?',
+      [{ text: 'Cancel' }, { text: 'Delete', onPress: () => deletePlayer(player.id) }],
+      { cancelable: true },
+    );
+  };
 
   const RightAction = () => {
     return (
