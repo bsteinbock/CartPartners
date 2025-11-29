@@ -33,7 +33,7 @@ const SwipeableGroupPlayer = ({
   const handleDelete = (player: Player) => {
     Alert.alert(
       'Remove Player',
-      'Are you sure you want to remover the player from the group?',
+      'Are you sure you want to remove the player from the group?',
       [{ text: 'Cancel' }, { text: 'Delete', onPress: () => deletePlayer(player.id) }],
       { cancelable: true },
     );

@@ -52,12 +52,9 @@ export default function OptionList({
       const match = options.find((o) => o.label === selectedOption.label);
       if (match) {
         setPickedOption(match);
-        if (!showOkCancel) {
-          onSelect(match);
-        }
       }
     }
-  }, [selectedOption, options, showOkCancel, onSelect]);
+  }, [selectedOption, options]);
 
   const borderColor = useThemeColor({ light: undefined, dark: undefined }, 'border');
 
