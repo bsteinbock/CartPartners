@@ -12,7 +12,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { FlatList } from 'react-native-gesture-handler';
 
@@ -31,10 +31,9 @@ export default function PlayersScreen() {
   const [playerOptions, setPlayerOptions] = useState<OptionEntry[]>([]);
   const [selectedPlayerOptions, setSelectedPlayerOptions] = useState<OptionEntry[]>([]);
 
-  const availablePlayersToAdd = useMemo(
-    () => all_players.filter((p) => p.available).filter((p) => !league_players.find((lp) => lp.id === p.id)),
-    [all_players, league_players],
-  );
+  const availablePlayersToAdd = all_players
+    .filter((p) => p.available)
+    .filter((p) => !league_players.find((lp) => lp.id === p.id));
 
   useEffect(() => {
     const availableOptions = availablePlayersToAdd.map((r) => ({
@@ -109,18 +108,15 @@ export default function PlayersScreen() {
     }
   };
 
-  const handleLeagueOptionChange = useCallback(
-    (option: OptionEntry) => {
-      const leagueToSetActive = leagues.find((p) => p.id === option.value);
-      if (leagueToSetActive) {
-        setCurrentLeagueId(leagueToSetActive.id);
-        setIsLeaguePickerVisible(false);
-      }
-    },
-    [leagues, setCurrentLeagueId],
-  );
+  const handleLeagueOptionChange = (option: OptionEntry) => {
+    const leagueToSetActive = leagues.find((p) => p.id === option.value);
+    if (leagueToSetActive) {
+      setCurrentLeagueId(leagueToSetActive.id);
+      setIsLeaguePickerVisible(false);
+    }
+  };
 
-  const handlePlayerOptionChange = useCallback((option: OptionEntry) => {
+  const handlePlayerOptionChange = (option: OptionEntry) => {
     setSelectedPlayerOptions((prev) => {
       const exists = prev.find((o) => o.value === option.value);
       if (exists) {
@@ -129,7 +125,7 @@ export default function PlayersScreen() {
         return [...prev, option];
       }
     });
-  }, []);
+  };
 
   return (
     <>

@@ -23,7 +23,7 @@ import Feather from '@expo/vector-icons/Feather';
 import { useFocusEffect, useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import * as SMS from 'expo-sms';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Alert, FlatList, Linking, Pressable, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -67,11 +67,9 @@ export default function GroupsScreen() {
   const league = leagues.find((l) => l.id === currentLeagueId);
 
   // useFocusEffect runs every time this screen is focused
-  useFocusEffect(
-    React.useCallback(() => {
-      setSelectedGroupIndex(null);
-    }, []),
-  );
+  useFocusEffect(() => {
+    setSelectedGroupIndex(null);
+  });
 
   useFocusEffect(() => {
     // Load saved number on mount
@@ -286,7 +284,7 @@ export default function GroupsScreen() {
     }
   };
 
-  const generateGroups = useCallback(() => {
+  const generateGroups = () => {
     let playerIds = [...currentRoundPlayerIds];
 
     if (manualGroupList.length) {
@@ -309,17 +307,9 @@ export default function GroupsScreen() {
 
     setGroupsForRound(currentRoundId!, newGroupList);
     setManualGroupList([]);
-  }, [
-    currentRoundId,
-    currentRoundPlayerIds,
-    groupPlayers,
-    manualGroupList,
-    all_players,
-    setGroupsForRound,
-    setManualGroupList,
-  ]);
+  };
 
-  const handleGenerateGroupings = useCallback(async () => {
+  const handleGenerateGroupings = async () => {
     if (currentRoundPlayerIds.length === 0) {
       Alert.alert('No active players', 'Please select a round with active players to generate groups.');
       return;
@@ -336,7 +326,7 @@ export default function GroupsScreen() {
     } else {
       generateGroups();
     }
-  }, [currentRoundPlayerIds, currentRoundGroups, showMismatchPlayerWarning, generateGroups]);
+  };
 
   // Render each group in the FlatList
   const renderGroup = ({ item, index }: { item: GroupPlayers; index: number }) => {
@@ -402,33 +392,27 @@ export default function GroupsScreen() {
 
   // Debounced DB save helper - we debounce calls by 250 ms to prevent SQLite from being hammered
   // if the user quickly taps multiple players in a row.
-  const persistSwap = useCallback(
-    (
-      groupId1: number,
-      swapIndex1: number,
-      groupId2: number,
-      swapIndex2: number,
-      newSelectionIndex: number,
-    ) => {
-      if (debounceTimer.current) clearTimeout(debounceTimer.current);
-      debounceTimer.current = setTimeout(() => {
-        swapGroupSlots(groupId1, swapIndex1, groupId2, swapIndex2);
-        setSelectedGroupIndex(newSelectionIndex);
-      }, 100);
-    },
-    [swapGroupSlots],
-  );
+  const persistSwap = (
+    groupId1: number,
+    swapIndex1: number,
+    groupId2: number,
+    swapIndex2: number,
+    newSelectionIndex: number,
+  ) => {
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(() => {
+      swapGroupSlots(groupId1, swapIndex1, groupId2, swapIndex2);
+      setSelectedGroupIndex(newSelectionIndex);
+    }, 100);
+  };
 
-  const moveGroup = useCallback(
-    async (direction: 'up' | 'down') => {
-      if (selectedGroupIndex === null) return;
-      const group1 = currentRoundGroups[selectedGroupIndex];
-      const swapIndex = direction === 'down' ? selectedGroupIndex + 1 : selectedGroupIndex - 1;
-      const group2 = currentRoundGroups[swapIndex];
-      persistSwap(group1.group_id, selectedGroupIndex, group2.group_id, swapIndex, swapIndex);
-    },
-    [selectedGroupIndex, persistSwap, currentRoundGroups],
-  );
+  const moveGroup = async (direction: 'up' | 'down') => {
+    if (selectedGroupIndex === null) return;
+    const group1 = currentRoundGroups[selectedGroupIndex];
+    const swapIndex = direction === 'down' ? selectedGroupIndex + 1 : selectedGroupIndex - 1;
+    const group2 = currentRoundGroups[swapIndex];
+    persistSwap(group1.group_id, selectedGroupIndex, group2.group_id, swapIndex, swapIndex);
+  };
 
   const modifyGroup = () => {
     if (selectedGroupIndex === null) return;

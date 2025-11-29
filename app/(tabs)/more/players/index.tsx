@@ -10,7 +10,6 @@ import * as DocumentPicker from 'expo-document-picker';
 import { File, Paths } from 'expo-file-system';
 import { useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
-import { useCallback } from 'react';
 import { Alert, Pressable, View } from 'react-native';
 import { FlatList } from 'react-native-gesture-handler';
 
@@ -28,18 +27,15 @@ export default function PlayersScreen() {
   } = useDbStore();
   const iconColor = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
 
-  const handleDelete = useCallback(
-    (player: Player) => {
-      Alert.alert(
-        'Delete Player',
-        `Are you sure you want to delete ${player.name}? This action cannot be undone. It
+  const handleDelete = (player: Player) => {
+    Alert.alert(
+      'Delete Player',
+      `Are you sure you want to delete ${player.name}? This action cannot be undone. It
            will remove the player from all rounds and groups in all leagues.`,
-        [{ text: 'Cancel' }, { text: 'Delete', onPress: () => deletePlayer(player.id) }],
-        { cancelable: true },
-      );
-    },
-    [deletePlayer],
-  );
+      [{ text: 'Cancel' }, { text: 'Delete', onPress: () => deletePlayer(player.id) }],
+      { cancelable: true },
+    );
+  };
 
   const addNewPlayer = () => {
     router.push({ pathname: `/more/players/[id]`, params: { id: 'new' } });

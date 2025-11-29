@@ -20,11 +20,11 @@ import { ThemedView } from '../themed-view';
     setIsListPickerVisible(false);
   };
 
-  const optionLabelChanged = useCallback((optionLabel: string) => {
+  const optionLabelChanged = (optionLabel: string) => {
     const match = pickerOptions.find((o) => o.label === optionLabel);
     setPickedOptionLabel(optionLabel);
     setPickedOption(match);
-  }, []);
+  };
   -------------------------------------------------------
   Example OptionPickerItem JSX
   -------------------------------------------------------

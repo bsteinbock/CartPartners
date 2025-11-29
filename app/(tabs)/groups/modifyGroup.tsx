@@ -8,7 +8,7 @@ import { useThemeColor } from '@/hooks/use-theme-color';
 import { getGroupPlayerIdsByRoundId, getPlayerForGroup } from '@/lib/cart-utils';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Stack, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet } from 'react-native';
 import { FlatList, Pressable } from 'react-native-gesture-handler';
 
@@ -55,22 +55,17 @@ export default function ModifyGroup() {
     }
   }, [availablePlayers]);
 
-  const currentGroupPlayerIds = useMemo(() => {
-    return currentGroupPlayers.map((p) => p.id);
-  }, [currentGroupPlayers]);
+  const currentGroupPlayerIds = currentGroupPlayers.map((p) => p.id);
 
-  const handlePlayerOptionChange = useCallback(
-    (option: OptionEntry) => {
-      const playerToAdd = league_players.find((p) => p.id === option.value);
-      if (playerToAdd) {
-        const updatedPlayers = [...currentGroupPlayers, playerToAdd];
-        const updatedPlayerIds = updatedPlayers.map((p) => p.id);
-        updateGroupPlayers(numericGroupId, updatedPlayerIds);
-        setIsPlayerPickerVisible(false);
-      }
-    },
-    [currentGroupPlayers, numericGroupId, league_players, updateGroupPlayers],
-  );
+  const handlePlayerOptionChange = (option: OptionEntry) => {
+    const playerToAdd = league_players.find((p) => p.id === option.value);
+    if (playerToAdd) {
+      const updatedPlayers = [...currentGroupPlayers, playerToAdd];
+      const updatedPlayerIds = updatedPlayers.map((p) => p.id);
+      updateGroupPlayers(numericGroupId, updatedPlayerIds);
+      setIsPlayerPickerVisible(false);
+    }
+  };
 
   return (
     <ThemedView style={styles.container}>

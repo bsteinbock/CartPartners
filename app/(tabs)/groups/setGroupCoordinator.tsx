@@ -9,7 +9,7 @@ import { useThemeColor } from '@/hooks/use-theme-color';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import * as SMS from 'expo-sms';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, StyleSheet } from 'react-native';
 
 export default function SetGroupCoordinatorScreen() {
@@ -50,16 +50,14 @@ export default function SetGroupCoordinatorScreen() {
   };
 
   // get mobile numbers array
-  const mobilePhoneNumbers: string[] = useMemo(() => {
-    return mobileNumbers ? JSON.parse(mobileNumbers) : [];
-  }, [mobileNumbers]);
+  const mobilePhoneNumbers: string[] = mobileNumbers ? JSON.parse(mobileNumbers) : [];
 
   const handlePlayerSelect = (option: OptionEntry) => {
     setPickedPlayer(option);
     setIsPlayerPickerVisible(false);
   };
 
-  const handleSaveMyId = useCallback(async () => {
+  const handleSaveMyId = async () => {
     if (pickedPlayer === null) return;
 
     const player = all_players.find((p) => p.id === pickedPlayer.value);
@@ -83,7 +81,7 @@ export default function SetGroupCoordinatorScreen() {
       // navigate back to groups index with my number
       router.back();
     }
-  }, [all_players, bodyText, mobilePhoneNumbers, router, pickedPlayer]);
+  };
 
   return (
     <ThemedView style={styles.container}>
