@@ -293,7 +293,15 @@ export default function LineupScreen() {
                 .map((option) => option.value ?? null)
                 .filter((v): v is number => v !== null);
               setIsPlayerPickerVisible(false);
+              // ensure the players are added to the league player list
               addPlayersToLeague(playersToAdd, currentLeagueId!);
+              // also select the players we just added to the lineup
+              setSelectedPlayers((prev) => {
+                const newSelection = [...prev, ...playersToAdd];
+                persistSelection(newSelection);
+                return newSelection;
+              });
+              // clear popup list selection
               setSelectedPlayerOptions([]);
             }}
             onClose={() => {
