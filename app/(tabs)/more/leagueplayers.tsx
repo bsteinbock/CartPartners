@@ -12,7 +12,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { FlatList } from 'react-native-gesture-handler';
 
@@ -31,9 +31,10 @@ export default function PlayersScreen() {
   const [playerOptions, setPlayerOptions] = useState<OptionEntry[]>([]);
   const [selectedPlayerOptions, setSelectedPlayerOptions] = useState<OptionEntry[]>([]);
 
-  const availablePlayersToAdd = all_players
-    .filter((p) => p.available)
-    .filter((p) => !league_players.find((lp) => lp.id === p.id));
+  const availablePlayersToAdd = useMemo(
+    () => all_players.filter((p) => p.available).filter((p) => !league_players.find((lp) => lp.id === p.id)),
+    [all_players, league_players],
+  );
 
   useEffect(() => {
     const availableOptions = availablePlayersToAdd.map((r) => ({
