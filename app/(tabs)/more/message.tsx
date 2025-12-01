@@ -29,14 +29,16 @@ export default function MessageScreen() {
     setAvailablePlayers(league_players.filter((p) => p.available));
   }, [league_players]);
 
-  useFocusEffect(() => {
-    // Load saved number on mount
-    (async () => {
-      const coordinatorIdString = await SecureStore.getItemAsync('cartPartnerGroupCoordinatorId');
-      const coordinatorId: number = coordinatorIdString ? parseInt(coordinatorIdString, 10) : 0;
-      setGroupCoordinatorId(coordinatorId);
-    })();
-  });
+  useFocusEffect(
+    React.useCallback(() => {
+      // Load saved number on mount
+      (async () => {
+        const coordinatorIdString = await SecureStore.getItemAsync('cartPartnerGroupCoordinatorId');
+        const coordinatorId: number = coordinatorIdString ? parseInt(coordinatorIdString, 10) : 0;
+        setGroupCoordinatorId(coordinatorId);
+      })();
+    }, []),
+  );
 
   // Toggle a player's selection
   const togglePlayer = (playerId: number) => {

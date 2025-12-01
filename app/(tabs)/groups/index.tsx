@@ -66,19 +66,23 @@ export default function GroupsScreen() {
   const [myMobileNumber, setMyMobileNumber] = useState<string | null>(null);
   const league = leagues.find((l) => l.id === currentLeagueId);
 
-  // useFocusEffect runs every time this screen is focused
-  useFocusEffect(() => {
-    setSelectedGroupIndex(null);
-  });
+  useFocusEffect(
+    React.useCallback(() => {
+      setSelectedGroupIndex(null);
+      console.log('GroupsScreen focused, resetting selectedGroupIndex');
+    }, []),
+  );
 
-  useFocusEffect(() => {
-    // Load saved number on mount
-    (async () => {
-      const coordinatorIdString = await SecureStore.getItemAsync('cartPartnerGroupCoordinatorId');
-      const coordinatorId: number = coordinatorIdString ? parseInt(coordinatorIdString, 10) : 0;
-      setGroupCoordinatorId(coordinatorId);
-    })();
-  });
+  useFocusEffect(
+    React.useCallback(() => {
+      // Load saved number on mount
+      (async () => {
+        const coordinatorIdString = await SecureStore.getItemAsync('cartPartnerGroupCoordinatorId');
+        const coordinatorId: number = coordinatorIdString ? parseInt(coordinatorIdString, 10) : 0;
+        setGroupCoordinatorId(coordinatorId);
+      })();
+    }, []),
+  );
 
   useEffect(() => {
     // get mobile number for coordinator
