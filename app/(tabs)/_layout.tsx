@@ -19,7 +19,7 @@ export default function TabLayout() {
           fontWeight: '500',
         },
         tabBarStyle: {
-          height: Platform.OS === 'android' ? 60 : 86,
+          height: Platform.OS === 'android' ? 80 : 86,
           marginBottom: insets.bottom,
           alignItems: 'center',
         },
