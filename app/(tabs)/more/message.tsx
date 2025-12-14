@@ -267,23 +267,23 @@ export default function MessageScreen() {
               onPress={sendEmail}
             />
           </ThemedView>
-          <ThemedView
-            style={{
-              flex: 1,
-              margin: 10,
-              borderColor: selectedPlayerIds.length === 0 || message.length === 0 ? textDim : iconButton,
-              borderWidth: 1,
-              borderRadius: 6,
-            }}
-          >
-            {isSmsAvailable && (
+          {isSmsAvailable && (
+            <ThemedView
+              style={{
+                flex: 1,
+                margin: 10,
+                borderColor: selectedPlayerIds.length === 0 || message.length === 0 ? textDim : iconButton,
+                borderWidth: 1,
+                borderRadius: 6,
+              }}
+            >
               <ThemedButton
                 title="Text Msg"
                 disabled={selectedPlayerIds.length === 0 || message.length === 0}
                 onPress={sendTextMessage}
               />
-            )}
-          </ThemedView>
+            </ThemedView>
+          )}
         </ThemedView>
       </KeyboardAvoidingView>
       {Platform.OS === 'ios' && <KeyboardToolbar offset={{ opened: iosKeyboardToolbarOffset }} />}
