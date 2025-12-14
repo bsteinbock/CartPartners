@@ -12,7 +12,6 @@ import React, { useEffect, useState } from 'react';
 import { Alert, Linking, Platform, StyleSheet } from 'react-native';
 import { FlatList, Switch } from 'react-native-gesture-handler';
 import { KeyboardAvoidingView, KeyboardToolbar } from 'react-native-keyboard-controller';
-
 export default function MessageScreen() {
   const iconButton = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
   const textDim = useThemeColor({ light: undefined, dark: undefined }, 'textDim');
@@ -77,7 +76,7 @@ export default function MessageScreen() {
       selectedPlayers
         .map((player) => player.email ?? '')
         .filter((m) => m.length > 0)
-        .join('; '),
+        .join(','),
     );
     const subject = encodeURIComponent(title);
     const body = encodeURIComponent(message);
@@ -277,7 +276,6 @@ export default function MessageScreen() {
               borderRadius: 6,
             }}
           >
-            isSmsAvailable
             {isSmsAvailable && (
               <ThemedButton
                 title="Text Msg"

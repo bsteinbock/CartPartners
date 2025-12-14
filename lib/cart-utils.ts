@@ -551,12 +551,12 @@ export function getMobilePhoneNumbersForGroups(groups: GroupPlayers[], allPlayer
 }
 
 /**
- * Convert groups of player IDs into groups of `email1;email2;email3...` strings
+ * Convert groups of player IDs into groups of `email1,email2,email3...` strings
  * suitable for mailto links.
  *
  * @param groups - Array of groups (each a list of player IDs)
  * @param allPlayers - Array of all Player objects
- * @returns string - Merged email addresses separated by semicolons
+ * @returns string - Merged email addresses separated by commas
  */
 export function getMailtoString(groups: GroupPlayers[], allPlayers: Player[]): string {
   const playerMap: Record<number, Player> = {};
@@ -573,9 +573,9 @@ export function getMailtoString(groups: GroupPlayers[], allPlayers: Player[]): s
           return player.email;
         })
         .filter((email) => email && email.length > 0)
-        .join('; '),
+        .join(','),
     )
-    .join('; ');
+    .join(',');
 
   return mailtoStrings;
 }

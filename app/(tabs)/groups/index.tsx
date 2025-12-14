@@ -12,7 +12,7 @@ import {
   formatManualGroupPlayersByNames,
   generateGroupsForRound,
   getGroupPlayersByRoundId,
-  getMailtoStrings,
+  getMailtoString,
   getMobilePhoneNumbersForGroups,
   groupPlayersMatchActivePlayers,
   reportGroupsWithNames,
@@ -241,7 +241,7 @@ export default function GroupsScreen() {
     bodyText += summary;
     const textMessageBody = `Cart Groups - ${pickedRound?.label}\n\n${bodyText}`;
 
-    const addresses = getMailtoStrings(currentRoundGroups, league_players);
+    const addresses = getMailtoString(currentRoundGroups, league_players);
     const mobileNumbers = getMobilePhoneNumbersForGroups(currentRoundGroups, league_players);
 
     try {
