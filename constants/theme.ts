@@ -15,7 +15,7 @@ export const deleteBackgroundColor = '#C03403';
 export const iosKeyboardToolbarOffset =
   Platform.OS === 'ios' && parseInt(Platform.Version, 10) >= 26 ? 112 : 86;
 
-export const iosTabbarHeight = Platform.OS === 'ios' && parseInt(Platform.Version, 10) >= 26 ? 66 : 86;
+export const iosTabbarHeight = 66;
 
 export const Colors = {
   light: {
