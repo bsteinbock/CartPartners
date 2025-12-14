@@ -12,7 +12,10 @@ const tabTintColorLight = '#007AFF';
 const tabTintColorDark = '#0A84FF';
 export const deleteBackgroundColor = '#C03403';
 
-export const iosKeyboardToolbarOffset = 86;
+export const iosKeyboardToolbarOffset =
+  Platform.OS === 'ios' && parseInt(Platform.Version, 10) >= 26 ? 112 : 86;
+
+export const iosTabbarHeight = Platform.OS === 'ios' && parseInt(Platform.Version, 10) >= 26 ? 66 : 86;
 
 export const Colors = {
   light: {

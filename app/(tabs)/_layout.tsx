@@ -3,6 +3,7 @@ import React from 'react';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { iosTabbarHeight } from '@/constants/theme';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,7 +20,7 @@ export default function TabLayout() {
           fontWeight: '500',
         },
         tabBarStyle: {
-          height: Platform.OS === 'android' ? 80 : 86,
+          height: Platform.OS === 'android' ? 80 : iosTabbarHeight,
           marginBottom: insets.bottom,
           alignItems: 'center',
         },
