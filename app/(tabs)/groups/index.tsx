@@ -65,6 +65,7 @@ export default function GroupsScreen() {
   const [groupCoordinatorId, setGroupCoordinatorId] = useState<number>(0);
   const [myMobileNumber, setMyMobileNumber] = useState<string | null>(null);
   const league = leagues.find((l) => l.id === currentLeagueId);
+  const [isSmsAvailable, setIsSmsAvailable] = useState<boolean>(false);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -72,6 +73,14 @@ export default function GroupsScreen() {
       console.log('GroupsScreen focused, resetting selectedGroupIndex');
     }, []),
   );
+
+  // Check SMS availability on mount
+  useEffect(() => {
+    (async () => {
+      const available = await SMS.isAvailableAsync();
+      setIsSmsAvailable(available);
+    })();
+  }, []);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -248,7 +257,7 @@ export default function GroupsScreen() {
             });
           },
         },
-        ...(mobileNumbers.length > 0
+        ...(mobileNumbers.length > 0 && isSmsAvailable
           ? [
               {
                 text: 'Text Msg',

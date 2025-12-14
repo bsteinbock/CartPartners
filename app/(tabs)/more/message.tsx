@@ -24,6 +24,15 @@ export default function MessageScreen() {
   const [groupCoordinatorId, setGroupCoordinatorId] = useState<number>(0);
   const switchTrackColor = useThemeColor({ light: undefined, dark: undefined }, 'switchTrackColor');
   const league = leagues.find((l) => l.id === currentLeagueId);
+  const [isSmsAvailable, setIsSmsAvailable] = useState<boolean>(false);
+
+  // Check SMS availability on mount
+  useEffect(() => {
+    (async () => {
+      const available = await SMS.isAvailableAsync();
+      setIsSmsAvailable(available);
+    })();
+  }, []);
 
   useEffect(() => {
     setAvailablePlayers(league_players.filter((p) => p.available));
@@ -64,7 +73,12 @@ export default function MessageScreen() {
 
   const sendEmail = () => {
     const selectedPlayers = league_players.filter((p) => selectedPlayerIds.includes(p.id));
-    const addresses = selectedPlayers.map((player) => player.email ?? '').filter((m) => m.length > 0);
+    const addresses = encodeURIComponent(
+      selectedPlayers
+        .map((player) => player.email ?? '')
+        .filter((m) => m.length > 0)
+        .join('; '),
+    );
     const subject = encodeURIComponent(title);
     const body = encodeURIComponent(message);
     const url = `mailto:${addresses}?subject=${subject}&body=${body}`;
@@ -263,11 +277,14 @@ export default function MessageScreen() {
               borderRadius: 6,
             }}
           >
-            <ThemedButton
-              title="Text Msg"
-              disabled={selectedPlayerIds.length === 0 || message.length === 0}
-              onPress={sendTextMessage}
-            />
+            isSmsAvailable
+            {isSmsAvailable && (
+              <ThemedButton
+                title="Text Msg"
+                disabled={selectedPlayerIds.length === 0 || message.length === 0}
+                onPress={sendTextMessage}
+              />
+            )}
           </ThemedView>
         </ThemedView>
       </KeyboardAvoidingView>
