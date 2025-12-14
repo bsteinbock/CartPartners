@@ -71,6 +71,12 @@
         "projectId": "aa2776ab-0acf-45e8-8024-a45feb67b0fe"
       }
     },
-    "owner": "bsteinbk"
+    "owner": "bsteinbk",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/aa2776ab-0acf-45e8-8024-a45feb67b0fe"
+    }
   }
 }
