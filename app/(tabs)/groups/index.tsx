@@ -251,7 +251,7 @@ export default function GroupsScreen() {
           onPress: () => {
             const subject = encodeURIComponent(`Cart Groups - ${pickedRound?.label}`);
             const body = encodeURIComponent(bodyText);
-            const url = `mailto:${addresses}?subject=${subject}&body=${body}`;
+            const url = `mailto:?to=${addresses}&subject=${subject}&body=${body}`;
             Linking.openURL(url).catch(() => {
               Alert.alert('Could not open mail app');
             });
