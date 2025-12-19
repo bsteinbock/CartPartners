@@ -605,7 +605,10 @@ export function buildMailtoUri(
   }
 
   // CC format: first address in 'to', rest in 'cc'
-  const emailArray = addresses.split(',').filter((e) => e.trim().length > 0);
+  const emailArray = addresses
+    .split(',')
+    .map((e) => e.trim())
+    .filter((e) => e.length > 0);
 
   if (emailArray.length === 0) {
     return `mailto:?subject=${encodedSubject}&body=${encodedBody}`;
