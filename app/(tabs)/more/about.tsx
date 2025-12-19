@@ -16,6 +16,7 @@ export default function AboutScreen() {
   const versionText = `Version: ${version}${buildNumber}`;
   const switchTrackColor = useThemeColor({ light: undefined, dark: undefined }, 'switchTrackColor');
   const [useEmailCC, setUseEmailCC] = useState<boolean>(false);
+  const iconButton = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
 
   // Load the setting on mount
   useEffect(() => {
@@ -149,17 +150,23 @@ export default function AboutScreen() {
         <ThemedView style={styles.settingRow}>
           <ThemedView style={styles.settingLabelContainer}>
             <ThemedText style={styles.settingLabel}>Use CC for Multiple Recipients</ThemedText>
-            <ThemedText type="small" style={styles.settingDescription}>
-              When enabled, email notifications will place the first recipient in the &quot;To&quot; field
-              and remaining recipients in the &quot;CC&quot; field. This supports email clients like Yahoo
-              Mail that only allow a single &quot;To&quot; recipient.
-            </ThemedText>
           </ThemedView>
-          <Switch trackColor={{ true: switchTrackColor }} value={useEmailCC} onValueChange={handleToggleEmailCC} />
+          <Switch
+            trackColor={{ true: switchTrackColor }}
+            value={useEmailCC}
+            onValueChange={handleToggleEmailCC}
+          />
         </ThemedView>
+        <ThemedText type="small" style={styles.settingDescription}>
+          When enabled, email notifications will place the first recipient in the &quot;To&quot; field and
+          remaining recipients in the &quot;CC&quot; field. This supports email clients like Yahoo Mail that
+          only allow a single &quot;To&quot; recipient.
+        </ThemedText>
 
         <ThemedView style={styles.licenseButtonContainer}>
-          <ThemedButton title="Show Source Licenses" onPress={showLicenses} />
+          <ThemedView style={{ borderColor: iconButton, borderWidth: 1, borderRadius: 6 }}>
+            <ThemedButton title="Show Source Licenses" onPress={showLicenses} />
+          </ThemedView>
         </ThemedView>
       </ThemedView>
     </ScrollView>
@@ -204,10 +211,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   settingLabel: {
-    fontWeight: '600',
-    marginBottom: 4,
+    fontWeight: '500',
+    marginBottom: 10,
   },
   settingDescription: {
-    lineHeight: 18,
+    paddingLeft: 10,
+    lineHeight: 16,
   },
 });
