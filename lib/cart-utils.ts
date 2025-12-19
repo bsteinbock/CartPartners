@@ -581,6 +581,53 @@ export function getMailtoString(groups: GroupPlayers[], allPlayers: Player[]): s
 }
 
 /**
+ * Build a mailto URI with optional CC field support.
+ *
+ * @param addresses - Comma-separated email addresses
+ * @param subject - Email subject
+ * @param body - Email body
+ * @param useCC - If true, put first address in 'to' and rest in 'cc'
+ * @returns string - Complete mailto URI
+ */
+export function buildMailtoUri(
+  addresses: string,
+  subject: string,
+  body: string,
+  useCC: boolean = false,
+): string {
+  const encodedSubject = encodeURIComponent(subject);
+  const encodedBody = encodeURIComponent(body);
+
+  if (!useCC) {
+    // Standard format: all addresses in 'to'
+    const encodedAddresses = encodeURIComponent(addresses);
+    return `mailto:?to=${encodedAddresses}&subject=${encodedSubject}&body=${encodedBody}`;
+  }
+
+  // CC format: first address in 'to', rest in 'cc'
+  const emailArray = addresses
+    .split(',')
+    .map((e) => e.trim())
+    .filter((e) => e.length > 0);
+
+  if (emailArray.length === 0) {
+    return `mailto:?subject=${encodedSubject}&body=${encodedBody}`;
+  }
+
+  if (emailArray.length === 1) {
+    const encodedTo = encodeURIComponent(emailArray[0]);
+    return `mailto:?to=${encodedTo}&subject=${encodedSubject}&body=${encodedBody}`;
+  }
+
+  // Multiple addresses: first in 'to', rest in 'cc'
+  const encodedTo = encodeURIComponent(emailArray[0]);
+  const encodedCC = encodeURIComponent(emailArray.slice(1).join(','));
+
+  return `mailto:?to=${encodedTo}&cc=${encodedCC}&subject=${encodedSubject}&body=${encodedBody}`;
+}
+
+
+/**
  * Returns Ids of all GroupPlayers for a specific round.
  * @param roundId - The round ID to filter by.
  * @param groups - The list of Group objects.

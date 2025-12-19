@@ -5,6 +5,7 @@ import ThemedButton from '@/components/ui/ThemedButton';
 import { iosKeyboardToolbarOffset } from '@/constants/theme';
 import { Player, useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { buildMailtoUri } from '@/lib/cart-utils';
 import { useFocusEffect } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import * as SMS from 'expo-sms';
@@ -24,6 +25,7 @@ export default function MessageScreen() {
   const switchTrackColor = useThemeColor({ light: undefined, dark: undefined }, 'switchTrackColor');
   const league = leagues.find((l) => l.id === currentLeagueId);
   const [isSmsAvailable, setIsSmsAvailable] = useState<boolean>(false);
+  const [useEmailCC, setUseEmailCC] = useState<boolean>(false);
 
   // Check SMS availability on mount
   useEffect(() => {
@@ -39,11 +41,14 @@ export default function MessageScreen() {
 
   useFocusEffect(
     React.useCallback(() => {
-      // Load saved number on mount
+      // Load saved settings on mount
       (async () => {
         const coordinatorIdString = await SecureStore.getItemAsync('cartPartnerGroupCoordinatorId');
         const coordinatorId: number = coordinatorIdString ? parseInt(coordinatorIdString, 10) : 0;
         setGroupCoordinatorId(coordinatorId);
+
+        const useCC = await SecureStore.getItemAsync('cartPartnerUseEmailCC');
+        setUseEmailCC(useCC === 'true');
       })();
     }, []),
   );
@@ -72,15 +77,11 @@ export default function MessageScreen() {
 
   const sendEmail = () => {
     const selectedPlayers = league_players.filter((p) => selectedPlayerIds.includes(p.id));
-    const addresses = encodeURIComponent(
-      selectedPlayers
-        .map((player) => player.email ?? '')
-        .filter((m) => m.length > 0)
-        .join(','),
-    );
-    const subject = encodeURIComponent(title);
-    const body = encodeURIComponent(message);
-    const url = `mailto:?to=${addresses}&subject=${subject}&body=${body}`;
+    const addresses = selectedPlayers
+      .map((player) => player.email ?? '')
+      .filter((m) => m.length > 0)
+      .join(',');
+    const url = buildMailtoUri(addresses, title, message, useEmailCC);
     Linking.openURL(url).catch(() => {
       Alert.alert('Could not open mail app');
     });
