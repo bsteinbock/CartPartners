@@ -600,7 +600,8 @@ export function buildMailtoUri(
 
   if (!useCC) {
     // Standard format: all addresses in 'to'
-    return `mailto:?to=${addresses}&subject=${encodedSubject}&body=${encodedBody}`;
+    const encodedAddresses = encodeURIComponent(addresses);
+    return `mailto:?to=${encodedAddresses}&subject=${encodedSubject}&body=${encodedBody}`;
   }
 
   // CC format: first address in 'to', rest in 'cc'
@@ -611,14 +612,15 @@ export function buildMailtoUri(
   }
 
   if (emailArray.length === 1) {
-    return `mailto:?to=${emailArray[0]}&subject=${encodedSubject}&body=${encodedBody}`;
+    const encodedTo = encodeURIComponent(emailArray[0]);
+    return `mailto:?to=${encodedTo}&subject=${encodedSubject}&body=${encodedBody}`;
   }
 
   // Multiple addresses: first in 'to', rest in 'cc'
-  const toAddress = emailArray[0];
-  const ccAddresses = emailArray.slice(1).join(',');
+  const encodedTo = encodeURIComponent(emailArray[0]);
+  const encodedCC = encodeURIComponent(emailArray.slice(1).join(','));
 
-  return `mailto:?to=${toAddress}&cc=${ccAddresses}&subject=${encodedSubject}&body=${encodedBody}`;
+  return `mailto:?to=${encodedTo}&cc=${encodedCC}&subject=${encodedSubject}&body=${encodedBody}`;
 }
 
 
