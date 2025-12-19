@@ -7,6 +7,7 @@ import ThemedButton from '@/components/ui/ThemedButton';
 import { GroupPlayers, useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import {
+  buildMailtoUri,
   buildPlayingPartnerFrequencies,
   formatGroupPlayersByNames,
   formatManualGroupPlayersByNames,
@@ -66,6 +67,7 @@ export default function GroupsScreen() {
   const [myMobileNumber, setMyMobileNumber] = useState<string | null>(null);
   const league = leagues.find((l) => l.id === currentLeagueId);
   const [isSmsAvailable, setIsSmsAvailable] = useState<boolean>(false);
+  const [useEmailCC, setUseEmailCC] = useState<boolean>(false);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -84,11 +86,14 @@ export default function GroupsScreen() {
 
   useFocusEffect(
     React.useCallback(() => {
-      // Load saved number on mount
+      // Load saved settings on mount
       (async () => {
         const coordinatorIdString = await SecureStore.getItemAsync('cartPartnerGroupCoordinatorId');
         const coordinatorId: number = coordinatorIdString ? parseInt(coordinatorIdString, 10) : 0;
         setGroupCoordinatorId(coordinatorId);
+
+        const useCC = await SecureStore.getItemAsync('cartPartnerUseEmailCC');
+        setUseEmailCC(useCC === 'true');
       })();
     }, []),
   );
@@ -249,9 +254,8 @@ export default function GroupsScreen() {
         {
           text: 'Email',
           onPress: () => {
-            const subject = encodeURIComponent(`Cart Groups - ${pickedRound?.label}`);
-            const body = encodeURIComponent(bodyText);
-            const url = `mailto:?to=${addresses}&subject=${subject}&body=${body}`;
+            const subject = `Cart Groups - ${pickedRound?.label}`;
+            const url = buildMailtoUri(addresses, subject, bodyText, useEmailCC);
             Linking.openURL(url).catch(() => {
               Alert.alert('Could not open mail app');
             });
