@@ -3,8 +3,10 @@ import { ThemedView } from '@/components/themed-view';
 import BottomSheetContainer from '@/components/ui/BottomSheetContainer';
 import OptionList, { OptionEntry } from '@/components/ui/OptionList';
 import { OptionPickerItem } from '@/components/ui/OptionPickerItem';
+import ThemedButton from '@/components/ui/ThemedButton';
 import { useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import Constants from 'expo-constants';
 import { useFocusEffect } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import React, { useEffect, useState } from 'react';
@@ -13,12 +15,14 @@ import { ScrollView, StyleSheet, Switch } from 'react-native';
 export default function SettingsScreen() {
   const switchTrackColor = useThemeColor({ light: undefined, dark: undefined }, 'switchTrackColor');
   const backgroundColor = useThemeColor({ light: undefined, dark: undefined }, 'background');
+  const iconButton = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
   const [useEmailCC, setUseEmailCC] = useState<boolean>(false);
   const [excludeCoordinatorFromEmail, setExcludeCoordinatorFromEmail] = useState<boolean>(false);
   const [isPlayerPickerVisible, setIsPlayerPickerVisible] = useState<boolean>(false);
   const [playerOptions, setPlayerOptions] = useState<OptionEntry[]>([]);
   const [pickedPlayer, setPickedPlayer] = useState<OptionEntry | null>(null);
   const { all_players } = useDbStore();
+  const isDevelopment = Constants.appOwnership === 'expo' || __DEV__;
 
   // Load settings on mount and when screen is focused
   useFocusEffect(
@@ -64,6 +68,11 @@ export default function SettingsScreen() {
     setPickedPlayer(option);
     setIsPlayerPickerVisible(false);
     await SecureStore.setItemAsync('cartPartnerGroupCoordinatorId', option.value.toString());
+  };
+
+  const handleClearCoordinator = async () => {
+    setPickedPlayer(null);
+    await SecureStore.deleteItemAsync('cartPartnerGroupCoordinatorId');
   };
 
   return (
@@ -125,6 +134,18 @@ export default function SettingsScreen() {
           placeholder="Select Group Coordinator"
           onPickerButtonPress={() => setIsPlayerPickerVisible(true)}
         />
+
+        {isDevelopment && (
+          <ThemedView style={{ marginTop: 16 }}>
+            <ThemedView style={{ borderColor: iconButton, borderWidth: 1, borderRadius: 6 }}>
+              <ThemedButton
+                title="Clear Group Coordinator"
+                onPress={handleClearCoordinator}
+                disabled={!pickedPlayer}
+              />
+            </ThemedView>
+          </ThemedView>
+        )}
       </ThemedView>
 
       {playerOptions && isPlayerPickerVisible && (
