@@ -89,8 +89,8 @@ export default function AboutScreen() {
         <ThemedText style={styles.text}>
           The More tab provides access to additional screens not directly related to creating groups. The icon
           at the top left of the screen opens a panel with options to view the following screens: &quot;Notify
-          Players&quot;, &quot;Leagues/Outings&quot;, &quot;Manage All Players&quot;, &quot;League
-          Players&quot;, &quot;Backup / Restore&quot;, and &quot;About&quot;.
+          Players&quot;, &quot;Leagues/Outings&quot;, &quot;League Players&quot;, &quot;Manage All
+          Players&quot;, &quot;Backup / Restore&quot;, &quot;Settings&quot;, and &quot;About&quot;.
         </ThemedText>
 
         <ThemedText style={[styles.text, { marginTop: 10 }]}>
@@ -124,6 +124,13 @@ export default function AboutScreen() {
           Coordinator, either temporarily or permanently. Using the Restore command lets you load or reload
           data from a previous backup. Caution: Restoring a backup will overwrite all existing data in the
           app.
+        </ThemedText>
+
+        <ThemedText style={[styles.text, { marginTop: 10 }]}>
+          The &quot;Settings&quot; screen allows you to configure email and coordinator preferences. You can
+          enable CC for multiple recipients to support email clients that only allow a single recipient in the
+          To field. You can also designate a Group Coordinator and choose whether to exclude them from email
+          recipients. The Group Coordinator is automatically excluded from text message notifications.
         </ThemedText>
 
         <ThemedView style={styles.licenseButtonContainer}>
