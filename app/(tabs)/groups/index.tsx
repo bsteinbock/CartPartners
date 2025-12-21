@@ -253,6 +253,25 @@ export default function GroupsScreen() {
     let addresses = getMailtoString(currentRoundGroups, league_players);
     const mobileNumbers = getMobilePhoneNumbersForGroups(currentRoundGroups, league_players);
 
+    // Check if coordinator is defined when excluding coordinator from email
+    if (excludeCoordinatorFromEmail && groupCoordinatorId === 0) {
+      Alert.alert(
+        'No Coordinator Selected',
+        'No group coordinator has been selected. Please select a coordinator in Settings to exclude them from emails.',
+        [
+          {
+            text: 'Set Coordinator',
+            onPress: () => {
+              router.push({
+                pathname: '/(tabs)/groups/setGroupCoordinator',
+              });
+            },
+          },
+        ],
+      );
+      return;
+    }
+
     // Exclude coordinator from email recipients if setting is enabled
     if (excludeCoordinatorFromEmail && groupCoordinatorId) {
       const coordinator = league_players.find((p) => p.id === groupCoordinatorId);
