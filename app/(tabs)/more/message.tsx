@@ -6,13 +6,14 @@ import { iosKeyboardToolbarOffset } from '@/constants/theme';
 import { Player, useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { buildMailtoUri } from '@/lib/cart-utils';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import * as SMS from 'expo-sms';
 import React, { useEffect, useState } from 'react';
 import { Alert, Linking, Platform, StyleSheet } from 'react-native';
 import { FlatList, Switch } from 'react-native-gesture-handler';
 import { KeyboardAvoidingView, KeyboardToolbar } from 'react-native-keyboard-controller';
+
 export default function MessageScreen() {
   const iconButton = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
   const textDim = useThemeColor({ light: undefined, dark: undefined }, 'textDim');
@@ -26,18 +27,7 @@ export default function MessageScreen() {
   const league = leagues.find((l) => l.id === currentLeagueId);
   const [isSmsAvailable, setIsSmsAvailable] = useState<boolean>(false);
   const [useEmailCC, setUseEmailCC] = useState<boolean>(false);
-
-  // Check SMS availability on mount
-  useEffect(() => {
-    (async () => {
-      const available = await SMS.isAvailableAsync();
-      setIsSmsAvailable(available);
-    })();
-  }, []);
-
-  useEffect(() => {
-    setAvailablePlayers(league_players.filter((p) => p.available));
-  }, [league_players]);
+  const router = useRouter();
 
   useFocusEffect(
     React.useCallback(() => {
@@ -52,6 +42,18 @@ export default function MessageScreen() {
       })();
     }, []),
   );
+
+  // Check SMS availability on mount
+  useEffect(() => {
+    (async () => {
+      const available = await SMS.isAvailableAsync();
+      setIsSmsAvailable(available);
+    })();
+  }, []);
+
+  useEffect(() => {
+    setAvailablePlayers(league_players.filter((p) => p.available));
+  }, [league_players]);
 
   // Toggle a player's selection
   const togglePlayer = (playerId: number) => {
@@ -91,6 +93,33 @@ export default function MessageScreen() {
     const isAvailable = await SMS.isAvailableAsync();
     if (!isAvailable) {
       Alert.alert('SMS not available on this device');
+      return;
+    }
+
+    if (groupCoordinatorId === 0) {
+      Alert.alert(
+        'No Coordinator Selected',
+        'No group coordinator has been selected, so we cannot send text message.',
+        [
+          {
+            text: 'Set Coordinator',
+            onPress: () => {
+              router.push({
+                pathname: '/(tabs)/groups/setGroupCoordinator',
+                params: {
+                  bodyText: message,
+                  mobileNumbers: JSON.stringify(
+                    league_players
+                      .filter((p) => selectedPlayerIds.includes(p.id))
+                      .map((player) => player.mobile_number ?? '')
+                      .filter((a) => a.length > 0),
+                  ),
+                },
+              });
+            },
+          },
+        ],
+      );
       return;
     }
 

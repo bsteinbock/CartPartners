@@ -233,7 +233,7 @@ export default function GroupsScreen() {
         await SMS.sendSMSAsync(group, message);
       }
     } catch (error) {
-      console.error('Error sending SMS:', error);
+      console.error('Error sending Text Message:', error);
       Alert.alert('Error', 'Failed to send one or more messages.');
     }
   };
@@ -274,21 +274,26 @@ export default function GroupsScreen() {
                         mobileNumbers.splice(index, 1);
                       }
                     }
-
                     await sendTextMessage(mobileNumbers, textMessageBody);
                   } else {
-                    if (groupCoordinatorId) {
-                      Alert.alert(
-                        'No Mobile Number',
-                        'The group coordinator does not have a mobile number defined So we cannot send text message.',
-                      );
-                    } else {
-                      // use router to send me to a screen to enter my number
-                      router.push({
-                        pathname: '/(tabs)/groups/setGroupCoordinator',
-                        params: { bodyText: textMessageBody, mobileNumbers: JSON.stringify(mobileNumbers) },
-                      });
-                    }
+                    Alert.alert(
+                      'No Coordinator Selected',
+                      'No group coordinator has been selected, so we cannot send text message.',
+                      [
+                        {
+                          text: 'Set Coordinator',
+                          onPress: () => {
+                            router.push({
+                              pathname: '/(tabs)/groups/setGroupCoordinator',
+                              params: {
+                                bodyText: textMessageBody,
+                                mobileNumbers: JSON.stringify(mobileNumbers),
+                              },
+                            });
+                          },
+                        },
+                      ],
+                    );
                   }
                 },
               },
