@@ -72,7 +72,7 @@ export default function GroupsScreen() {
   useFocusEffect(
     React.useCallback(() => {
       setSelectedGroupIndex(null);
-      console.log('GroupsScreen focused, resetting selectedGroupIndex');
+      //console.log('GroupsScreen focused, resetting selectedGroupIndex');
     }, []),
   );
 
