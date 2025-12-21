@@ -58,7 +58,7 @@ export default function SetGroupCoordinatorScreen() {
       </ThemedText>
       <ThemedText style={styles.title}>
         This info is used so your number is excluded when sending text messages, since you don&apos;t want to
-        text yourself.
+        text yourself. It also can be used to exclude you from email recipients.
       </ThemedText>
 
       <ThemedText style={{ marginTop: 16, marginBottom: 8 }}>Group Coordinator</ThemedText>
