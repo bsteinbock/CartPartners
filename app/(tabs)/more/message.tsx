@@ -116,15 +116,6 @@ export default function MessageScreen() {
             onPress: () => {
               router.push({
                 pathname: '/(tabs)/groups/setGroupCoordinator',
-                params: {
-                  bodyText: message,
-                  mobileNumbers: JSON.stringify(
-                    league_players
-                      .filter((p) => selectedPlayerIds.includes(p.id))
-                      .map((player) => player.mobile_number ?? '')
-                      .filter((a) => a.length > 0),
-                  ),
-                },
               });
             },
           },

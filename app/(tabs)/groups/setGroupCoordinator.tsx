@@ -6,11 +6,10 @@ import { OptionPickerItem } from '@/components/ui/OptionPickerItem';
 import ThemedButton from '@/components/ui/ThemedButton';
 import { useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
-import * as SMS from 'expo-sms';
 import React, { useEffect, useState } from 'react';
-import { Alert, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 
 export default function SetGroupCoordinatorScreen() {
   const router = useRouter();
@@ -19,7 +18,6 @@ export default function SetGroupCoordinatorScreen() {
   const [playerOptions, setPlayerOptions] = useState<OptionEntry[]>([]);
   const [pickedPlayer, setPickedPlayer] = useState<OptionEntry | null>(null);
 
-  const { bodyText, mobileNumbers } = useLocalSearchParams<{ bodyText: string; mobileNumbers: string }>();
   const backgroundColor = useThemeColor({ light: undefined, dark: undefined }, 'background');
   const iconButton = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
   const disabledColor = useThemeColor({ light: undefined, dark: undefined }, 'disabledColor');
@@ -36,22 +34,6 @@ export default function SetGroupCoordinatorScreen() {
     }
   }, [all_players]);
 
-  const sendTextMessage = async (addresses: string | string[], message: string) => {
-    const isAvailable = await SMS.isAvailableAsync();
-    if (!isAvailable) {
-      Alert.alert('SMS not available on this device');
-      return;
-    }
-
-    await SMS.sendSMSAsync(
-      addresses, // recipient(s)
-      message,
-    );
-  };
-
-  // get mobile numbers array
-  const mobilePhoneNumbers: string[] = mobileNumbers ? JSON.parse(mobileNumbers) : [];
-
   const handlePlayerSelect = (option: OptionEntry) => {
     setPickedPlayer(option);
     setIsPlayerPickerVisible(false);
@@ -63,20 +45,6 @@ export default function SetGroupCoordinatorScreen() {
     const player = all_players.find((p) => p.id === pickedPlayer.value);
     if (player) {
       await SecureStore.setItemAsync('cartPartnerGroupCoordinatorId', player.id.toString());
-
-      // don't include my number in the list for texting
-      if (player.mobile_number) {
-        const index = mobilePhoneNumbers.indexOf(player.mobile_number);
-        if (index > -1) {
-          mobilePhoneNumbers.splice(index, 1);
-        }
-        await sendTextMessage(mobilePhoneNumbers, bodyText);
-      } else {
-        Alert.alert(
-          'No Mobile Number',
-          'The selected coordinator does not have a mobile number defined So we cannot send text message.',
-        );
-      }
 
       // navigate back to groups index with my number
       router.back();

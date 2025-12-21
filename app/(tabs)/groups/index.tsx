@@ -299,10 +299,6 @@ export default function GroupsScreen() {
                           onPress: () => {
                             router.push({
                               pathname: '/(tabs)/groups/setGroupCoordinator',
-                              params: {
-                                bodyText: textMessageBody,
-                                mobileNumbers: JSON.stringify(mobileNumbers),
-                              },
                             });
                           },
                         },
