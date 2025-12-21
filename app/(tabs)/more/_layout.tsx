@@ -8,6 +8,7 @@ export default function DrawerLayout() {
       <Drawer.Screen name="leagueplayers" options={{ title: 'League Players' }} />
       <Drawer.Screen name="players" options={{ title: 'Manage All Players' }} />
       <Drawer.Screen name="backup" options={{ title: 'Backup/Restore' }} />
+      <Drawer.Screen name="settings" options={{ title: 'Settings' }} />
       <Drawer.Screen name="about" options={{ title: 'About' }} />
     </Drawer>
   );

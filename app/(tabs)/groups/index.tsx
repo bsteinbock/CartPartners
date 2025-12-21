@@ -68,6 +68,7 @@ export default function GroupsScreen() {
   const league = leagues.find((l) => l.id === currentLeagueId);
   const [isSmsAvailable, setIsSmsAvailable] = useState<boolean>(false);
   const [useEmailCC, setUseEmailCC] = useState<boolean>(false);
+  const [excludeCoordinatorFromEmail, setExcludeCoordinatorFromEmail] = useState<boolean>(false);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -94,6 +95,9 @@ export default function GroupsScreen() {
 
         const useCC = await SecureStore.getItemAsync('cartPartnerUseEmailCC');
         setUseEmailCC(useCC === 'true');
+
+        const excludeCoordinator = await SecureStore.getItemAsync('cartPartnerExcludeCoordinatorFromEmail');
+        setExcludeCoordinatorFromEmail(excludeCoordinator === 'true');
       })();
     }, []),
   );
@@ -246,8 +250,18 @@ export default function GroupsScreen() {
     bodyText += summary;
     const textMessageBody = `Cart Groups - ${pickedRound?.label}\n\n${bodyText}`;
 
-    const addresses = getMailtoString(currentRoundGroups, league_players);
+    let addresses = getMailtoString(currentRoundGroups, league_players);
     const mobileNumbers = getMobilePhoneNumbersForGroups(currentRoundGroups, league_players);
+
+    // Exclude coordinator from email recipients if setting is enabled
+    if (excludeCoordinatorFromEmail && groupCoordinatorId) {
+      const coordinator = league_players.find((p) => p.id === groupCoordinatorId);
+      if (coordinator && coordinator.email) {
+        const emailList = addresses.split(',').map((e) => e.trim());
+        const filteredEmails = emailList.filter((e) => e !== coordinator.email);
+        addresses = filteredEmails.join(',');
+      }
+    }
 
     try {
       Alert.alert('Send Groups Summary', 'Select method of sharing', [

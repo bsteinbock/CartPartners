@@ -3,9 +3,8 @@ import { ThemedView } from '@/components/themed-view';
 import ThemedButton from '@/components/ui/ThemedButton';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import * as Application from 'expo-application';
-import * as SecureStore from 'expo-secure-store';
-import React, { useEffect, useState } from 'react';
-import { Platform, ScrollView, StyleSheet, Switch } from 'react-native';
+import React from 'react';
+import { Platform, ScrollView, StyleSheet } from 'react-native';
 import { ReactNativeLegal } from 'react-native-legal';
 
 export default function AboutScreen() {
@@ -14,23 +13,7 @@ export default function AboutScreen() {
     ? `(${Application.nativeBuildVersion} ${Platform.OS})`
     : `(${Platform.OS})`;
   const versionText = `Version: ${version}${buildNumber}`;
-  const switchTrackColor = useThemeColor({ light: undefined, dark: undefined }, 'switchTrackColor');
-  const [useEmailCC, setUseEmailCC] = useState<boolean>(false);
   const iconButton = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
-
-  // Load the setting on mount
-  useEffect(() => {
-    (async () => {
-      const storedValue = await SecureStore.getItemAsync('cartPartnerUseEmailCC');
-      setUseEmailCC(storedValue === 'true');
-    })();
-  }, []);
-
-  // Save the setting when it changes
-  const handleToggleEmailCC = async (value: boolean) => {
-    setUseEmailCC(value);
-    await SecureStore.setItemAsync('cartPartnerUseEmailCC', value.toString());
-  };
 
   const showLicenses = () => {
     ReactNativeLegal.launchLicenseListScreen('Open Source Software Licenses');
@@ -143,26 +126,6 @@ export default function AboutScreen() {
           app.
         </ThemedText>
 
-        <ThemedText type="subtitle" style={styles.sectionTitle}>
-          Settings
-        </ThemedText>
-
-        <ThemedView style={styles.settingRow}>
-          <ThemedView style={styles.settingLabelContainer}>
-            <ThemedText style={styles.settingLabel}>Use CC for Multiple Recipients</ThemedText>
-          </ThemedView>
-          <Switch
-            trackColor={{ true: switchTrackColor }}
-            value={useEmailCC}
-            onValueChange={handleToggleEmailCC}
-          />
-        </ThemedView>
-        <ThemedText type="small" style={styles.settingDescription}>
-          When enabled, email notifications will place the first recipient in the &quot;To&quot; field and
-          remaining recipients in the &quot;CC&quot; field. This supports email clients like Yahoo Mail that
-          only allow a single &quot;To&quot; recipient.
-        </ThemedText>
-
         <ThemedView style={styles.licenseButtonContainer}>
           <ThemedView style={{ borderColor: iconButton, borderWidth: 1, borderRadius: 6 }}>
             <ThemedButton title="Show Source Licenses" onPress={showLicenses} />
@@ -199,23 +162,5 @@ const styles = StyleSheet.create({
   },
   text: {
     lineHeight: 24,
-  },
-  settingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 10,
-    gap: 15,
-  },
-  settingLabelContainer: {
-    flex: 1,
-  },
-  settingLabel: {
-    fontWeight: '500',
-    marginBottom: 10,
-  },
-  settingDescription: {
-    paddingLeft: 10,
-    lineHeight: 16,
   },
 });
