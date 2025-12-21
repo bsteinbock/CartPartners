@@ -108,13 +108,14 @@ export default function SettingsScreen() {
           notifications.
         </ThemedText>
 
-        <ThemedText type="subtitle" style={[styles.sectionTitle, { marginTop: 24 }]}>
+        <ThemedText type="subtitle" style={[styles.sectionTitle, styles.coordinatorSection]}>
           Group Coordinator
         </ThemedText>
 
         <ThemedText style={styles.settingDescription}>
-          Select yourself as the group coordinator. This is used to exclude your number when sending text
-          messages (since you don&apos;t want to text yourself).
+          Select the group coordinator. This person will be excluded from text message recipients (since they
+          don&apos;t need to text themselves). Use the &quot;Exclude Group Coordinator from Email
+          Recipients&quot; setting above to also exclude them from emails.
         </ThemedText>
 
         <ThemedText style={{ marginTop: 16, marginBottom: 8 }}>Group Coordinator</ThemedText>
@@ -172,5 +173,8 @@ const styles = StyleSheet.create({
   settingDescription: {
     paddingLeft: 10,
     lineHeight: 16,
+  },
+  coordinatorSection: {
+    marginTop: 24,
   },
 });
