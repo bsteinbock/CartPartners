@@ -31,7 +31,9 @@ export default function SettingsScreen() {
         const storedUseCC = await SecureStore.getItemAsync('cartPartnerUseEmailCC');
         setUseEmailCC(storedUseCC === 'true');
 
-        const storedExcludeCoordinator = await SecureStore.getItemAsync('cartPartnerExcludeCoordinatorFromEmail');
+        const storedExcludeCoordinator = await SecureStore.getItemAsync(
+          'cartPartnerExcludeCoordinatorFromEmail',
+        );
         setExcludeCoordinatorFromEmail(storedExcludeCoordinator === 'true');
 
         const coordinatorIdString = await SecureStore.getItemAsync('cartPartnerGroupCoordinatorId');
@@ -78,10 +80,6 @@ export default function SettingsScreen() {
   return (
     <ScrollView style={styles.container}>
       <ThemedView style={styles.content}>
-        <ThemedText type="title" style={styles.title}>
-          Settings
-        </ThemedText>
-
         <ThemedText type="subtitle" style={styles.sectionTitle}>
           Email Settings
         </ThemedText>
@@ -104,7 +102,9 @@ export default function SettingsScreen() {
 
         <ThemedView style={[styles.settingRow, { marginTop: 20 }]}>
           <ThemedView style={styles.settingLabelContainer}>
-            <ThemedText style={styles.settingLabel}>Exclude Group Coordinator from Email Recipients</ThemedText>
+            <ThemedText style={styles.settingLabel}>
+              Exclude Group Coordinator from Email Recipients
+            </ThemedText>
           </ThemedView>
           <Switch
             trackColor={{ true: switchTrackColor }}
@@ -113,21 +113,12 @@ export default function SettingsScreen() {
           />
         </ThemedView>
         <ThemedText type="small" style={styles.settingDescription}>
-          When enabled, the group coordinator will be excluded from email recipients when sending group
-          notifications.
+          When enabled, the group coordinator will be excluded from email recipients.
         </ThemedText>
 
         <ThemedText type="subtitle" style={[styles.sectionTitle, styles.coordinatorSection]}>
           Group Coordinator
         </ThemedText>
-
-        <ThemedText style={styles.settingDescription}>
-          Select the group coordinator. This person will be excluded from text message recipients (since they
-          don&apos;t need to text themselves). Use the &quot;Exclude Group Coordinator from Email
-          Recipients&quot; setting above to also exclude them from emails.
-        </ThemedText>
-
-        <ThemedText style={{ marginTop: 16, marginBottom: 8 }}>Group Coordinator</ThemedText>
         <OptionPickerItem
           containerStyle={{ backgroundColor: backgroundColor, height: 36 }}
           optionLabel={pickedPlayer?.label}
@@ -135,8 +126,14 @@ export default function SettingsScreen() {
           onPickerButtonPress={() => setIsPlayerPickerVisible(true)}
         />
 
+        <ThemedText type="small" style={[styles.settingDescription, { marginTop: 10 }]}>
+          Select the group coordinator. This person will be excluded from text message recipients (since they
+          don&apos;t need to text themselves). Use the &quot;Exclude Group Coordinator from Email
+          Recipients&quot; setting above to also exclude them from emails.
+        </ThemedText>
+
         {isDevelopment && (
-          <ThemedView style={{ marginTop: 16 }}>
+          <ThemedView style={{ marginVertical: 20 }}>
             <ThemedView style={{ borderColor: iconButton, borderWidth: 1, borderRadius: 6 }}>
               <ThemedButton
                 title="Clear Group Coordinator"
@@ -167,7 +164,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    padding: 20,
+    paddingHorizontal: 20,
   },
   title: {
     textAlign: 'left',
@@ -197,5 +194,6 @@ const styles = StyleSheet.create({
   },
   coordinatorSection: {
     marginTop: 24,
+    marginBottom: 10,
   },
 });
