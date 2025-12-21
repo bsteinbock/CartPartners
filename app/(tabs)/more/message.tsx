@@ -84,6 +84,25 @@ export default function MessageScreen() {
   const sendEmail = () => {
     let selectedPlayers = league_players.filter((p) => selectedPlayerIds.includes(p.id));
 
+    // Check if coordinator is defined when excluding coordinator from email
+    if (excludeCoordinatorFromEmail && groupCoordinatorId === 0) {
+      Alert.alert(
+        'No Coordinator Selected',
+        'No group coordinator has been selected. Please select a coordinator in Settings to exclude them from emails.',
+        [
+          {
+            text: 'Set Coordinator',
+            onPress: () => {
+              router.push({
+                pathname: '/(tabs)/groups/setGroupCoordinator',
+              });
+            },
+          },
+        ],
+      );
+      return;
+    }
+
     // Exclude coordinator from email recipients if setting is enabled
     if (excludeCoordinatorFromEmail && groupCoordinatorId) {
       selectedPlayers = selectedPlayers.filter((p) => p.id !== groupCoordinatorId);
