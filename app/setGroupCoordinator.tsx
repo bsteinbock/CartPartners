@@ -57,7 +57,7 @@ export default function SetGroupCoordinatorScreen() {
         Set Group Coordinator
       </ThemedText>
       <ThemedText style={styles.title}>
-        This info is used so your number is excluded when sending text messages. Since you don&apos;t want to
+        This info is used so your number is excluded when sending text messages, since you don&apos;t want to
         text yourself.
       </ThemedText>
 
@@ -99,15 +99,5 @@ const styles = StyleSheet.create({
   },
   title: {
     marginBottom: 12,
-  },
-  label: {
-    fontSize: 16,
-    marginTop: 12,
-  },
-  input: {
-    borderWidth: 1,
-    borderRadius: 6,
-    padding: 8,
-    marginTop: 4,
   },
 });

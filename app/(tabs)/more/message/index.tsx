@@ -93,9 +93,7 @@ export default function MessageScreen() {
           {
             text: 'Set Coordinator',
             onPress: () => {
-              router.push({
-                pathname: '/(tabs)/groups/setGroupCoordinator',
-              });
+              router.push('/setGroupCoordinator');
             },
           },
         ],
@@ -133,9 +131,7 @@ export default function MessageScreen() {
           {
             text: 'Set Coordinator',
             onPress: () => {
-              router.push({
-                pathname: '/(tabs)/groups/setGroupCoordinator',
-              });
+              router.push('/setGroupCoordinator');
             },
           },
         ],
