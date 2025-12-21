@@ -27,6 +27,7 @@ export default function MessageScreen() {
   const league = leagues.find((l) => l.id === currentLeagueId);
   const [isSmsAvailable, setIsSmsAvailable] = useState<boolean>(false);
   const [useEmailCC, setUseEmailCC] = useState<boolean>(false);
+  const [excludeCoordinatorFromEmail, setExcludeCoordinatorFromEmail] = useState<boolean>(false);
   const router = useRouter();
 
   useFocusEffect(
@@ -39,6 +40,9 @@ export default function MessageScreen() {
 
         const useCC = await SecureStore.getItemAsync('cartPartnerUseEmailCC');
         setUseEmailCC(useCC === 'true');
+
+        const excludeCoordinator = await SecureStore.getItemAsync('cartPartnerExcludeCoordinatorFromEmail');
+        setExcludeCoordinatorFromEmail(excludeCoordinator === 'true');
       })();
     }, []),
   );
@@ -78,7 +82,13 @@ export default function MessageScreen() {
   const playerLabel = `Player (${selectedPlayerIds.length} of ${league_players.length} Selected)`;
 
   const sendEmail = () => {
-    const selectedPlayers = league_players.filter((p) => selectedPlayerIds.includes(p.id));
+    let selectedPlayers = league_players.filter((p) => selectedPlayerIds.includes(p.id));
+
+    // Exclude coordinator from email recipients if setting is enabled
+    if (excludeCoordinatorFromEmail && groupCoordinatorId) {
+      selectedPlayers = selectedPlayers.filter((p) => p.id !== groupCoordinatorId);
+    }
+
     const addresses = selectedPlayers
       .map((player) => player.email ?? '')
       .filter((m) => m.length > 0)
