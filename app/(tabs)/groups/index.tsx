@@ -260,7 +260,12 @@ export default function GroupsScreen() {
         'No group coordinator has been selected. Please select a coordinator in Settings to exclude them from emails.',
         [
           {
-            text: 'OK',
+            text: 'Set Coordinator',
+            onPress: () => {
+              router.push({
+                pathname: '/(tabs)/groups/setGroupCoordinator',
+              });
+            },
           },
         ],
       );
