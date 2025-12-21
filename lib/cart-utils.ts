@@ -527,9 +527,14 @@ export function reportGroupsWithNames(groups: GroupPlayers[], allPlayers: Player
  *
  * @param groups - Array of groups (each a list of player IDs)
  * @param allPlayers - Array of all Player objects
+ * @param excludePlayerId - Optional player ID to exclude from the phone number list
  * @returns string[] - Array of mobile phone numbers'
  */
-export function getMobilePhoneNumbersForGroups(groups: GroupPlayers[], allPlayers: Player[]): string[] {
+export function getMobilePhoneNumbersForGroups(
+  groups: GroupPlayers[],
+  allPlayers: Player[],
+  excludePlayerId: number,
+): string[] {
   const playerMap: Record<number, Player> = {};
   for (const player of allPlayers) {
     playerMap[player.id] = player;
@@ -539,7 +544,7 @@ export function getMobilePhoneNumbersForGroups(groups: GroupPlayers[], allPlayer
     group.player_ids
       .map((id) => {
         const player = playerMap[id];
-        if (!player) return '';
+        if (!player || player.id === excludePlayerId) return '';
         return player.mobile_number;
       })
       .filter((num) => num && num.length > 0),
@@ -556,9 +561,14 @@ export function getMobilePhoneNumbersForGroups(groups: GroupPlayers[], allPlayer
  *
  * @param groups - Array of groups (each a list of player IDs)
  * @param allPlayers - Array of all Player objects
+ * @param excludePlayerId - Optional player ID to exclude from the email list
  * @returns string - Merged email addresses separated by commas
  */
-export function getMailtoString(groups: GroupPlayers[], allPlayers: Player[]): string {
+export function getMailtoString(
+  groups: GroupPlayers[],
+  allPlayers: Player[],
+  excludePlayerId: number | null = null,
+): string {
   const playerMap: Record<number, Player> = {};
   for (const player of allPlayers) {
     playerMap[player.id] = player;
@@ -569,7 +579,7 @@ export function getMailtoString(groups: GroupPlayers[], allPlayers: Player[]): s
       group.player_ids
         .map((id) => {
           const player = playerMap[id];
-          if (!player) return '';
+          if (!player || (excludePlayerId !== null && player.id === excludePlayerId)) return '';
           return player.email;
         })
         .filter((email) => email && email.length > 0)
@@ -625,7 +635,6 @@ export function buildMailtoUri(
 
   return `mailto:?to=${encodedTo}&cc=${encodedCC}&subject=${encodedSubject}&body=${encodedBody}`;
 }
-
 
 /**
  * Returns Ids of all GroupPlayers for a specific round.

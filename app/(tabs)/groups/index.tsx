@@ -24,7 +24,7 @@ import Feather from '@expo/vector-icons/Feather';
 import { useFocusEffect, useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import * as SMS from 'expo-sms';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, FlatList, Linking, Pressable, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -64,7 +64,6 @@ export default function GroupsScreen() {
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const router = useRouter();
   const [groupCoordinatorId, setGroupCoordinatorId] = useState<number>(0);
-  const [myMobileNumber, setMyMobileNumber] = useState<string | null>(null);
   const league = leagues.find((l) => l.id === currentLeagueId);
   const [isSmsAvailable, setIsSmsAvailable] = useState<boolean>(false);
   const [useEmailCC, setUseEmailCC] = useState<boolean>(false);
@@ -101,16 +100,6 @@ export default function GroupsScreen() {
       })();
     }, []),
   );
-
-  useEffect(() => {
-    // get mobile number for coordinator
-    const coordinator = league_players.find((p) => p.id === groupCoordinatorId);
-    if (coordinator && coordinator.mobile_number) {
-      setMyMobileNumber(coordinator.mobile_number);
-    } else {
-      setMyMobileNumber(null);
-    }
-  }, [groupCoordinatorId, league_players]);
 
   useEffect(() => {
     const availableOptions = rounds.map((r) => ({
@@ -176,6 +165,21 @@ export default function GroupsScreen() {
       setShowMismatchPlayerWarning(false);
     }
   }, [currentRoundGroups, currentRoundPlayerIds]);
+
+  const addresses = useMemo(
+    () =>
+      getMailtoString(
+        currentRoundGroups,
+        league_players,
+        excludeCoordinatorFromEmail ? groupCoordinatorId : null,
+      ),
+    [currentRoundGroups, league_players, excludeCoordinatorFromEmail, groupCoordinatorId],
+  );
+
+  const mobileNumbers = useMemo(
+    () => getMobilePhoneNumbersForGroups(currentRoundGroups, league_players, groupCoordinatorId),
+    [currentRoundGroups, league_players, groupCoordinatorId],
+  );
 
   const sendTextMessage = async (addresses: string[] | string, message: string) => {
     const isAvailable = await SMS.isAvailableAsync();
@@ -250,9 +254,6 @@ export default function GroupsScreen() {
     bodyText += summary;
     const textMessageBody = `Cart Groups - ${pickedRound?.label}\n\n${bodyText}`;
 
-    let addresses = getMailtoString(currentRoundGroups, league_players);
-    const mobileNumbers = getMobilePhoneNumbersForGroups(currentRoundGroups, league_players);
-
     // Check if coordinator is defined when excluding coordinator from email
     if (excludeCoordinatorFromEmail && groupCoordinatorId === 0) {
       Alert.alert(
@@ -268,16 +269,6 @@ export default function GroupsScreen() {
         ],
       );
       return;
-    }
-
-    // Exclude coordinator from email recipients if setting is enabled
-    if (excludeCoordinatorFromEmail && groupCoordinatorId) {
-      const coordinator = league_players.find((p) => p.id === groupCoordinatorId);
-      if (coordinator && coordinator.email) {
-        const emailList = addresses.split(',').map((e) => e.trim());
-        const filteredEmails = emailList.filter((e) => e !== coordinator.email);
-        addresses = filteredEmails.join(',');
-      }
     }
 
     try {
@@ -298,13 +289,7 @@ export default function GroupsScreen() {
                 text: 'Text Msg',
                 onPress: async () => {
                   // don't include my number in the list for texting
-                  if (myMobileNumber) {
-                    if (myMobileNumber.trim().length > 0) {
-                      const index = mobileNumbers.indexOf(myMobileNumber);
-                      if (index > -1) {
-                        mobileNumbers.splice(index, 1);
-                      }
-                    }
+                  if (groupCoordinatorId !== 0) {
                     await sendTextMessage(mobileNumbers, textMessageBody);
                   } else {
                     Alert.alert(
