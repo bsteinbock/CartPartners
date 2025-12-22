@@ -5,12 +5,12 @@ import ThemedButton from '@/components/ui/ThemedButton';
 import { iosKeyboardToolbarOffset } from '@/constants/theme';
 import { Player, useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
-import { buildMailtoUri } from '@/lib/cart-utils';
+import { composeEmail } from '@/lib/cart-utils';
 import { useFocusEffect, useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import * as SMS from 'expo-sms';
 import React, { useEffect, useState } from 'react';
-import { Alert, Linking, Platform, StyleSheet } from 'react-native';
+import { Alert, Platform, StyleSheet } from 'react-native';
 import { FlatList, Switch } from 'react-native-gesture-handler';
 import { KeyboardAvoidingView, KeyboardToolbar } from 'react-native-keyboard-controller';
 
@@ -81,7 +81,7 @@ export default function MessageScreen() {
     league_players.length > 0 && league_players.every((p) => selectedPlayerIds.includes(p.id));
   const playerLabel = `Player (${selectedPlayerIds.length} of ${league_players.length} Selected)`;
 
-  const sendEmail = () => {
+  const sendEmail = async () => {
     let selectedPlayers = league_players.filter((p) => selectedPlayerIds.includes(p.id));
 
     // Check if coordinator is defined when excluding coordinator from email
@@ -110,10 +110,12 @@ export default function MessageScreen() {
       .map((player) => player.email ?? '')
       .filter((m) => m.length > 0)
       .join(',');
-    const url = buildMailtoUri(addresses, title, message, useEmailCC);
-    Linking.openURL(url).catch(() => {
+    
+    try {
+      await composeEmail(addresses, title, message, useEmailCC);
+    } catch {
       Alert.alert('Could not open mail app');
-    });
+    }
   };
 
   const sendTextMessage = async () => {

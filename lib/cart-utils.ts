@@ -1,5 +1,6 @@
 // utils.ts
 import * as Clipboard from 'expo-clipboard';
+import * as MailComposer from 'expo-mail-composer';
 import { Group, GroupPlayers, ManualGroupList, Player } from '../hooks/use-dbStore';
 
 /**
@@ -641,6 +642,56 @@ export function buildMailtoUri(
   });
 
   return `mailto:?to=${encodedTo}&cc=${encodedCC}&subject=${encodedSubject}&body=${encodedBody}`;
+}
+
+/**
+ * Compose and send an email using expo-mail-composer.
+ *
+ * @param addresses - Comma-separated email addresses
+ * @param subject - Email subject
+ * @param body - Email body
+ * @param useCC - If true, put first address in 'to' and rest in 'cc'
+ * @returns Promise<void>
+ */
+export async function composeEmail(
+  addresses: string,
+  subject: string,
+  body: string,
+  useCC: boolean = false,
+): Promise<void> {
+  const isAvailable = await MailComposer.isAvailableAsync();
+  if (!isAvailable) {
+    throw new Error('Mail composer is not available on this device');
+  }
+
+  const emailArray = addresses
+    .split(',')
+    .map((e) => e.trim())
+    .filter((e) => e.length > 0);
+
+  if (!useCC || emailArray.length <= 1) {
+    // Standard format: all addresses in 'recipients'
+    await MailComposer.composeAsync({
+      recipients: emailArray,
+      subject,
+      body,
+    });
+  } else {
+    // CC format: first address in 'recipients', rest in 'ccRecipients'
+    const ccArrayString = emailArray.slice(1).join(',');
+    
+    // add ccArrayString to clipboard as a backup for Yahoo Mail limitation
+    await Clipboard.setStringAsync(ccArrayString).catch(() => {
+      // silently fail if clipboard access is not available
+    });
+
+    await MailComposer.composeAsync({
+      recipients: [emailArray[0]],
+      ccRecipients: emailArray.slice(1),
+      subject,
+      body,
+    });
+  }
 }
 
 /**
