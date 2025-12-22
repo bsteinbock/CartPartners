@@ -96,8 +96,8 @@ export default function SettingsScreen() {
         </ThemedView>
         <ThemedText type="small" style={styles.settingDescription}>
           When enabled, email notifications will place the first recipient in the &quot;To&quot; field and
-          remaining recipients in the &quot;CC&quot; field. This supports email clients like Yahoo Mail that
-          only allow a single &quot;To&quot; recipient.
+          remaining recipients in the &quot;CC&quot; field. This supports email clients that only allow a
+          single &quot;To&quot; recipient. As a backup, the CC recipients will also be added to the clipboard.
         </ThemedText>
 
         <ThemedView style={[styles.settingRow, { marginTop: 20 }]}>

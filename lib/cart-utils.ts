@@ -1,4 +1,5 @@
 // utils.ts
+import * as Clipboard from 'expo-clipboard';
 import { Group, GroupPlayers, ManualGroupList, Player } from '../hooks/use-dbStore';
 
 /**
@@ -631,7 +632,13 @@ export function buildMailtoUri(
 
   // Multiple addresses: first in 'to', rest in 'cc'
   const encodedTo = encodeURIComponent(emailArray[0]);
-  const encodedCC = encodeURIComponent(emailArray.slice(1).join(','));
+  const ccArrayString = emailArray.slice(1).join(',');
+  const encodedCC = encodeURIComponent(ccArrayString);
+  // add ccArrayString to clipboard as a backup for Yahoo Mail limitation
+
+  Clipboard.setStringAsync(ccArrayString).catch(() => {
+    // silently fail if clipboard access is not available
+  });
 
   return `mailto:?to=${encodedTo}&cc=${encodedCC}&subject=${encodedSubject}&body=${encodedBody}`;
 }
