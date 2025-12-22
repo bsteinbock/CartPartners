@@ -593,7 +593,24 @@ export function getMailtoString(
 }
 
 /**
+ * Helper function to copy CC recipients to clipboard as a backup.
+ * This is useful for email clients (like Yahoo Mail) that have limitations with CC fields.
+ *
+ * @param ccRecipients - Array of CC recipient email addresses
+ */
+async function copyccRecipientsToClipboard(ccRecipients: string[]): Promise<void> {
+  if (ccRecipients.length === 0) return;
+  
+  const ccArrayString = ccRecipients.join(',');
+  await Clipboard.setStringAsync(ccArrayString).catch(() => {
+    // silently fail if clipboard access is not available
+  });
+}
+
+/**
  * Build a mailto URI with optional CC field support.
+ * 
+ * @deprecated Use composeEmail() instead for better native email composer integration
  *
  * @param addresses - Comma-separated email addresses
  * @param subject - Email subject
@@ -635,8 +652,8 @@ export function buildMailtoUri(
   const encodedTo = encodeURIComponent(emailArray[0]);
   const ccArrayString = emailArray.slice(1).join(',');
   const encodedCC = encodeURIComponent(ccArrayString);
-  // add ccArrayString to clipboard as a backup for Yahoo Mail limitation
 
+  // add ccArrayString to clipboard as a backup for Yahoo Mail limitation
   Clipboard.setStringAsync(ccArrayString).catch(() => {
     // silently fail if clipboard access is not available
   });
@@ -678,16 +695,14 @@ export async function composeEmail(
     });
   } else {
     // CC format: first address in 'recipients', rest in 'ccRecipients'
-    const ccArrayString = emailArray.slice(1).join(',');
+    const ccRecipients = emailArray.slice(1);
     
-    // add ccArrayString to clipboard as a backup for Yahoo Mail limitation
-    await Clipboard.setStringAsync(ccArrayString).catch(() => {
-      // silently fail if clipboard access is not available
-    });
+    // Copy CC recipients to clipboard as a backup for Yahoo Mail limitation
+    await copyccRecipientsToClipboard(ccRecipients);
 
     await MailComposer.composeAsync({
       recipients: [emailArray[0]],
-      ccRecipients: emailArray.slice(1),
+      ccRecipients,
       subject,
       body,
     });
