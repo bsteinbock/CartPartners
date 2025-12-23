@@ -7,7 +7,7 @@ import ThemedButton from '@/components/ui/ThemedButton';
 import { GroupPlayers, useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import {
-  buildMailtoUri,
+  composeEmail,
   buildPlayingPartnerFrequencies,
   formatGroupPlayersByNames,
   formatManualGroupPlayersByNames,
@@ -25,7 +25,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import * as SMS from 'expo-sms';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, FlatList, Linking, Pressable, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Alert, FlatList, Pressable, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function GroupsScreen() {
@@ -275,12 +275,13 @@ export default function GroupsScreen() {
       Alert.alert('Send Groups Summary', 'Select method of sharing', [
         {
           text: 'Email',
-          onPress: () => {
+          onPress: async () => {
             const subject = `Cart Groups - ${pickedRound?.label}`;
-            const url = buildMailtoUri(addresses, subject, bodyText, useEmailCC);
-            Linking.openURL(url).catch(() => {
+            try {
+              await composeEmail(addresses, subject, bodyText, useEmailCC);
+            } catch {
               Alert.alert('Could not open mail app');
-            });
+            }
           },
         },
         ...(mobileNumbers.length > 0 && isSmsAvailable
