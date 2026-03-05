@@ -49,7 +49,7 @@ const SwipeablePlayerItem = ({
     }
 
     if (p && typeof p.id !== 'undefined') {
-      router.push({ pathname: '/lineup/[id]', params: { id: String(p.id) } });
+      router.push({ pathname: '/more/players/[id]', params: { id: String(p.id) } });
     }
   };
 

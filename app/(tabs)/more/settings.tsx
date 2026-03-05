@@ -127,9 +127,9 @@ export default function SettingsScreen() {
         />
 
         <ThemedText type="small" style={[styles.settingDescription, { marginTop: 10 }]}>
-          Select the group coordinator. This person will be excluded from text message recipients (since they
-          don&apos;t need to text themselves). Use the &quot;Exclude Group Coordinator from Email
-          Recipients&quot; setting above to also exclude them from emails.
+          Select the group coordinator, which is you. This person will be excluded from text message
+          recipients (since they don&apos;t need to text themselves). Use the &quot;Exclude Group Coordinator
+          from Email Recipients&quot; setting above to also exclude them from emails.
         </ThemedText>
 
         {isDevelopment && (

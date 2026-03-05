@@ -7,7 +7,6 @@
     "icon": "./assets/images/icon.png",
     "scheme": "cartpartners",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.bsteinbk.cartpartners",
@@ -27,7 +26,6 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "monochromeImage": "./assets/images/adaptive-icon.png"
       },
-      "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.bsteinbk.cartpartners"
     },
@@ -59,7 +57,6 @@
       "expo-sqlite",
       "expo-web-browser",
       "expo-secure-store",
-      "react-native-legal",
       "@react-native-community/datetimepicker",
       "expo-font",
       "expo-image",

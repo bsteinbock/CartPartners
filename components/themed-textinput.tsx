@@ -1,3 +1,4 @@
+import { forwardRef } from 'react';
 import { StyleSheet, TextInput, type TextInputProps } from 'react-native';
 
 import { useThemeColor } from '@/hooks/use-theme-color';
@@ -7,13 +8,17 @@ export type ThemedTextInputProps = TextInputProps & {
   darkColor?: string;
 };
 
-export function ThemedTextInput({ style, lightColor, darkColor, ...rest }: ThemedTextInputProps) {
+export const ThemedTextInput = forwardRef<TextInput, ThemedTextInputProps>(function ThemedTextInput(
+  { style, lightColor, darkColor, ...rest },
+  ref,
+) {
   const textColor = useThemeColor({ light: lightColor, dark: darkColor }, 'text');
   const borderColor = useThemeColor({}, 'border');
   const placeholderTextColor = useThemeColor({ light: lightColor, dark: darkColor }, 'placeHolderText');
 
   return (
     <TextInput
+      ref={ref}
       style={[
         styles.input,
         { color: textColor, borderColor, justifyContent: 'center' },
@@ -24,7 +29,7 @@ export function ThemedTextInput({ style, lightColor, darkColor, ...rest }: Theme
       {...rest}
     />
   );
-}
+});
 
 const styles = StyleSheet.create({
   input: {

@@ -176,7 +176,7 @@ export default function PlayersScreen() {
         {league_players.length === 0 && (
           <ThemedView style={{ padding: 12 }}>
             <ThemedText style={{ marginTop: 12 }}>
-              No players defined. Go to menu option 'Manage All Players' to add players.
+              No players defined. Go to menu option &apos;Manage All Players&apos; to add players.
             </ThemedText>
           </ThemedView>
         )}
