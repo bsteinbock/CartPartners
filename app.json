@@ -8,7 +8,7 @@
     "scheme": "cartpartners",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.bsteinbk.cartpartners",
       "icon": {
         "dark": "./assets/images/ios-dark.png",
