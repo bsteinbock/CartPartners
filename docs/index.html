@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CartPartners - Overview</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: #f5f5f5;
+        color: #333;
+      }
+
+      header {
+        background: #fff;
+        padding: 20px;
+        border-bottom: 1px solid #e0e0e0;
+        text-align: center;
+      }
+
+      header h1 {
+        font-size: 24px;
+        color: #2c3e50;
+      }
+
+      .container {
+        max-width: 600px;
+        margin: 20px auto;
+        padding: 0 15px;
+      }
+
+      .section {
+        background: #fff;
+        margin-bottom: 15px;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      .section h2 {
+        font-size: 18px;
+        margin-bottom: 10px;
+        color: #2c3e50;
+      }
+
+      .section p {
+        line-height: 1.6;
+        color: #666;
+      }
+
+      .feature-list {
+        list-style: none;
+        margin: 10px 0;
+      }
+
+      .feature-list li {
+        padding: 8px 0;
+        border-bottom: 1px solid #f0f0f0;
+      }
+
+      .feature-list li:last-child {
+        border-bottom: none;
+      }
+
+      .cta-button {
+        display: block;
+        background: #007aff;
+        color: white;
+        padding: 15px;
+        text-align: center;
+        border-radius: 8px;
+        text-decoration: none;
+        margin-top: 15px;
+        font-weight: 600;
+      }
+
+      .cta-button:hover {
+        background: #0051d5;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>CartPartners</h1>
+      <p>Version 1.0</p>
+    </header>
+
+    <div class="container">
+      <div class="section">
+        <p>
+          CartPartners is a mobile application designed to help you stay connected with your golfing buddies
+          by ensuring that your cart partners change from round to round. The app supports organizing players
+          into leagues or outings, managing player availability, creating rounds, generating tee-time groups,
+          and sending notifications to players via email or text message.
+        </p>
+      </div>
+
+      <div class="section">
+        <h2>App Features</h2>
+        <p>
+          CartPartners provides a comprehensive set of features organized into tabs and drawer screens for
+          easy navigation and management of golf outings.
+        </p>
+      </div>
+
+      <div class="section">
+        <h2>Rounds Tab</h2>
+        <p>Displays all your defined rounds and includes a button to add a new round.</p>
+        <ul class="feature-list">
+          <li>
+            <strong>League/Outing Picker</strong> — Select a specific league or outing at the top of the
+            screen
+          </li>
+          <li>
+            <strong>Long-press</strong> a round to edit its details (course, date, and tee-time information)
+          </li>
+          <li><strong>Swipe left</strong> on a round to delete it and all associated data</li>
+          <li><strong>Tap</strong> a round to open its Lineup tab</li>
+        </ul>
+      </div>
+
+      <div class="section">
+        <h2>Lineup Tab</h2>
+        <p>Specify the players participating in a particular round.</p>
+        <ul class="feature-list">
+          <li><strong>Round Selection</strong> — Use the picker at the top to switch between rounds</li>
+          <li>View all golfers whose status is set to "available"</li>
+          <li>Tap the icon at the top right to add players from the master player list</li>
+          <li>Toggle player participation for the selected round</li>
+          <li>Press the Groups icon at the bottom to open the Groups tab when the lineup is finalized</li>
+        </ul>
+      </div>
+
+      <div class="section">
+        <h2>Groups Tab</h2>
+        <p>Create and manage the tee-time groupings for a round.</p>
+        <ul class="feature-list">
+          <li><strong>Generate</strong> — Create groups for the first time</li>
+          <li>
+            <strong>Regenerate</strong> — Update existing groups; the algorithm ensures cart partners change
+            from round to round
+          </li>
+          <li>Select a group to access edit and reordering options</li>
+          <li>Move groups up or down in the tee-time order</li>
+          <li>Use the icon at the top right to manually adjust players in any group</li>
+          <li>Swap players between groups as needed</li>
+          <li>Use the airplane icon to email all players their group assignments</li>
+        </ul>
+      </div>
+
+      <div class="section">
+        <h2>More Tab — Drawer Screens</h2>
+        <p>
+          The More tab provides access to additional screens through a drawer navigation panel. Open the
+          drawer by tapping the icon at the top left of the screen.
+        </p>
+      </div>
+
+      <div class="section">
+        <h2>Notify Players</h2>
+        <p>Send notifications to players via email or text message.</p>
+        <ul class="feature-list">
+          <li>
+            <strong>Player Selection</strong> — Choose which players to notify from the current league's
+            player list
+          </li>
+          <li><strong>Message Composition</strong> — Enter a custom title and message</li>
+          <li><strong>Delivery Options</strong> — Send via email or SMS (when available)</li>
+        </ul>
+      </div>
+
+      <div class="section">
+        <h2>Leagues / Outings</h2>
+        <p>Manage multiple leagues or outings, each with its own set of players and rounds.</p>
+        <ul class="feature-list">
+          <li><strong>Create</strong> — Add new leagues or outings with custom names</li>
+          <li><strong>Long-press</strong> to edit league details</li>
+          <li><strong>Swipe left</strong> to remove a league</li>
+          <li>Maintain separate player lists and rounds for different groups</li>
+        </ul>
+      </div>
+
+      <div class="section">
+        <h2>League Players</h2>
+        <p>Define the list of players specific to a particular league or outing.</p>
+        <ul class="feature-list">
+          <li>Add players from the master player list to the current league</li>
+          <li>Swipe to remove players from the league (does not delete from the master list)</li>
+          <li>Export the league's player list to a CSV file</li>
+          <li>Choose which league to manage using the picker at the top</li>
+        </ul>
+      </div>
+
+      <div class="section">
+        <h2>Manage All Players</h2>
+        <p>Manage the master player list containing all players known to the app.</p>
+        <ul class="feature-list">
+          <li>Add new player entries with name, email, and phone information</li>
+          <li>Edit player details including availability status</li>
+          <li>Delete players from all leagues, rounds, and groups</li>
+          <li>Import players from a CSV file</li>
+          <li>Export the entire player list to CSV for backup or sharing</li>
+        </ul>
+      </div>
+
+      <div class="section">
+        <h2>Backup / Restore</h2>
+        <p>Create and restore database backups containing all CartPartners data.</p>
+        <ul class="feature-list">
+          <li>
+            <strong>Backup</strong> — Create a database file with all your leagues, players, rounds, and
+            groups
+          </li>
+          <li><strong>Restore</strong> — Load data from a previous backup file</li>
+          <li>
+            <strong>Sharing</strong> — Share backup files with another person taking over as Group Coordinator
+          </li>
+          <li><strong>Warning:</strong> Restoring a backup will overwrite all existing data in the app</li>
+        </ul>
+      </div>
+
+      <div class="section">
+        <h2>About</h2>
+        <p>View app information, configure settings, and access licenses.</p>
+        <ul class="feature-list">
+          <li>Display current version and build information</li>
+          <li>Comprehensive overview of all app features</li>
+          <li>Toggle "Use CC for Multiple Recipients" for email compatibility (e.g., Yahoo Mail)</li>
+          <li>View open source licenses for all dependencies</li>
+        </ul>
+      </div>
+    </div>
+  </body>
+</html>
