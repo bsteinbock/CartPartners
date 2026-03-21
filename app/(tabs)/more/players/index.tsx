@@ -218,11 +218,17 @@ export default function PlayersScreen() {
             </ThemedText>
             <ThemedText style={{ marginTop: 12 }}>
               You can also import a list of users from a CSV file using the left icon. The accepted format of
-              the CSV file is shown below.
+              the CSV file is shown below. The first line of the file should contain the column headers shown
+              below.
             </ThemedText>
-            <ThemedText style={{ marginTop: 12 }}>Name,Speed Index,Email,Mobile#,Available</ThemedText>
-            <ThemedText>For example:</ThemedText>
-            <ThemedText>&quot;name&quot;,1,&quot;emailname@gmail.com&quot;,&quot;123-456-7890&quot;,Yes</ThemedText>
+            <ThemedText style={{ marginTop: 12 }}>
+              'Name', 'Nickname', 'Speed Index', 'Email', 'Mobile #', 'Available'
+            </ThemedText>
+            <ThemedText>Example Player Definition:</ThemedText>
+            <ThemedText>
+              &quot;Anthony Smith&quot;, &quot;Tony&quot;, 1, &quot;tony12345@gmail.com&quot;,
+              &quot;123-456-7890&quot;, Yes
+            </ThemedText>
             <ThemedText style={{ marginTop: 12 }}>note: Speed Index:1=fast 5=slow</ThemedText>
           </ThemedView>
         )}

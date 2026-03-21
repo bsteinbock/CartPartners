@@ -23,6 +23,8 @@ const PlayerItem = memo<{
     onToggle(player.id);
   };
 
+  const playerLabel = player.nickname ? `${player.name} (${player.nickname})` : player.name;
+
   return (
     <ThemedView
       style={{
@@ -34,7 +36,9 @@ const PlayerItem = memo<{
     >
       <ThemedView style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <Switch trackColor={{ true: switchTrackColor }} value={isSelected} onValueChange={handleToggle} />
-        <ThemedText style={{ marginLeft: 30 }}>{player.name}</ThemedText>
+        <ThemedText numberOfLines={1} style={{ marginLeft: 30 }}>
+          {playerLabel}
+        </ThemedText>
       </ThemedView>
     </ThemedView>
   );
