@@ -8,6 +8,8 @@ import { Player, useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { formatDate } from '@/lib/formatters';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { useFocusEffect } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
 import React, { memo, useEffect, useRef, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,12 +20,13 @@ const PlayerItem = memo<{
   isSelected: boolean;
   onToggle: (playerId: number) => void;
   switchTrackColor: string;
-}>(function PlayerItem({ player, isSelected, onToggle, switchTrackColor }) {
+  useNickname: boolean;
+}>(function PlayerItem({ player, isSelected, onToggle, switchTrackColor, useNickname }) {
   const handleToggle = () => {
     onToggle(player.id);
   };
 
-  const playerLabel = player.nickname ? `${player.name} (${player.nickname})` : player.name;
+  const playerLabel = useNickname && player.nickname ? player.nickname : player.name;
 
   return (
     <ThemedView
@@ -73,6 +76,24 @@ export default function LineupScreen() {
   const [playerOptions, setPlayerOptions] = useState<OptionEntry[]>([]);
   const [selectedPlayerOptions, setSelectedPlayerOptions] = useState<OptionEntry[]>([]);
   const [availablePlayers, setAvailablePlayers] = useState<Player[]>([]);
+  const [useNickname, setUseNickname] = useState<boolean>(false);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      let isActive = true;
+
+      (async () => {
+        const storedUseNickname = await SecureStore.getItemAsync('cartPartnerUseNickname');
+        if (isActive) {
+          setUseNickname(storedUseNickname === 'true');
+        }
+      })();
+
+      return () => {
+        isActive = false;
+      };
+    }, []),
+  );
 
   useEffect(() => {
     // Create a set of players using all_players that are specified by player_id in roundPlayers for the current round
@@ -262,6 +283,7 @@ export default function LineupScreen() {
                   isSelected={selectedPlayers.includes(item.id)}
                   onToggle={togglePlayer}
                   switchTrackColor={switchTrackColor}
+                  useNickname={useNickname}
                 />
               )}
               removeClippedSubviews={true}

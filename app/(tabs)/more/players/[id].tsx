@@ -227,7 +227,7 @@ const styles = StyleSheet.create({
   },
   mobileButtons: {
     flexDirection: 'row',
-    gap: 12,
-    marginLeft: 10,
+    gap: 20,
+    marginLeft: 16,
   },
 });
