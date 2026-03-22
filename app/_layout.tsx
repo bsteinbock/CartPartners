@@ -2,6 +2,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { initDb, useDbStore } from '@/hooks/use-dbStore';
+import { useOTAUpdates } from '@/hooks/use-ota-updates';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -19,6 +20,9 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
   const refreshAll = useDbStore((s) => s.refreshAll);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Check for OTA updates on mount and when app returns to foreground
+  useOTAUpdates();
 
   useEffect(() => {
     const loadDatabase = async () => {
