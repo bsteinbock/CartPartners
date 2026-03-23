@@ -29,10 +29,6 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.bsteinbk.cartpartners"
     },
-    "web": {
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
-    },
     "plugins": [
       "expo-router",
       [
@@ -78,7 +74,10 @@
       "policy": "appVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/aa2776ab-0acf-45e8-8024-a45feb67b0fe"
+      "url": "https://u.expo.dev/aa2776ab-0acf-45e8-8024-a45feb67b0fe",
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
     }
   }
 }

@@ -17,6 +17,7 @@ export default function SettingsScreen() {
   const backgroundColor = useThemeColor({ light: undefined, dark: undefined }, 'background');
   const iconButton = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
   const [useEmailCC, setUseEmailCC] = useState<boolean>(false);
+  const [useNickname, setUseNickname] = useState<boolean>(false);
   const [excludeCoordinatorFromEmail, setExcludeCoordinatorFromEmail] = useState<boolean>(false);
   const [isPlayerPickerVisible, setIsPlayerPickerVisible] = useState<boolean>(false);
   const [playerOptions, setPlayerOptions] = useState<OptionEntry[]>([]);
@@ -30,6 +31,9 @@ export default function SettingsScreen() {
       (async () => {
         const storedUseCC = await SecureStore.getItemAsync('cartPartnerUseEmailCC');
         setUseEmailCC(storedUseCC === 'true');
+
+        const storedUseNickname = await SecureStore.getItemAsync('cartPartnerUseNickname');
+        setUseNickname(storedUseNickname === 'true');
 
         const storedExcludeCoordinator = await SecureStore.getItemAsync(
           'cartPartnerExcludeCoordinatorFromEmail',
@@ -59,6 +63,11 @@ export default function SettingsScreen() {
   const handleToggleEmailCC = async (value: boolean) => {
     setUseEmailCC(value);
     await SecureStore.setItemAsync('cartPartnerUseEmailCC', value.toString());
+  };
+
+  const handleToggleUseNickname = async (value: boolean) => {
+    setUseNickname(value);
+    await SecureStore.setItemAsync('cartPartnerUseNickname', value.toString());
   };
 
   const handleToggleExcludeCoordinator = async (value: boolean) => {
@@ -98,6 +107,25 @@ export default function SettingsScreen() {
           When enabled, email notifications will place the first recipient in the &quot;To&quot; field and
           remaining recipients in the &quot;CC&quot; field. This supports email clients that only allow a
           single &quot;To&quot; recipient. As a backup, the CC recipients will also be added to the clipboard.
+        </ThemedText>
+
+        <ThemedText type="subtitle" style={[styles.sectionTitle, styles.nicknameSection]}>
+          Use Nickname
+        </ThemedText>
+
+        <ThemedView style={styles.settingRow}>
+          <ThemedView style={styles.settingLabelContainer}>
+            <ThemedText style={styles.settingLabel}>Display Nicknames when setting Lineup</ThemedText>
+          </ThemedView>
+          <Switch
+            trackColor={{ true: switchTrackColor }}
+            value={useNickname}
+            onValueChange={handleToggleUseNickname}
+          />
+        </ThemedView>
+        <ThemedText type="small" style={styles.settingDescription}>
+          When enabled, the lineup screen shows each player&apos;s nickname when one is available. Otherwise,
+          it shows the full name.
         </ThemedText>
 
         <ThemedView style={[styles.settingRow, { marginTop: 20 }]}>
@@ -195,5 +223,8 @@ const styles = StyleSheet.create({
   coordinatorSection: {
     marginTop: 24,
     marginBottom: 10,
+  },
+  nicknameSection: {
+    marginTop: 24,
   },
 });

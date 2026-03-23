@@ -6,10 +6,11 @@ import { iosKeyboardToolbarOffset } from '@/constants/theme';
 import { useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { displayPhoneNumberFromE164, formatPhoneNumberToE164, generateNickname } from '@/lib/cart-utils';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Header } from '@react-navigation/elements';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, Platform, StyleSheet } from 'react-native';
+import { Alert, Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { KeyboardAwareScrollView, KeyboardToolbar } from 'react-native-keyboard-controller';
 
 export default function PlayerDetailScreen() {
@@ -131,14 +132,58 @@ export default function PlayerDetailScreen() {
             />
 
             <ThemedText style={styles.label}>Mobile Number</ThemedText>
-            <ThemedTextInput
-              style={styles.input}
-              value={mobileNumber}
-              onChangeText={setMobileNumber}
-              onBlur={() => setMobileNumber(displayPhoneNumberFromE164(mobileNumber))}
-              placeholder="Mobile Number including area code"
-              keyboardType="phone-pad"
-            />
+            <View style={styles.mobileRow}>
+              <ThemedTextInput
+                style={[styles.input, styles.mobileInput]}
+                value={mobileNumber}
+                onChangeText={setMobileNumber}
+                onBlur={() => setMobileNumber(displayPhoneNumberFromE164(mobileNumber))}
+                placeholder="Mobile Number including area code"
+                keyboardType="phone-pad"
+              />
+              {!isNew && mobileNumber.trim() !== '' && (
+                <View style={styles.mobileButtons}>
+                  <Pressable
+                    onPress={async () => {
+                      const phone = formatPhoneNumberToE164(mobileNumber.trim());
+                      const url = `tel:${phone}`;
+                      try {
+                        const supported = await Linking.canOpenURL(url);
+                        if (!supported) {
+                          Alert.alert('Cannot place call', 'Your device cannot place calls using this number.');
+                          return;
+                        }
+                        await Linking.openURL(url);
+                      } catch (error) {
+                        Alert.alert('Call failed', 'An error occurred while trying to place the call.');
+                      }
+                    }}
+                    hitSlop={8}
+                  >
+                    <Ionicons name="call" size={24} color={iconButton} />
+                  </Pressable>
+                  <Pressable
+                    onPress={async () => {
+                      const phone = formatPhoneNumberToE164(mobileNumber.trim());
+                      const url = `sms:${phone}`;
+                      try {
+                        const supported = await Linking.canOpenURL(url);
+                        if (!supported) {
+                          Alert.alert('Cannot send text', 'Your device cannot send texts using this number.');
+                          return;
+                        }
+                        await Linking.openURL(url);
+                      } catch (error) {
+                        Alert.alert('Text failed', 'An error occurred while trying to open the messaging app.');
+                      }
+                    }}
+                    hitSlop={8}
+                  >
+                    <Ionicons name="chatbubble" size={24} color={iconButton} />
+                  </Pressable>
+                </View>
+              )}
+            </View>
 
             <ThemedText style={styles.label}>Speed Index (1-Fast/3-Med/5-Slow)</ThemedText>
             <ThemedTextInput
@@ -196,5 +241,19 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     padding: 8,
     marginTop: 4,
+  },
+  mobileRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  mobileInput: {
+    flex: 1,
+    marginTop: 0,
+  },
+  mobileButtons: {
+    flexDirection: 'row',
+    gap: 20,
+    marginLeft: 16,
   },
 });

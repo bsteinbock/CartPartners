@@ -1,6 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedTextInput } from '@/components/themed-textinput';
 import { ThemedView } from '@/components/themed-view';
+import SwipeablePlayerToCall from '@/components/ui/SwipeablePlayerToCall';
 import ThemedButton from '@/components/ui/ThemedButton';
 import { iosKeyboardToolbarOffset } from '@/constants/theme';
 import { Player, useDbStore } from '@/hooks/use-dbStore';
@@ -110,7 +111,7 @@ export default function MessageScreen() {
       .map((player) => player.email ?? '')
       .filter((m) => m.length > 0)
       .join(',');
-    
+
     try {
       await composeEmail(addresses, title, message, useEmailCC);
     } catch {
@@ -272,25 +273,12 @@ export default function MessageScreen() {
                 data={availablePlayers}
                 keyExtractor={(item) => String(item.id)}
                 renderItem={({ item }) => (
-                  <ThemedView
-                    style={{
-                      padding: 4,
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                    }}
-                  >
-                    <ThemedView style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                      <Switch
-                        trackColor={{ true: switchTrackColor }}
-                        value={selectedPlayerIds.includes(item.id)}
-                        onValueChange={(_val) => {
-                          void togglePlayer(item.id);
-                        }}
-                      />
-                      <ThemedText style={{ marginLeft: 30 }}>{item.name}</ThemedText>
-                    </ThemedView>
-                  </ThemedView>
+                  <SwipeablePlayerToCall
+                    player={item}
+                    isSelected={selectedPlayerIds.includes(item.id)}
+                    onToggle={togglePlayer}
+                    switchTrackColor={switchTrackColor}
+                  />
                 )}
               />
             </>
