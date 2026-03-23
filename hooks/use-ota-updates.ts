@@ -1,5 +1,5 @@
 import * as Updates from 'expo-updates';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { Alert, AppState } from 'react-native';
 
 /**
@@ -7,13 +7,15 @@ import { Alert, AppState } from 'react-native';
  * When an update is downloaded it prompts the user to restart.
  */
 export function useOTAUpdates() {
-  const [isChecking, setIsChecking] = useState(false);
+  // Use a ref so the in-flight flag is always current inside the AppState listener
+  // closure without requiring re-registration on every render.
+  const isCheckingRef = useRef(false);
 
   const checkForUpdate = async () => {
     if (__DEV__) return; // updates are disabled in dev client
-    if (isChecking) return;
+    if (isCheckingRef.current) return;
 
-    setIsChecking(true);
+    isCheckingRef.current = true;
     try {
       const update = await Updates.checkForUpdateAsync();
       if (update.isAvailable) {
@@ -27,7 +29,7 @@ export function useOTAUpdates() {
       // Silently ignore update check failures — the user can keep using the current version
       console.log('OTA update check failed:', e);
     } finally {
-      setIsChecking(false);
+      isCheckingRef.current = false;
     }
   };
 
@@ -46,6 +48,4 @@ export function useOTAUpdates() {
 
     return () => subscription.remove();
   }, []);
-
-  return { isChecking };
 }
