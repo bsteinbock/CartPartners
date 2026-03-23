@@ -144,13 +144,39 @@ export default function PlayerDetailScreen() {
               {!isNew && mobileNumber.trim() !== '' && (
                 <View style={styles.mobileButtons}>
                   <Pressable
-                    onPress={() => Linking.openURL(`tel:${formatPhoneNumberToE164(mobileNumber.trim())}`)}
+                    onPress={async () => {
+                      const phone = formatPhoneNumberToE164(mobileNumber.trim());
+                      const url = `tel:${phone}`;
+                      try {
+                        const supported = await Linking.canOpenURL(url);
+                        if (!supported) {
+                          Alert.alert('Cannot place call', 'Your device cannot place calls using this number.');
+                          return;
+                        }
+                        await Linking.openURL(url);
+                      } catch (error) {
+                        Alert.alert('Call failed', 'An error occurred while trying to place the call.');
+                      }
+                    }}
                     hitSlop={8}
                   >
                     <Ionicons name="call" size={24} color={iconButton} />
                   </Pressable>
                   <Pressable
-                    onPress={() => Linking.openURL(`sms:${formatPhoneNumberToE164(mobileNumber.trim())}`)}
+                    onPress={async () => {
+                      const phone = formatPhoneNumberToE164(mobileNumber.trim());
+                      const url = `sms:${phone}`;
+                      try {
+                        const supported = await Linking.canOpenURL(url);
+                        if (!supported) {
+                          Alert.alert('Cannot send text', 'Your device cannot send texts using this number.');
+                          return;
+                        }
+                        await Linking.openURL(url);
+                      } catch (error) {
+                        Alert.alert('Text failed', 'An error occurred while trying to open the messaging app.');
+                      }
+                    }}
                     hitSlop={8}
                   >
                     <Ionicons name="chatbubble" size={24} color={iconButton} />
