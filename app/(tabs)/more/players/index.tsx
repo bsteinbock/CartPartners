@@ -10,8 +10,8 @@ import * as DocumentPicker from 'expo-document-picker';
 import { File, Paths } from 'expo-file-system';
 import { useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
-import { Alert, Pressable, View } from 'react-native';
-import { FlatList } from 'react-native-gesture-handler';
+import { Alert, View } from 'react-native';
+import { FlatList, Pressable } from 'react-native-gesture-handler';
 
 export default function PlayersScreen() {
   const router = useRouter();
@@ -181,6 +181,36 @@ export default function PlayersScreen() {
     }
   };
 
+  const downloadSampleCSV = async () => {
+    try {
+      const csvString = [
+        'Name,Nickname,Speed Index,Email,Mobile #,Available',
+        '"Fast Player","Speedy",1,"speedy@example.com","(123)456-7890",Yes',
+        '"Medium Player","AvgJoe",3,"avgjoe@example.com","(234)567-8901",Yes',
+        '"Slow Player","Slowpoke",5,"slowpoke@example.com","(345)678-9012",Yes',
+      ].join('\n');
+
+      const fileName = 'cartpartners_sample_players.csv';
+      const file = new File(Paths.cache, fileName);
+      file.create({ overwrite: true });
+      file.write(csvString);
+
+      const canShare = await Sharing.isAvailableAsync();
+      if (!canShare) {
+        Alert.alert('Sharing not available', 'This device does not support sharing files.');
+        return;
+      }
+
+      await Sharing.shareAsync(file.uri, {
+        mimeType: 'text/csv',
+        dialogTitle: 'Sample Players CSV',
+      });
+    } catch (err) {
+      console.error('Error creating sample CSV', err);
+      Alert.alert('Error', 'Failed to create sample CSV.');
+    }
+  };
+
   return (
     <>
       <ThemedView style={{ flex: 1 }}>
@@ -217,18 +247,22 @@ export default function PlayersScreen() {
               No players defined. You can add players manually using the right icon on top of screen.
             </ThemedText>
             <ThemedText style={{ marginTop: 12 }}>
-              You can also import a list of users from a CSV file using the left icon. The accepted format of
-              the CSV file is shown below. The first line of the file should contain the column headers shown
-              below.
+              You can also import a list of users from a CSV file using the left icon. Tap the button below to
+              download a sample CSV file you can use as a template.
             </ThemedText>
-            <ThemedText style={{ marginTop: 12 }}>
-              'Name', 'Nickname', 'Speed Index', 'Email', 'Mobile #', 'Available'
-            </ThemedText>
-            <ThemedText>Example Player Definition:</ThemedText>
-            <ThemedText>
-              &quot;Anthony Smith&quot;, &quot;Tony&quot;, 1, &quot;tony12345@gmail.com&quot;,
-              &quot;123-456-7890&quot;, Yes
-            </ThemedText>
+            <Pressable
+              onPress={downloadSampleCSV}
+              style={{
+                marginTop: 12,
+                padding: 10,
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: iconColor,
+                alignItems: 'center',
+              }}
+            >
+              <ThemedText style={{ color: iconColor }}>Download Sample CSV</ThemedText>
+            </Pressable>
             <ThemedText style={{ marginTop: 12 }}>note: Speed Index:1=fast 5=slow</ThemedText>
           </ThemedView>
         )}
