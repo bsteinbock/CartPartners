@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 2,
   },
   rightAction: {
-    width: 96,
+    width: RIGHT_ACTION_WIDTH,
     minHeight: 48,
     backgroundColor: '#2e8b57',
     alignItems: 'center',
