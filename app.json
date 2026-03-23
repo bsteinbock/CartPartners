@@ -70,7 +70,9 @@
       }
     },
     "owner": "bsteinbk",
-    "runtimeVersion": "1.0.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "updates": {
       "url": "https://u.expo.dev/aa2776ab-0acf-45e8-8024-a45feb67b0fe",
       "enabled": true,
