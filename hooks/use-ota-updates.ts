@@ -27,7 +27,9 @@ export function useOTAUpdates() {
       }
     } catch (e) {
       // Silently ignore update check failures — the user can keep using the current version
-      console.log('OTA update check failed:', e);
+      if (__DEV__) {
+        console.log('OTA update check failed:', e);
+      }
     } finally {
       isCheckingRef.current = false;
     }
