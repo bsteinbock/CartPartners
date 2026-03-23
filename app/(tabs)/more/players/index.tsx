@@ -263,7 +263,6 @@ export default function PlayersScreen() {
             >
               <ThemedText style={{ color: iconColor }}>Download Sample CSV</ThemedText>
             </Pressable>
-            <ThemedText style={{ marginTop: 12 }}>note: Speed Index:1=fast 5=slow</ThemedText>
           </ThemedView>
         )}
         {all_players.length > 0 && (
