@@ -11,7 +11,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useFocusEffect } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import React, { memo, useEffect, useRef, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Switch } from 'react-native';
+import { Alert, FlatList, Pressable, StyleSheet, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 // Memoized player item component for better FlatList performance
@@ -318,17 +318,66 @@ export default function LineupScreen() {
               const playersToAdd = selectedPlayerOptions
                 .map((option) => option.value ?? null)
                 .filter((v): v is number => v !== null);
-              setIsPlayerPickerVisible(false);
-              // ensure the players are added to the league player list
-              addPlayersToLeague(playersToAdd, currentLeagueId!);
-              // also select the players we just added to the lineup
-              setSelectedPlayers((prev) => {
-                const newSelection = [...prev, ...playersToAdd];
-                persistSelection(newSelection);
-                return newSelection;
-              });
-              // clear popup list selection
-              setSelectedPlayerOptions([]);
+
+              if (playersToAdd.length === 0) {
+                setIsPlayerPickerVisible(false);
+                return;
+              }
+
+              // Ask user to confirm adding players to the league if they are not already in the league player list
+              const notInLeague = playersToAdd.filter((id) => !league_players.find((lp) => lp.id === id));
+
+              if (notInLeague.length > 0) {
+                Alert.alert(
+                  'Add Players to League',
+                  'The players you have selected are not currently in the league player list. Do you want to add them? They will be marked as available by default.',
+                  [
+                    {
+                      text: 'Add to Round Only',
+                      onPress: () => {
+                        setIsPlayerPickerVisible(false);
+                        setSelectedPlayers((prev) => {
+                          const newSelection = [...prev, ...playersToAdd];
+                          persistSelection(newSelection);
+                          return newSelection;
+                        });
+                        setSelectedPlayerOptions([]);
+                      },
+                    },
+
+                    {
+                      text: 'Add to Round and League',
+                      onPress: () => {
+                        setIsPlayerPickerVisible(false);
+                        // ensure the players are added to the league player list
+                        addPlayersToLeague(playersToAdd, currentLeagueId!);
+                        // also select the players we just added to the lineup
+                        setSelectedPlayers((prev) => {
+                          const newSelection = [...prev, ...playersToAdd];
+                          persistSelection(newSelection);
+                          return newSelection;
+                        });
+
+                        // clear popup list selection
+                        setSelectedPlayerOptions([]);
+                      },
+                    },
+                  ],
+                  { cancelable: false },
+                );
+              } else {
+                setIsPlayerPickerVisible(false);
+
+                // just add the players to the lineup since they are already in the league player list
+                setSelectedPlayers((prev) => {
+                  const newSelection = [...prev, ...playersToAdd];
+                  persistSelection(newSelection);
+                  return newSelection;
+                });
+
+                // clear popup list selection
+                setSelectedPlayerOptions([]);
+              }
             }}
             onClose={() => {
               setIsPlayerPickerVisible(false);

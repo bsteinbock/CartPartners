@@ -28,6 +28,7 @@ const SwipeablePlayerItem = ({
   const iconColor = useThemeColor({ light: undefined, dark: undefined }, 'icon');
   const switchTrackColor = useThemeColor({ light: undefined, dark: undefined }, 'switchTrackColor');
   const league = leagues.find((l) => l.id === currentLeagueId);
+  const textColor = player.available ? undefined : 'gray';
 
   const handleDelete = (player: Player) => {
     Alert.alert(
@@ -99,8 +100,12 @@ const SwipeablePlayerItem = ({
         >
           <ThemedView style={styles.itemInfo}>
             <ThemedView>
-              <ThemedText>{`${player.name}`}</ThemedText>
+              <ThemedText style={{ color: textColor }}>{`${player.name}`}</ThemedText>
               <ThemedText type="small">{`${player.email || 'No Email'}`}</ThemedText>
+              <ThemedText
+                style={{ color: player.nickname ? 'black' : 'gray' }}
+                type="small"
+              >{`${player.nickname || 'No Nickname'}`}</ThemedText>
             </ThemedView>
             <ThemedView style={{ alignItems: 'center', flexDirection: 'row', gap: 8 }}>
               <Switch
