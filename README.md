@@ -38,11 +38,12 @@ CartPartners provides a comprehensive set of features organized into tabs and dr
 The Rounds tab displays all your defined rounds and includes a button to add a new round. Key features include:
 
 - **League/Outing Picker**: The picker at the very top of the screen allows you to select a specific league or outing
-- **Round Management**: 
+- **Round Management**:
   - Long-press on a round to edit its details (course, date, and tee-time information)
-  - Swipe left on a round to delete it and all associated data
+  - Swipe left on a round to edit it or to delete it and all associated data
   - Tap a round to open its Lineup tab
 - **Round Details**: Each round is defined by specifying the course, date, and tee-time information, which will appear in announcements sent to players
+- **CSV Import**: Import multiple rounds at once from a CSV file. The file must contain `Course` and `Date` columns; an optional `TeeTimeInfo` column is also supported. Use the "Get Sample CSV" button to download a pre-formatted template
 
 #### Lineup Tab
 
@@ -59,7 +60,7 @@ Use the Lineup tab to specify the players participating in a particular round. F
 
 Create and manage the tee-time groupings for a round. Features include:
 
-- **Group Generation**: 
+- **Group Generation**:
   - Press "Generate" to create groups for the first time
   - Press "Regenerate" to update existing groups
   - The algorithm ensures cart partners change from round to round
@@ -85,6 +86,7 @@ Send notifications to players via email or text message. Features include:
 - **Player Selection**: Choose which players to notify from the current league's player list
 - **Message Composition**: Enter a custom title and message
 - **Delivery Options**: Send via email or SMS (when available)
+- **Call a Player**: Players with a mobile number on file show a chevron indicator. Swipe left on a player row to reveal a call button that opens the phone app directly for that player
 - **League Context**: The player list is specific to the currently active league
 
 #### Leagues/Outings
@@ -112,7 +114,7 @@ Manage the master player list containing all players known to the app. Features 
 - **Add Players**: Create new player entries with name, email, and phone information
 - **Edit Players**: Modify player details including availability status
 - **Delete Players**: Remove players from all leagues, rounds, and groups
-- **Import/Export**: 
+- **Import/Export**:
   - Import players from a CSV file
   - Export the entire player list to CSV for backup or sharing
 - **Universal List**: All players regardless of league association
