@@ -6,10 +6,10 @@ import { iosKeyboardToolbarOffset } from '@/constants/theme';
 import { useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { displayPhoneNumberFromE164, formatPhoneNumberToE164, generateNickname } from '@/lib/cart-utils';
+import Entypo from '@expo/vector-icons/Entypo';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Header } from '@react-navigation/elements';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { KeyboardAwareScrollView, KeyboardToolbar } from 'react-native-keyboard-controller';
 
@@ -21,6 +21,15 @@ export default function PlayerDetailScreen() {
   const textDim = useThemeColor({ light: undefined, dark: undefined }, 'textDim');
 
   const { all_players, addPlayer, updatePlayer } = useDbStore();
+  const currentPlayerIndex = useMemo(
+    () => (isNew ? -1 : all_players.findIndex((p) => p.id === Number(id))),
+    [all_players, id, isNew],
+  );
+  const previousPlayerId = currentPlayerIndex > 0 ? all_players[currentPlayerIndex - 1].id : null;
+  const nextPlayerId =
+    currentPlayerIndex >= 0 && currentPlayerIndex < all_players.length - 1
+      ? all_players[currentPlayerIndex + 1].id
+      : null;
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [mobileNumber, setMobileNumber] = useState('');
@@ -81,22 +90,36 @@ export default function PlayerDetailScreen() {
 
   return (
     <>
-      {Platform.OS === 'android' && (
-        <Stack.Screen
-          options={{
-            header: (props) => (
-              <Header
-                title="Define Players"
-                {...props}
-                headerStyle={{
-                  height: 36,
-                }}
-              />
-            ),
-            headerShown: true,
-          }}
-        />
-      )}
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          headerTitle: '',
+          headerRight: () => (
+            <View style={styles.headerButtons}>
+              {previousPlayerId !== null && (
+                <Pressable
+                  onPress={() => {
+                    router.setParams({ id: String(previousPlayerId) });
+                  }}
+                  hitSlop={8}
+                >
+                  <Entypo name="arrow-bold-up" size={24} color={iconButton} />
+                </Pressable>
+              )}
+              {nextPlayerId !== null && (
+                <Pressable
+                  onPress={() => {
+                    router.setParams({ id: String(nextPlayerId) });
+                  }}
+                  hitSlop={8}
+                >
+                  <Entypo name="arrow-bold-down" size={24} color={iconButton} />
+                </Pressable>
+              )}
+            </View>
+          ),
+        }}
+      />
       <ThemedView style={{ flex: 1 }}>
         <KeyboardAwareScrollView keyboardShouldPersistTaps="handled">
           <ThemedView style={styles.container}>
@@ -150,7 +173,10 @@ export default function PlayerDetailScreen() {
                       try {
                         const supported = await Linking.canOpenURL(url);
                         if (!supported) {
-                          Alert.alert('Cannot place call', 'Your device cannot place calls using this number.');
+                          Alert.alert(
+                            'Cannot place call',
+                            'Your device cannot place calls using this number.',
+                          );
                           return;
                         }
                         await Linking.openURL(url);
@@ -174,7 +200,10 @@ export default function PlayerDetailScreen() {
                         }
                         await Linking.openURL(url);
                       } catch (error) {
-                        Alert.alert('Text failed', 'An error occurred while trying to open the messaging app.');
+                        Alert.alert(
+                          'Text failed',
+                          'An error occurred while trying to open the messaging app.',
+                        );
                       }
                     }}
                     hitSlop={8}
@@ -255,5 +284,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 20,
     marginLeft: 16,
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 15,
   },
 });
