@@ -6,9 +6,11 @@ import { OptionPickerItem } from '@/components/ui/OptionPickerItem';
 import SwipeableRound from '@/components/ui/SwipeableRound';
 import { useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
-import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
+import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { FlatList, Pressable } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -22,6 +24,23 @@ export default function RoundsScreen() {
   const [isLeaguePickerVisible, setIsLeaguePickerVisible] = useState<boolean>(false);
   const [leagueOptions, setLeagueOptions] = useState<OptionEntry[]>([]);
   const [pickedOption, setPickedOption] = useState<OptionEntry | undefined>(undefined);
+
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+
+      (async () => {
+        const storedHidePastRounds = await SecureStore.getItemAsync('cartPartnerHidePastRounds');
+        if (isActive) {
+          useDbStore.getState().setOnlyUpcomingDates(storedHidePastRounds === 'true');
+        }
+      })();
+
+      return () => {
+        isActive = false;
+      };
+    }, []),
+  );
 
   useEffect(() => {
     const availableOptions = leagues.map((r) => ({
@@ -46,6 +65,10 @@ export default function RoundsScreen() {
 
   const createAndOpen = async () => {
     router.push({ pathname: '/edit-or-add', params: { id: 'new' } });
+  };
+
+  const handleImportCSV = () => {
+    router.push('/import-csv-rounds' as any);
   };
 
   const handleLeagueOptionChange = (option: OptionEntry) => {
@@ -86,23 +109,28 @@ export default function RoundsScreen() {
             }}
           >
             <ThemedText type="title">Rounds</ThemedText>
-            <Pressable onPress={createAndOpen}>
-              <FontAwesome5 name="plus-circle" size={28} color={iconColor} />
-            </Pressable>
+            <View style={{ flexDirection: 'row', gap: 20, alignItems: 'center' }}>
+              <Pressable onPress={handleImportCSV}>
+                <MaterialCommunityIcons name="application-import" size={28} color={iconColor} />
+              </Pressable>
+              <Pressable onPress={createAndOpen}>
+                <FontAwesome5 name="plus-circle" size={28} color={iconColor} />
+              </Pressable>
+            </View>
           </View>
           <>
             {rounds.length === 0 && (
-              <ThemedView style={{ flex: 1, padding: 12, marginTop: 40, alignItems: 'center' }}>
+              <ThemedView style={{ flex: 1, padding: 12, marginTop: 30, alignItems: 'center' }}>
                 <ThemedText type="title">Welcome</ThemedText>
                 <ThemedText style={{ marginTop: 12 }}>
                   CartPartners is designed to maximize your interaction with the rest of your golfing buddies.
                   It does this by ensuring your cart partners are different from round to round.
                 </ThemedText>
                 <ThemedText style={{ marginTop: 12 }}>
-                  To get started just add a round using the icon in the top right. Once that is done, select
-                  the round and define the lineup of players for the round. Finally use the Group tab at the
-                  bottom to be taken to a screen that generate you Tee Groups and then allows you to notify
-                  them via email. For more info see the About tab.
+                  To get started just add a round using the blue + icon in the top right. Once that is done,
+                  select the round and define the lineup of players for the round. Finally use the Group tab
+                  at the bottom to be taken to a screen that generates your Tee Groups and then allows you to
+                  notify them via email. For more info see the About tab.
                 </ThemedText>
               </ThemedView>
             )}

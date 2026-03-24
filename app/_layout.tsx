@@ -61,6 +61,10 @@ export default function RootLayout() {
                 name="setGroupCoordinator"
                 options={{ presentation: 'modal', title: 'Group Coordinator' }}
               />
+              <Stack.Screen
+                name="import-csv-rounds"
+                options={{ presentation: 'modal', title: 'Import Rounds from CSV' }}
+              />
             </Stack>
             <StatusBar style="auto" />
           </ThemeProvider>

@@ -292,6 +292,7 @@ export type UpdatedPlayer = Partial<Omit<Player, 'id'>>;
 export type UpdatedRound = Partial<Omit<Round, 'id'>>;
 
 type DbState = {
+  onlyUpcomingDates: boolean;
   league_players: Player[];
   all_players: Player[];
   rounds: Round[]; // most recent at index 0
@@ -339,6 +340,7 @@ type DbState = {
   updateLeague: (id: number, name: string) => void;
   deleteLeague: (id: number) => void;
   setManualGroupList: (groupList: ManualGroupList[]) => void;
+  setOnlyUpcomingDates: (onlyUpcoming: boolean) => void;
 };
 
 // ------------------- STORE -------------------
@@ -354,11 +356,17 @@ export const useDbStore = create<DbState>((set, get) => ({
   manualGroupList: [],
   // initialize currentLeagueId from meta if available (will be null until fetchLeagues runs too)
   currentRoundId: null,
+  onlyUpcomingDates: true,
   currentLeagueId: readMeta('lastActiveLeagueId') ? Number(readMeta('lastActiveLeagueId')) : null,
 
   setCurrentRoundId: (id: number | null) => {
     set({ currentRoundId: id });
     set({ manualGroupList: [] });
+  },
+
+  setOnlyUpcomingDates: (onlyUpcoming: boolean) => {
+    set({ onlyUpcomingDates: onlyUpcoming });
+    useDbStore.getState().fetchRounds();
   },
 
   setCurrentLeagueId: (id: number | null) => {
@@ -475,7 +483,7 @@ export const useDbStore = create<DbState>((set, get) => ({
 
   fetchRounds: () => {
     const db = getDb();
-    const rows = db.getAllSync('SELECT * FROM rounds WHERE league_id = ? ORDER BY date DESC;', [
+    const rows = db.getAllSync(`SELECT * FROM rounds WHERE league_id = ? ORDER BY date ASC;`, [
       get().currentLeagueId ?? 0,
     ]) as {
       id: number;
@@ -485,7 +493,7 @@ export const useDbStore = create<DbState>((set, get) => ({
       league_id?: number | null;
     }[];
 
-    const rounds: Round[] = rows.map((r) => ({
+    let rounds: Round[] = rows.map((r) => ({
       id: r.id,
       date: r.date,
       course: r.course,
@@ -493,9 +501,40 @@ export const useDbStore = create<DbState>((set, get) => ({
       league_id: r.league_id ?? null,
     }));
 
+    if (get().onlyUpcomingDates ?? true) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const upcomingRounds = rounds.filter((r) => {
+        if (!r.date) {
+          return true;
+        }
+
+        const roundDate = new Date(r.date);
+        if (Number.isNaN(roundDate.getTime())) {
+          return true;
+        }
+
+        roundDate.setHours(0, 0, 0, 0);
+        return roundDate >= today;
+      });
+
+      rounds = upcomingRounds;
+    }
+
+    const existingCurrentRoundId = get().currentRoundId;
+    const existingRoundStillValid =
+      existingCurrentRoundId !== null && rounds.some((round) => round.id === existingCurrentRoundId);
+
+    let nextCurrentRoundId = existingCurrentRoundId;
+
+    if (!existingRoundStillValid) {
+      nextCurrentRoundId = rounds.length > 0 ? rounds[0].id : null;
+    }
+
     set({
       rounds,
-      currentRoundId: get().currentRoundId ?? (rounds.length > 0 ? rounds[0].id : null),
+      currentRoundId: nextCurrentRoundId,
     });
   },
 
@@ -511,10 +550,13 @@ export const useDbStore = create<DbState>((set, get) => ({
     set({ roundPlayers: rows });
 
     // Update round summaries
-    const summaries = rows.reduce((acc: Record<number, number>, rp) => {
-      acc[rp.round_id] = (acc[rp.round_id] || 0) + 1;
-      return acc;
-    }, {} as Record<number, number>);
+    const summaries = rows.reduce(
+      (acc: Record<number, number>, rp) => {
+        acc[rp.round_id] = (acc[rp.round_id] || 0) + 1;
+        return acc;
+      },
+      {} as Record<number, number>,
+    );
 
     const roundSummaries = Object.entries(summaries).map(([round_id, numPlayers]) => ({
       round_id: Number(round_id),

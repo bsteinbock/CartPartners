@@ -11,7 +11,7 @@ import { ThemedText } from '../themed-text';
 import { ThemedView } from '../themed-view';
 import { SwipeableComponent } from './SwipeableComponent';
 
-const RIGHT_ACTION_WIDTH = 80;
+const RIGHT_ACTION_WIDTH = 160;
 const SWIPE_THRESHOLD_WIDTH = 50;
 
 const SwipeableRoundItem = ({ round }: { round: Round }) => {
@@ -44,14 +44,25 @@ const SwipeableRoundItem = ({ round }: { round: Round }) => {
 
   const RightAction = () => {
     return (
-      <Pressable
-        style={styles.rightAction}
-        onPress={() => {
-          handleDelete(round.id);
-        }}
-      >
-        <MaterialIcons name="delete" size={24} color="white" />
-      </Pressable>
+      <ThemedView style={styles.rightActions}>
+        <Pressable
+          style={styles.rightAction}
+          onPress={() => {
+            handleDelete(round.id);
+          }}
+        >
+          <MaterialIcons name="delete" size={24} color="white" />
+        </Pressable>
+        <Pressable
+          style={styles.editAction}
+          onPress={() => {
+            roundRef?.current.close();
+            openEdit(round);
+          }}
+        >
+          <MaterialIcons name="edit" size={24} color="white" />
+        </Pressable>
+      </ThemedView>
     );
   };
 
@@ -121,8 +132,19 @@ const styles = StyleSheet.create({
     marginRight: 30,
   },
 
+  rightActions: {
+    flexDirection: 'row',
+    height: 60,
+  },
+  editAction: {
+    width: 80,
+    height: 60,
+    backgroundColor: '#007AFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   rightAction: {
-    width: 100,
+    width: 80,
     height: 60,
     backgroundColor: deleteBackgroundColor,
     alignItems: 'center',

@@ -18,6 +18,7 @@ export default function SettingsScreen() {
   const iconButton = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
   const [useEmailCC, setUseEmailCC] = useState<boolean>(false);
   const [useNickname, setUseNickname] = useState<boolean>(false);
+  const [hidePastRounds, setHidePastRounds] = useState<boolean>(false);
   const [excludeCoordinatorFromEmail, setExcludeCoordinatorFromEmail] = useState<boolean>(false);
   const [isPlayerPickerVisible, setIsPlayerPickerVisible] = useState<boolean>(false);
   const [playerOptions, setPlayerOptions] = useState<OptionEntry[]>([]);
@@ -34,6 +35,9 @@ export default function SettingsScreen() {
 
         const storedUseNickname = await SecureStore.getItemAsync('cartPartnerUseNickname');
         setUseNickname(storedUseNickname === 'true');
+
+        const storedHidePastRounds = (await SecureStore.getItemAsync('cartPartnerHidePastRounds')) ?? 'true';
+        setHidePastRounds(storedHidePastRounds === 'true');
 
         const storedExcludeCoordinator = await SecureStore.getItemAsync(
           'cartPartnerExcludeCoordinatorFromEmail',
@@ -68,6 +72,12 @@ export default function SettingsScreen() {
   const handleToggleUseNickname = async (value: boolean) => {
     setUseNickname(value);
     await SecureStore.setItemAsync('cartPartnerUseNickname', value.toString());
+  };
+
+  const handleToggleHidePastRounds = async (value: boolean) => {
+    setHidePastRounds(value);
+    await SecureStore.setItemAsync('cartPartnerHidePastRounds', value.toString());
+    useDbStore.getState().setOnlyUpcomingDates(value);
   };
 
   const handleToggleExcludeCoordinator = async (value: boolean) => {
@@ -110,9 +120,26 @@ export default function SettingsScreen() {
         </ThemedText>
 
         <ThemedText type="subtitle" style={[styles.sectionTitle, styles.nicknameSection]}>
+          Hide Past Rounds
+        </ThemedText>
+        <ThemedView style={styles.settingRow}>
+          <ThemedView style={styles.settingLabelContainer}>
+            <ThemedText style={styles.settingLabel}>Hide Rounds that are before current date</ThemedText>
+          </ThemedView>
+          <Switch
+            trackColor={{ true: switchTrackColor }}
+            value={hidePastRounds}
+            onValueChange={handleToggleHidePastRounds}
+          />
+        </ThemedView>
+
+        <ThemedText type="subtitle" style={[styles.sectionTitle, styles.nicknameSection]}>
           Use Nickname
         </ThemedText>
-
+        <ThemedText type="small" style={styles.settingDescription}>
+          When enabled, the lineup screen shows each player&apos;s nickname when one is available. Otherwise,
+          it shows the full name.
+        </ThemedText>
         <ThemedView style={styles.settingRow}>
           <ThemedView style={styles.settingLabelContainer}>
             <ThemedText style={styles.settingLabel}>Display Nicknames when setting Lineup</ThemedText>
