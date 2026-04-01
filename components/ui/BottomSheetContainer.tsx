@@ -56,11 +56,18 @@ export default function BottomSheetContainer({
                     },
                   ]}
                 >
-                  <ThemedText style={[{ fontWeight: '600' }]}>{title}</ThemedText>
+                  <ThemedText
+                    numberOfLines={2}
+                    ellipsizeMode="tail"
+                    style={[{ fontWeight: '600', flex: 1, minWidth: 0, paddingRight: 12 }]}
+                  >
+                    {title}
+                  </ThemedText>
                   <ThemedView
                     style={{
                       flexDirection: 'row',
                       alignItems: 'center',
+                      flexShrink: 0,
                       gap: 20,
                     }}
                   >
@@ -107,6 +114,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
+    paddingVertical: 10,
+    gap: 10,
   },
 });
