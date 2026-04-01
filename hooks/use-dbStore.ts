@@ -340,7 +340,6 @@ type DbState = {
   updateLeague: (id: number, name: string) => void;
   deleteLeague: (id: number) => void;
   resetAppData: () => void;
-  clearRoundsForLeague: (leagueId: number) => void;
   clearLeagueData: (leagueId: number) => void;
   setManualGroupList: (groupList: ManualGroupList[]) => void;
   setOnlyUpcomingDates: (onlyUpcoming: boolean) => void;
@@ -409,6 +408,14 @@ export const useDbStore = create<DbState>((set, get) => ({
       } else if (rows.length > 0) {
         set({ currentLeagueId: rows[0].id });
         writeMeta('lastActiveLeagueId', String(rows[0].id));
+      }
+    } else if (!rows.some((r) => r.id === current)) {
+      const fallbackLeagueId = rows.length > 0 ? rows[0].id : null;
+      set({ currentLeagueId: fallbackLeagueId });
+      if (fallbackLeagueId === null) {
+        writeMeta('lastActiveLeagueId', null);
+      } else {
+        writeMeta('lastActiveLeagueId', String(fallbackLeagueId));
       }
     }
   },
@@ -877,13 +884,31 @@ export const useDbStore = create<DbState>((set, get) => ({
       fetchLeagues,
     } = useDbStore.getState();
 
-    fetchLeaguePlayers();
+    // Resolve leagues first so dependent queries use a valid currentLeagueId.
+    fetchLeagues();
+    const leagues = useDbStore.getState().leagues;
+    const firstLeagueId = leagues.length > 0 ? leagues[0].id : null;
+    const currentLeagueId = useDbStore.getState().currentLeagueId;
+
+    // Only override currentLeagueId if it's invalid; preserve user-selected valid leagues
+    const isCurrentLeagueValid = currentLeagueId !== null && leagues.some((l) => l.id === currentLeagueId);
+    const resolvedLeagueId = isCurrentLeagueValid ? currentLeagueId : firstLeagueId;
+
+    if (!isCurrentLeagueValid && resolvedLeagueId !== currentLeagueId) {
+      set({ currentLeagueId: resolvedLeagueId });
+      if (resolvedLeagueId === null) {
+        writeMeta('lastActiveLeagueId', null);
+      } else {
+        writeMeta('lastActiveLeagueId', String(resolvedLeagueId));
+      }
+    }
+
+    fetchLeaguePlayers(resolvedLeagueId);
     fetchAllPlayers();
     fetchRounds();
     fetchGroups();
     fetchRoundPlayers();
     fetchGroupPlayers();
-    fetchLeagues();
     setManualGroupList([]);
   },
 
@@ -1065,35 +1090,6 @@ export const useDbStore = create<DbState>((set, get) => ({
       manualGroupList: [],
     });
 
-    useDbStore.getState().refreshAll();
-  },
-
-  clearRoundsForLeague: (leagueId: number) => {
-    const db = getDb();
-
-    db.withTransactionSync(() => {
-      const roundIds = db
-        .getAllSync<{ id: number }>('SELECT id FROM rounds WHERE league_id = ?;', [leagueId])
-        .map((row) => row.id);
-
-      for (const roundId of roundIds) {
-        db.runSync('DELETE FROM round_players WHERE round_id = ?;', [roundId]);
-
-        const groupIds = db
-          .getAllSync<{ id: number }>('SELECT id FROM groups WHERE round_id = ?;', [roundId])
-          .map((row) => row.id);
-
-        for (const groupId of groupIds) {
-          db.runSync('DELETE FROM group_players WHERE group_id = ?;', [groupId]);
-        }
-
-        db.runSync('DELETE FROM groups WHERE round_id = ?;', [roundId]);
-      }
-
-      db.runSync('DELETE FROM rounds WHERE league_id = ?;', [leagueId]);
-    });
-
-    set({ currentRoundId: null, manualGroupList: [] });
     useDbStore.getState().refreshAll();
   },
 

@@ -7,8 +7,8 @@ import ThemedButton from '@/components/ui/ThemedButton';
 import { GroupPlayers, useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import {
-  composeEmail,
   buildPlayingPartnerFrequencies,
+  composeEmail,
   formatGroupPlayersByNames,
   formatManualGroupPlayersByNames,
   generateGroupsForRound,
@@ -491,7 +491,7 @@ export default function GroupsScreen() {
               {currentRoundPlayerIds.length === 0 ? (
                 <ThemedText type="defaultSemiBold" style={{ color: errorText, padding: 10 }}>
                   The lineup of players for this round has not been set. Please return to the Rounds tab and
-                  tap the round to select league_players.
+                  select the players who will participate.
                 </ThemedText>
               ) : (
                 <>

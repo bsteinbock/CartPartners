@@ -10,7 +10,7 @@ import React, { useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet } from 'react-native';
 
 export default function ResetScreen() {
-  const { leagues, resetAppData, clearRoundsForLeague, clearLeagueData } = useDbStore();
+  const { leagues, resetAppData, clearLeagueData } = useDbStore();
   const iconButton = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
   const disabledColor = useThemeColor({ light: undefined, dark: undefined }, 'disabledColor');
   const backgroundColor = useThemeColor({ light: undefined, dark: undefined }, 'background');
@@ -18,7 +18,6 @@ export default function ResetScreen() {
   const [leagueOptions, setLeagueOptions] = useState<OptionEntry[]>([]);
   const [pickedLeagueForRounds, setPickedLeagueForRounds] = useState<OptionEntry | undefined>(undefined);
   const [pickedLeagueForClear, setPickedLeagueForClear] = useState<OptionEntry | undefined>(undefined);
-  const [isRoundsLeaguePickerVisible, setIsRoundsLeaguePickerVisible] = useState(false);
   const [isClearLeaguePickerVisible, setIsClearLeaguePickerVisible] = useState(false);
 
   useEffect(() => {
@@ -66,24 +65,6 @@ export default function ResetScreen() {
               { cancelable: true },
             );
           },
-        },
-      ],
-      { cancelable: true },
-    );
-  };
-
-  const confirmClearRounds = () => {
-    if (!pickedLeagueForRounds?.value) return;
-
-    Alert.alert(
-      'Clear The Rounds',
-      `Delete all rounds, round players, and groups for ${pickedLeagueForRounds.label}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Clear Rounds',
-          style: 'destructive',
-          onPress: () => clearRoundsForLeague(Number(pickedLeagueForRounds.value)),
         },
       ],
       { cancelable: true },

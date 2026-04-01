@@ -3,10 +3,16 @@ import { ThemedView } from '@/components/themed-view';
 import BottomSheetContainer from '@/components/ui/BottomSheetContainer';
 import MultiSelectOptionList from '@/components/ui/MultiSelectOptionList';
 import { OptionEntry } from '@/components/ui/OptionList';
+import { StyledHeaderBackButton } from '@/components/ui/StyledHeaderBackButton';
 import ThemedButton from '@/components/ui/ThemedButton';
 import { ManualGroupList, Player, RoundPlayer, useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
-import { formatManualGroupPlayersByNames, getGroupSizes } from '@/lib/cart-utils';
+import {
+  buildPlayingPartnerFrequencies,
+  formatManualGroupPlayersByNames,
+  generateGroupsForRound,
+  getGroupSizes,
+} from '@/lib/cart-utils';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
@@ -21,6 +27,8 @@ export default function DefineManualGroups() {
     manualGroupList,
     league_players,
     setGroupsForRound,
+    groupPlayers,
+    all_players,
   } = useDbStore();
   const [availablePlayerIds, setAvailablePlayerIds] = useState<RoundPlayer[]>([]);
   const [availablePlayers, setAvailablePlayers] = useState<Player[]>([]);
@@ -141,19 +149,36 @@ export default function DefineManualGroups() {
     });
   };
 
-  const finishGrouping = () => {
-    if (availablePlayers.length === 0) {
-      // if all players have been assigned to groups the we can save to database
-      setGroupsForRound(currentRoundId!, manualGroups);
-      setManualGroupList([]);
-      setManualGroups([]);
-    } else {
-      // if manual groups does not include all players return to Groups tab so the remaining groups can be generated.
-      setManualGroupList(manualGroups);
-      setManualGroups([]);
+  const finishGrouping = useCallback(() => {
+    let finalGroupList: ManualGroupList[] = [...manualGroups];
+
+    if (availablePlayers.length > 0) {
+      // Generate groups for remaining available players
+      const remainingPlayerIds = availablePlayers.map((p) => p.id);
+      const partnerFrequencies = buildPlayingPartnerFrequencies(remainingPlayerIds, groupPlayers);
+      const generatedGroups = generateGroupsForRound({
+        playerIds: remainingPlayerIds,
+        partnerFrequencies,
+        allPlayers: all_players,
+      });
+      finalGroupList = [...manualGroups, ...generatedGroups];
     }
+
+    // Save all groups (manual + generated) to database
+    setGroupsForRound(currentRoundId!, finalGroupList);
+    setManualGroupList([]);
+    setManualGroups([]);
     router.back();
-  };
+  }, [
+    availablePlayers,
+    currentRoundId,
+    manualGroups,
+    setGroupsForRound,
+    setManualGroupList,
+    router,
+    groupPlayers,
+    all_players,
+  ]);
 
   const cancelGrouping = () => {
     if (manualGroups.length > 0) {
@@ -174,6 +199,26 @@ export default function DefineManualGroups() {
     }
     router.back();
   };
+
+  const handleBackPress = useCallback(() => {
+    if (manualGroups.length > 0) {
+      Alert.alert('Manual Groups', 'Are you done setting manual groups?.', [
+        {
+          text: 'No',
+          style: 'cancel',
+        },
+        {
+          text: 'Yes',
+          style: 'destructive',
+          onPress: () => {
+            finishGrouping();
+          },
+        },
+      ]);
+      return;
+    }
+    router.back();
+  }, [router, manualGroups, finishGrouping]);
 
   // Render each group in the FlatList
   const renderManualGroup = ({ item, index }: { item: string; index: number }) => {
@@ -210,6 +255,9 @@ export default function DefineManualGroups() {
       <Stack.Screen
         options={{
           title: 'Manual Groups',
+          gestureEnabled: false,
+          headerLeft: () => <StyledHeaderBackButton onPress={handleBackPress} />,
+
           headerTitleStyle: {
             fontSize: 22,
             fontWeight: '500',
