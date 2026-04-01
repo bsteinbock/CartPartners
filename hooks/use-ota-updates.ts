@@ -1,6 +1,9 @@
+import * as SecureStore from 'expo-secure-store';
 import * as Updates from 'expo-updates';
 import { useEffect, useRef } from 'react';
 import { Alert, AppState } from 'react-native';
+
+const LAST_NOTIFIED_UPDATE_ID = 'cartPartnerLastNotifiedUpdateId';
 
 /**
  * Checks for OTA updates on mount and when the app returns to the foreground.
@@ -35,8 +38,29 @@ export function useOTAUpdates() {
     }
   };
 
+  const notifyIfAppWasUpdated = async () => {
+    if (__DEV__) return;
+
+    try {
+      // isEmbeddedLaunch is false when app is running an OTA update.
+      const updateId = Updates.updateId;
+      if (Updates.isEmbeddedLaunch || !updateId) return;
+
+      const lastNotified = await SecureStore.getItemAsync(LAST_NOTIFIED_UPDATE_ID);
+      if (lastNotified === updateId) return;
+
+      await SecureStore.setItemAsync(LAST_NOTIFIED_UPDATE_ID, updateId);
+      Alert.alert('App Updated', 'The latest update was applied successfully.');
+    } catch (e) {
+      if (__DEV__) {
+        console.log('OTA update notification check failed:', e);
+      }
+    }
+  };
+
   // Check on mount
   useEffect(() => {
+    notifyIfAppWasUpdated();
     checkForUpdate();
   }, []);
 
