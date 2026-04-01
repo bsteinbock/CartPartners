@@ -339,6 +339,9 @@ type DbState = {
   setCurrentLeagueId: (id: number | null) => void;
   updateLeague: (id: number, name: string) => void;
   deleteLeague: (id: number) => void;
+  resetAppData: () => void;
+  clearRoundsForLeague: (leagueId: number) => void;
+  clearLeagueData: (leagueId: number) => void;
   setManualGroupList: (groupList: ManualGroupList[]) => void;
   setOnlyUpcomingDates: (onlyUpcoming: boolean) => void;
 };
@@ -1029,6 +1032,116 @@ export const useDbStore = create<DbState>((set, get) => ({
     useDbStore.getState().fetchRoundPlayers();
     useDbStore.getState().fetchGroupPlayers();
     useDbStore.getState().setManualGroupList([]);
+  },
+
+  resetAppData: () => {
+    const db = getDb();
+
+    db.withTransactionSync(() => {
+      db.runSync('DELETE FROM group_players;');
+      db.runSync('DELETE FROM groups;');
+      db.runSync('DELETE FROM round_players;');
+      db.runSync('DELETE FROM rounds;');
+      db.runSync('DELETE FROM league_players;');
+      db.runSync('DELETE FROM players;');
+      db.runSync('DELETE FROM leagues;');
+      db.runSync('DELETE FROM meta;');
+
+      db.runSync('INSERT INTO leagues (name) VALUES (?);', ['Default']);
+    });
+
+    const defaultLeague = db.getFirstSync<{ id: number }>('SELECT id FROM leagues ORDER BY id ASC LIMIT 1;');
+    const nextLeagueId = defaultLeague?.id ?? null;
+
+    if (nextLeagueId !== null) {
+      writeMeta('lastActiveLeagueId', String(nextLeagueId));
+    } else {
+      writeMeta('lastActiveLeagueId', null);
+    }
+
+    set({
+      currentLeagueId: nextLeagueId,
+      currentRoundId: null,
+      manualGroupList: [],
+    });
+
+    useDbStore.getState().refreshAll();
+  },
+
+  clearRoundsForLeague: (leagueId: number) => {
+    const db = getDb();
+
+    db.withTransactionSync(() => {
+      const roundIds = db
+        .getAllSync<{ id: number }>('SELECT id FROM rounds WHERE league_id = ?;', [leagueId])
+        .map((row) => row.id);
+
+      for (const roundId of roundIds) {
+        db.runSync('DELETE FROM round_players WHERE round_id = ?;', [roundId]);
+
+        const groupIds = db
+          .getAllSync<{ id: number }>('SELECT id FROM groups WHERE round_id = ?;', [roundId])
+          .map((row) => row.id);
+
+        for (const groupId of groupIds) {
+          db.runSync('DELETE FROM group_players WHERE group_id = ?;', [groupId]);
+        }
+
+        db.runSync('DELETE FROM groups WHERE round_id = ?;', [roundId]);
+      }
+
+      db.runSync('DELETE FROM rounds WHERE league_id = ?;', [leagueId]);
+    });
+
+    set({ currentRoundId: null, manualGroupList: [] });
+    useDbStore.getState().refreshAll();
+  },
+
+  clearLeagueData: (leagueId: number) => {
+    const db = getDb();
+
+    db.withTransactionSync(() => {
+      const roundIds = db
+        .getAllSync<{ id: number }>('SELECT id FROM rounds WHERE league_id = ?;', [leagueId])
+        .map((row) => row.id);
+
+      for (const roundId of roundIds) {
+        db.runSync('DELETE FROM round_players WHERE round_id = ?;', [roundId]);
+
+        const groupIds = db
+          .getAllSync<{ id: number }>('SELECT id FROM groups WHERE round_id = ?;', [roundId])
+          .map((row) => row.id);
+
+        for (const groupId of groupIds) {
+          db.runSync('DELETE FROM group_players WHERE group_id = ?;', [groupId]);
+        }
+
+        db.runSync('DELETE FROM groups WHERE round_id = ?;', [roundId]);
+      }
+
+      db.runSync('DELETE FROM rounds WHERE league_id = ?;', [leagueId]);
+      db.runSync('DELETE FROM league_players WHERE league_id = ?;', [leagueId]);
+      db.runSync('DELETE FROM leagues WHERE id = ?;', [leagueId]);
+
+      const remainingLeague = db.getFirstSync<{ id: number }>(
+        'SELECT id FROM leagues ORDER BY name ASC LIMIT 1;',
+      );
+      if (!remainingLeague) {
+        db.runSync('INSERT INTO leagues (name) VALUES (?);', ['Default']);
+      }
+    });
+
+    const nextLeague = db.getFirstSync<{ id: number }>('SELECT id FROM leagues ORDER BY name ASC LIMIT 1;');
+    const nextLeagueId = nextLeague?.id ?? null;
+
+    if (nextLeagueId !== null) {
+      writeMeta('lastActiveLeagueId', String(nextLeagueId));
+    } else {
+      writeMeta('lastActiveLeagueId', null);
+    }
+
+    set({ currentLeagueId: nextLeagueId, currentRoundId: null, manualGroupList: [] });
+    useDbStore.getState().refreshAll();
   },
 }));
 
