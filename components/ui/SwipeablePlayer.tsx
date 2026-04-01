@@ -28,8 +28,9 @@ const SwipeablePlayerItem = ({
   const iconColor = useThemeColor({ light: undefined, dark: undefined }, 'icon');
   const switchTrackColor = useThemeColor({ light: undefined, dark: undefined }, 'switchTrackColor');
   const league = leagues.find((l) => l.id === currentLeagueId);
-  const textColor = player.available ? undefined : 'gray';
-  const nicknameColor = !player.available ? 'gray' : !player.nickname ? 'gray' : undefined;
+  const defTextColor = useThemeColor({ light: undefined, dark: undefined }, 'text');
+  const textColor = player.available ? defTextColor : 'gray';
+  const nicknameColor = !player.available ? 'gray' : !player.nickname ? 'gray' : defTextColor;
 
   const handleDelete = (player: Player) => {
     Alert.alert(
