@@ -11,6 +11,43 @@ const DB_NAME = 'cart-partners.db';
 
 let db: SQLite.SQLiteDatabase | null = null;
 
+function getDbDirectory() {
+  return new Directory(Paths.document, DB_SUBDIR);
+}
+
+function getDbFiles() {
+  const directory = getDbDirectory();
+  return {
+    main: new File(directory, DB_NAME),
+    wal: new File(directory, `${DB_NAME}-wal`),
+    shm: new File(directory, `${DB_NAME}-shm`),
+  };
+}
+
+function deleteFileIfExists(file: File) {
+  if (file.exists) {
+    file.delete();
+  }
+}
+
+function closeDbConnection() {
+  if (!db) return;
+
+  try {
+    db.execSync('PRAGMA wal_checkpoint(TRUNCATE);');
+  } catch (err) {
+    console.warn('Failed to checkpoint WAL before closing DB:', err);
+  }
+
+  try {
+    db.closeSync();
+  } catch (err) {
+    console.warn('Failed to close DB (may already be closed):', err);
+  } finally {
+    db = null;
+  }
+}
+
 export function getDatabasePath(): string {
   const db = getDb();
   return db.databasePath;
@@ -18,7 +55,7 @@ export function getDatabasePath(): string {
 
 function getDb() {
   if (!db) {
-    const directory = new Directory(Paths.document, DB_SUBDIR);
+    const directory = getDbDirectory();
     if (!directory.exists) directory.create({ idempotent: true });
 
     db = SQLite.openDatabaseSync(DB_NAME, undefined, directory.uri);
@@ -161,11 +198,7 @@ export async function backupDatabase() {
   // 2. Close the DB before copying (IMPORTANT for iOS)
   const database = getDb();
   const dbPath = database.databasePath;
-  try {
-    database.closeSync();
-  } catch (err) {
-    console.warn('Failed to close DB (may already be closed):', err);
-  }
+  closeDbConnection();
 
   // 3. Copy the db to the back-up location
   const backupFile = new File(backupDir, DB_NAME);
@@ -179,7 +212,7 @@ export async function backupDatabase() {
 
   // 4. Reopen the DB so the app can keep using it
   try {
-    db = SQLite.openDatabaseSync(DB_NAME, undefined, new Directory(Paths.document, DB_SUBDIR).uri);
+    db = SQLite.openDatabaseSync(DB_NAME, undefined, getDbDirectory().uri);
   } catch (err) {
     console.error('Failed to reopen DB after backup!', err);
     throw err;
@@ -200,7 +233,8 @@ export async function backupDatabase() {
 export const restoreDatabaseFromFile = async (selectedFileUri: string): Promise<boolean> => {
   try {
     // Construct file / directory references
-    const currentDbFile = new File(Paths.document, DB_SUBDIR, DB_NAME);
+    const currentDbFiles = getDbFiles();
+    const currentDbFile = currentDbFiles.main;
     const sourceFile = new File(selectedFileUri);
 
     const now = new Date();
@@ -212,14 +246,15 @@ export const restoreDatabaseFromFile = async (selectedFileUri: string): Promise<
       backupFile.delete();
     }
 
-    //  Backup current DB
-    currentDbFile.copy(backupFile);
-
     // Copy selected DB into app’s cache to safely open and inspect
     const tempImportFile = new File(Paths.cache, 'imported-temp.db');
+    const tempImportWalFile = new File(Paths.cache, 'imported-temp.db-wal');
+    const tempImportShmFile = new File(Paths.cache, 'imported-temp.db-shm');
     if (tempImportFile.exists) {
       tempImportFile.delete();
     }
+    deleteFileIfExists(tempImportWalFile);
+    deleteFileIfExists(tempImportShmFile);
     sourceFile.copy(tempImportFile);
     const testDb = SQLite.openDatabaseSync('imported-temp.db', undefined, Paths.cache.uri);
 
@@ -239,19 +274,27 @@ export const restoreDatabaseFromFile = async (selectedFileUri: string): Promise<
     ];
 
     testDb.closeSync();
+    deleteFileIfExists(tempImportWalFile);
+    deleteFileIfExists(tempImportShmFile);
+
     for (const table of expectedTables) {
       if (!tables.includes(table)) {
         throw new Error(`Invalid database: missing table ${table}`);
       }
     }
 
-    // Replace current DB with selectedFile
-    if (db) {
-      db.closeSync();
-      db = null;
+    // Close current DB and checkpoint WAL so the backup and replacement are consistent.
+    closeDbConnection();
+
+    // Backup current DB after the connection is closed so the file is fully flushed.
+    if (currentDbFile.exists) {
+      currentDbFile.copy(backupFile);
     }
 
-    currentDbFile.delete();
+    // Remove the current database and SQLite WAL sidecar files before swapping in the restored DB.
+    deleteFileIfExists(currentDbFiles.main);
+    deleteFileIfExists(currentDbFiles.wal);
+    deleteFileIfExists(currentDbFiles.shm);
     sourceFile.copy(currentDbFile);
 
     initDb(); // re-initialize DB connection and schema if needed
