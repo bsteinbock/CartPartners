@@ -1,12 +1,17 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import BottomSheetContainer from '@/components/ui/BottomSheetContainer';
+import MultiSelectOptionList from '@/components/ui/MultiSelectOptionList';
+import { OptionEntry } from '@/components/ui/OptionList';
 import ThemedButton from '@/components/ui/ThemedButton';
 import { ManualGroupList, Player, RoundPlayer, useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { formatManualGroupPlayersByNames, getGroupSizes } from '@/lib/cart-utils';
-import { Stack, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { Alert, FlatList, StyleSheet, Switch, View } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { Stack, useFocusEffect, useRouter } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
 
 export default function DefineManualGroups() {
   const {
@@ -20,17 +25,34 @@ export default function DefineManualGroups() {
   const [availablePlayerIds, setAvailablePlayerIds] = useState<RoundPlayer[]>([]);
   const [availablePlayers, setAvailablePlayers] = useState<Player[]>([]);
   const [selectedPlayers, setSelectedPlayers] = useState<number[]>([]);
+  const [isPlayerPickerVisible, setIsPlayerPickerVisible] = useState<boolean>(false);
+  const [playerOptions, setPlayerOptions] = useState<OptionEntry[]>([]);
+  const [selectedPlayerOptions, setSelectedPlayerOptions] = useState<OptionEntry[]>([]);
   const [manualGroups, setManualGroups] = useState<ManualGroupList[]>([]);
-  const [groupSizes, setGroupSizes] = useState<number[]>([]);
-  const [currentGroupSize, setCurrentGroupSize] = useState<number>(0);
   const borderColor = useThemeColor({ light: undefined, dark: undefined }, 'border');
   const iconButton = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
+  const errorText = useThemeColor({ light: undefined, dark: undefined }, 'errorText');
   const disabledColor = useThemeColor({ light: undefined, dark: undefined }, 'disabledColor');
   const backgroundColor = useThemeColor({ light: undefined, dark: undefined }, 'background');
-  const switchTrackColor = useThemeColor({ light: undefined, dark: undefined }, 'switchTrackColor');
   const [manualGroupsPlayersNames, setManualGroupsPlayersNames] = useState<string[]>([]);
+  const currentGroupSize = useMemo(() => getGroupSizes(availablePlayers.length)[0] ?? 0, [availablePlayers]);
+  const [useNickname, setUseNickname] = useState<boolean>(false);
+  const [selectedManualGroupIndex, setSelectedManualGroupIndex] = useState<number | null>(null);
 
   const router = useRouter();
+
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+      (async () => {
+        const stored = await SecureStore.getItemAsync('cartPartnerUseNickname');
+        if (isActive) setUseNickname(stored === 'true');
+      })();
+      return () => {
+        isActive = false;
+      };
+    }, []),
+  );
 
   useEffect(() => {
     setManualGroups([...manualGroupList]);
@@ -52,41 +74,71 @@ export default function DefineManualGroups() {
   }, [availablePlayerIds, league_players]);
 
   useEffect(() => {
-    const groupSizes = getGroupSizes(availablePlayerIds.length);
-    setGroupSizes(groupSizes);
-  }, [availablePlayerIds]);
-
-  useEffect(() => {
-    // since we remove the available players when they are added to manual group we should always choose the first group size
-    setCurrentGroupSize(groupSizes[0] || 0);
-  }, [manualGroups, groupSizes]);
+    const options = availablePlayers.map((p) => ({
+      label: useNickname && p.nickname ? p.nickname : p.name,
+      value: p.id,
+    }));
+    setPlayerOptions(options);
+  }, [availablePlayers, useNickname]);
 
   useEffect(() => {
     if (manualGroups.length > 0) {
       const names = formatManualGroupPlayersByNames(manualGroups, league_players);
       setManualGroupsPlayersNames(names);
-    }
-  }, [manualGroups, league_players]);
-
-  const togglePlayer = (playerId: number) => {
-    if (selectedPlayers.includes(playerId)) {
-      setSelectedPlayers(selectedPlayers.filter((id) => id !== playerId));
-    } else if (selectedPlayers.length < currentGroupSize) {
-      setSelectedPlayers([...selectedPlayers, playerId]);
     } else {
-      Alert.alert('Group Full', `You can only select ${currentGroupSize} players per group`);
+      setManualGroupsPlayersNames([]);
     }
+
+    if (selectedManualGroupIndex !== null && selectedManualGroupIndex >= manualGroups.length) {
+      setSelectedManualGroupIndex(null);
+    }
+  }, [manualGroups, league_players, selectedManualGroupIndex]);
+
+  const removeSelectedManualGroup = () => {
+    if (selectedManualGroupIndex === null) return;
+
+    setManualGroups((prev) => prev.filter((_, index) => index !== selectedManualGroupIndex));
+    setSelectedManualGroupIndex(null);
   };
 
-  const saveGroup = () => {
-    if (selectedPlayers.length !== currentGroupSize) {
-      Alert.alert('Invalid Group', `Please select exactly ${currentGroupSize} players`);
+  const saveGroupFromSelection = (selectedIds: number[]) => {
+    if (selectedIds.length < 2 || selectedIds.length > currentGroupSize) {
+      Alert.alert('Invalid Group', `Please select between 2 and ${currentGroupSize} players`);
       return;
     }
 
-    setManualGroups([...manualGroups, selectedPlayers]);
-    setAvailablePlayerIds(availablePlayerIds.filter((ap) => !selectedPlayers.includes(ap.player_id)));
+    setManualGroups((prev) => [...prev, selectedIds]);
+    setAvailablePlayerIds((prev) => prev.filter((ap) => !selectedIds.includes(ap.player_id)));
     setSelectedPlayers([]);
+    setSelectedPlayerOptions([]);
+  };
+
+  const handlePlayerOptionChange = (option: OptionEntry) => {
+    setSelectedPlayerOptions((prev) => {
+      const exists = prev.find((o) => o.value === option.value);
+      let next = prev;
+
+      if (exists) {
+        next = prev.filter((o) => o.value !== option.value);
+      } else {
+        if (prev.length >= currentGroupSize) {
+          Alert.alert('Group Full', `You can select up to ${currentGroupSize} players per group`);
+          return prev;
+        }
+        next = [...prev, option];
+      }
+
+      const selectedIds = next.map((o) => o.value ?? null).filter((v): v is number => v !== null);
+      setSelectedPlayers(selectedIds);
+
+      if (selectedIds.length === currentGroupSize) {
+        saveGroupFromSelection(selectedIds);
+        setIsPlayerPickerVisible(false);
+        return [];
+      }
+
+      return next;
+    });
   };
 
   const finishGrouping = () => {
@@ -125,37 +177,33 @@ export default function DefineManualGroups() {
 
   // Render each group in the FlatList
   const renderManualGroup = ({ item, index }: { item: string; index: number }) => {
+    const isSelected = selectedManualGroupIndex === index;
+
     return (
-      <ThemedView
-        style={[
-          styles.groupCard,
-          {
-            backgroundColor: backgroundColor,
-            borderColor: borderColor,
-            shadowColor: borderColor,
-            shadowOpacity: 0.05,
-            shadowRadius: 4,
-            elevation: 2,
-          },
-        ]}
+      <Pressable
+        onPress={() => setSelectedManualGroupIndex((prev) => (prev === index ? null : index))}
+        style={{ marginBottom: 8 }}
       >
-        <ThemedView style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <ThemedText style={{ fontWeight: '600' }}>{`${item}`}</ThemedText>
+        <ThemedView
+          style={[
+            styles.groupCard,
+            {
+              backgroundColor: backgroundColor,
+              borderColor: isSelected ? iconButton : borderColor,
+              shadowColor: borderColor,
+              shadowOpacity: isSelected ? 0.12 : 0.05,
+              shadowRadius: 4,
+              elevation: 2,
+            },
+          ]}
+        >
+          <ThemedView style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <ThemedText style={{ fontWeight: '600' }}>{`${item}`}</ThemedText>
+          </ThemedView>
         </ThemedView>
-      </ThemedView>
+      </Pressable>
     );
   };
-
-  const renderPlayer = ({ item }: { item: Player }) => (
-    <ThemedView style={[styles.playerRow, { borderBottomColor: borderColor, borderBottomWidth: 1 }]}>
-      <Switch
-        trackColor={{ true: switchTrackColor }}
-        value={selectedPlayers.includes(item.id)}
-        onValueChange={() => togglePlayer(item.id)}
-      />
-      <ThemedText style={styles.playerName}>{item.name}</ThemedText>
-    </ThemedView>
-  );
 
   return (
     <ThemedView style={styles.container}>
@@ -169,32 +217,19 @@ export default function DefineManualGroups() {
         }}
       />
       {currentGroupSize > 0 ? (
-        <ThemedView style={{ flex: 1 }}>
-          <ThemedText style={styles.subheader}>
-            Selected: {selectedPlayers.length}/{currentGroupSize} players
-          </ThemedText>
-
-          <FlatList
-            data={availablePlayers}
-            renderItem={renderPlayer}
-            keyExtractor={(item) => `${item.id}`}
-            style={styles.list}
-          />
+        <ThemedView>
           <ThemedView
             style={{
               margin: 10,
-              borderColor:
-                selectedPlayers.length !== currentGroupSize || currentGroupSize === 0
-                  ? disabledColor
-                  : iconButton,
+              borderColor: currentGroupSize === 0 || availablePlayers.length < 2 ? disabledColor : iconButton,
               borderWidth: 1,
               borderRadius: 6,
             }}
           >
             <ThemedButton
-              title="Save Selected as Group"
-              onPress={saveGroup}
-              disabled={selectedPlayers.length !== currentGroupSize || currentGroupSize === 0}
+              title={`Select Players for Group ${manualGroups.length + 1}`}
+              onPress={() => setIsPlayerPickerVisible(true)}
+              disabled={currentGroupSize === 0 || availablePlayers.length < 2}
             />
           </ThemedView>
         </ThemedView>
@@ -208,8 +243,20 @@ export default function DefineManualGroups() {
       <ThemedView style={{ flex: 1, marginTop: 16 }}>
         {manualGroups.length > 0 && (
           <ThemedView style={{ paddingTop: 10, flex: 1 }}>
-            <ThemedView>
+            <ThemedView
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: 8,
+              }}
+            >
               <ThemedText type="subtitle">Manual Tee Groups</ThemedText>
+              {selectedManualGroupIndex !== null && (
+                <Pressable onPress={removeSelectedManualGroup} hitSlop={8}>
+                  <Ionicons name="trash-outline" size={22} color={errorText} />
+                </Pressable>
+              )}
             </ThemedView>
             <ThemedView style={{ flex: 1 }}>
               <FlatList
@@ -237,6 +284,27 @@ export default function DefineManualGroups() {
           </ThemedView>
         </View>
       </ThemedView>
+
+      {isPlayerPickerVisible && (
+        <BottomSheetContainer
+          isVisible={isPlayerPickerVisible}
+          title={`Select up to ${currentGroupSize} players`}
+          modalHeight="70%"
+          okLabel="Done"
+          okDisabled={selectedPlayers.length < 2 || selectedPlayers.length > currentGroupSize}
+          onOK={() => {
+            saveGroupFromSelection(selectedPlayers);
+            setIsPlayerPickerVisible(false);
+          }}
+          onClose={() => setIsPlayerPickerVisible(false)}
+        >
+          <MultiSelectOptionList
+            options={playerOptions}
+            selectedOptions={selectedPlayerOptions}
+            onSelect={handlePlayerOptionChange}
+          />
+        </BottomSheetContainer>
+      )}
     </ThemedView>
   );
 }
@@ -254,16 +322,6 @@ const styles = StyleSheet.create({
   },
   list: {
     flex: 1,
-  },
-  playerRow: {
-    flexDirection: 'row',
-    gap: 20,
-    alignItems: 'center',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-  },
-  playerName: {
-    fontSize: 16,
   },
   buttonContainer: {
     flexDirection: 'row',

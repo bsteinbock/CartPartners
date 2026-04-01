@@ -10,7 +10,7 @@ import { formatDate } from '@/lib/formatters';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useFocusEffect } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
-import React, { memo, useEffect, useRef, useState } from 'react';
+import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -115,8 +115,9 @@ export default function LineupScreen() {
     const activePlayers = roundPlayers
       .filter((rp) => rp.round_id === currentRoundId)
       .map((rp) => rp.player_id);
-    setSelectedPlayers(activePlayers);
-  }, [currentRoundId, roundPlayers]);
+    const availablePlayerIds = new Set(availablePlayers.map((p) => p.id));
+    setSelectedPlayers(activePlayers.filter((id) => availablePlayerIds.has(id)));
+  }, [currentRoundId, roundPlayers, availablePlayers]);
 
   useEffect(() => {
     const availableOptions = availablePlayersToAdd.map((r) => ({
@@ -166,12 +167,24 @@ export default function LineupScreen() {
 
   // Debounced DB save helper - we debounce calls by 250 ms to prevent SQLite from being hammered
   // if the user quickly taps multiple players in a row.
-  const persistSelection = (newSelection: number[]) => {
-    if (debounceTimer.current) clearTimeout(debounceTimer.current);
-    debounceTimer.current = setTimeout(() => {
-      if (currentRoundId) setRoundPlayers(currentRoundId, newSelection);
-    }, 100);
-  };
+  const persistSelection = useCallback(
+    (newSelection: number[]) => {
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+      const roundId = currentRoundId;
+      debounceTimer.current = setTimeout(() => {
+        if (roundId) setRoundPlayers(roundId, newSelection);
+      }, 100);
+    },
+    [currentRoundId, setRoundPlayers],
+  );
+
+  // If external data changes (for example, database restore), cancel any pending stale write.
+  useEffect(() => {
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+      debounceTimer.current = null;
+    }
+  }, [currentRoundId, roundPlayers]);
 
   // Toggle a player's selection
   const togglePlayer = (playerId: number) => {
