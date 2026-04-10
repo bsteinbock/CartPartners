@@ -101,18 +101,20 @@ const SwipeablePlayerItem = ({
           }}
         >
           <ThemedView style={styles.itemInfo}>
-            <ThemedView>
+            <ThemedView style={styles.textColumn}>
               <ThemedText style={{ color: textColor }}>{`${player.name}`}</ThemedText>
               <ThemedText
                 style={{ color: textColor }}
                 type="small"
+                numberOfLines={1}
+                ellipsizeMode="tail"
               >{`${player.email || 'No Email'}`}</ThemedText>
               <ThemedText
                 style={{ color: nicknameColor }}
                 type="small"
               >{`${player.nickname || 'No Nickname'}`}</ThemedText>
             </ThemedView>
-            <ThemedView style={{ alignItems: 'center', flexDirection: 'row', gap: 8 }}>
+            <ThemedView style={styles.trailingControls}>
               <Switch
                 trackColor={{ true: switchTrackColor }}
                 value={!!player.available}
@@ -135,9 +137,19 @@ const styles = StyleSheet.create({
   itemInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     width: '100%',
     height: 70,
+  },
+  textColumn: {
+    flex: 1,
+    minWidth: 0,
+  },
+  trailingControls: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    flexShrink: 0,
+    marginLeft: 8,
   },
 
   itemEntry: {

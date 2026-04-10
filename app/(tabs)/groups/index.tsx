@@ -250,7 +250,7 @@ export default function GroupsScreen() {
     if (currentRoundGroups.length === 0) return Alert.alert('No groups to export for this round');
 
     let bodyText = roundTeeTimeInfo ? `${roundTeeTimeInfo}\n\n` : '';
-    const summary = reportGroupsWithNames(currentRoundGroups, league_players);
+    const summary = reportGroupsWithNames(currentRoundGroups, league_players, true);
     bodyText += summary;
     const textMessageBody = `Cart Groups - ${pickedRound?.label}\n\n${bodyText}`;
 

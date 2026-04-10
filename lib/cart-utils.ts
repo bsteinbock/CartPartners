@@ -263,7 +263,7 @@ function getLeastConnectedPlayer(
 
   for (const id of playerIds) {
     const score = precomputedTotals
-      ? precomputedTotals[id] ?? 0
+      ? (precomputedTotals[id] ?? 0)
       : Object.values(partnerFrequencies[id] || {}).reduce((a, b) => a + b, 0);
     if (score < minScore) {
       minScore = score;
@@ -507,18 +507,40 @@ export function formatManualGroupPlayersByNames(
  *
  * @param groups - Array of groups (each a list of player IDs)
  * @param allPlayers - Array of all Player objects
+ * @param useSeparateLineForNames - Put group header and names on separate lines for better readability (default: false)
  * @returns string - Formatted report showing each group with player names
  */
-export function reportGroupsWithNames(groups: GroupPlayers[], allPlayers: Player[]): string {
+export function reportGroupsWithNames(
+  groups: GroupPlayers[],
+  allPlayers: Player[],
+  useSeparateLineForNames = false,
+): string {
   const playerMap: Record<number, string> = {};
   for (const player of allPlayers) {
     playerMap[player.id] = player.nickname?.trim().length ? player.nickname : player.name;
   }
 
+  // If useSeparateLineForNames is true, format each group like:
+  // Group 1:
+  //     Player 1
+  //     Player 2
+  //
+  // Group 2:
+  //     Player 3
+  //     Player 4
+  //
+  // Note: the extra newline for spacing between groups. If false, format like:
+  // Group 1: Player 1, Player 2
+
   return groups
     .map((group, index) => {
       const names = group.player_ids.map((id) => playerMap[id] || `Unknown(${id})`);
-      return `Group ${index + 1}: ${names.join(', ')}`;
+      const groupHeader = `Group ${index + 1}:`;
+      const groupString = useSeparateLineForNames
+        ? `${groupHeader}\n    ${names.join('\n    ')}`
+        : `${groupHeader} ${names.join(', ')}`;
+
+      return groupString;
     })
     .join('\n');
 }
@@ -600,7 +622,7 @@ export function getMailtoString(
  */
 async function copyccRecipientsToClipboard(ccRecipients: string[]): Promise<void> {
   if (ccRecipients.length === 0) return;
-  
+
   const ccArrayString = ccRecipients.join(',');
   await Clipboard.setStringAsync(ccArrayString).catch(() => {
     // silently fail if clipboard access is not available
@@ -609,7 +631,7 @@ async function copyccRecipientsToClipboard(ccRecipients: string[]): Promise<void
 
 /**
  * Build a mailto URI with optional CC field support.
- * 
+ *
  * @deprecated Use composeEmail() instead for better native email composer integration
  *
  * @param addresses - Comma-separated email addresses
@@ -696,7 +718,7 @@ export async function composeEmail(
   } else {
     // CC format: first address in 'recipients', rest in 'ccRecipients'
     const ccRecipients = emailArray.slice(1);
-    
+
     // Copy CC recipients to clipboard as a backup for Yahoo Mail limitation
     await copyccRecipientsToClipboard(ccRecipients);
 
