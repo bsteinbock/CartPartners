@@ -532,17 +532,18 @@ export function reportGroupsWithNames(
   // Note: the extra newline for spacing between groups. If false, format like:
   // Group 1: Player 1, Player 2
 
-  return groups
-    .map((group, index) => {
-      const names = group.player_ids.map((id) => playerMap[id] || `Unknown(${id})`);
-      const groupHeader = `Group ${index + 1}:`;
-      const groupString = useSeparateLineForNames
-        ? `${groupHeader}\n    ${names.join('\n    ')}`
-        : `${groupHeader} ${names.join(', ')}`;
+  const groupLines = groups.map((group, index) => {
+    const names = group.player_ids.map((id) => playerMap[id] || `Unknown(${id})`);
+    const groupHeader = `Group ${index + 1}:`;
 
-      return groupString;
-    })
-    .join('\n');
+    if (useSeparateLineForNames) {
+      return `${groupHeader}\n\t${names.join('\n\t')}`;
+    }
+
+    return `${groupHeader} ${names.join(', ')}`;
+  });
+
+  return groupLines.join(useSeparateLineForNames ? '\n\n' : '\n');
 }
 
 /**
@@ -708,12 +709,19 @@ export async function composeEmail(
     .map((e) => e.trim())
     .filter((e) => e.length > 0);
 
+  const shouldUseHtmlBody = body.includes('\t');
+  const escapedBody = body.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const emailBody = shouldUseHtmlBody
+    ? `<pre style="white-space: pre-wrap; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 0;">${escapedBody}</pre>`
+    : body;
+
   if (!useCC || emailArray.length <= 1) {
     // Standard format: all addresses in 'recipients'
     await MailComposer.composeAsync({
       recipients: emailArray,
       subject,
-      body,
+      body: emailBody,
+      isHtml: shouldUseHtmlBody,
     });
   } else {
     // CC format: first address in 'recipients', rest in 'ccRecipients'
@@ -726,7 +734,8 @@ export async function composeEmail(
       recipients: [emailArray[0]],
       ccRecipients,
       subject,
-      body,
+      body: emailBody,
+      isHtml: shouldUseHtmlBody,
     });
   }
 }

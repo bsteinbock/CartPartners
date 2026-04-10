@@ -1,6 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedTextInput } from '@/components/themed-textinput';
 import { ThemedView } from '@/components/themed-view';
+import { StyledHeaderBackButton } from '@/components/ui/StyledHeaderBackButton';
 import ThemedButton from '@/components/ui/ThemedButton';
 import { iosKeyboardToolbarOffset } from '@/constants/theme';
 import { useDbStore } from '@/hooks/use-dbStore';
@@ -9,7 +10,7 @@ import { displayPhoneNumberFromE164, formatPhoneNumberToE164, generateNickname }
 import Entypo from '@expo/vector-icons/Entypo';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { KeyboardAwareScrollView, KeyboardToolbar } from 'react-native-keyboard-controller';
 
@@ -35,58 +36,146 @@ export default function PlayerDetailScreen() {
   const [mobileNumber, setMobileNumber] = useState('');
   const [nickname, setNickname] = useState('');
   const [speedIndex, setSpeedIndex] = useState('');
+  const existingPlayer = useMemo(
+    () => (isNew ? null : (all_players.find((p) => p.id === Number(id)) ?? null)),
+    [all_players, id, isNew],
+  );
 
   useEffect(() => {
-    if (!isNew && id) {
-      const existing = all_players.find((p) => p.id === Number(id));
-      if (existing) {
-        setName(existing.name);
-        setEmail(existing.email || '');
-        setSpeedIndex(String(existing.speedIndex));
-        setMobileNumber(displayPhoneNumberFromE164(existing.mobile_number || ''));
-        setNickname(existing.nickname || '');
+    if (existingPlayer) {
+      setName(existingPlayer.name);
+      setEmail(existingPlayer.email || '');
+      setSpeedIndex(String(existingPlayer.speedIndex));
+      setMobileNumber(displayPhoneNumberFromE164(existingPlayer.mobile_number || ''));
+      setNickname(existingPlayer.nickname || '');
+    }
+  }, [existingPlayer]);
+
+  const savePlayer = useCallback(
+    (showSuccessAlert: boolean): boolean => {
+      if (!name.trim()) {
+        Alert.alert('Missing Name', 'Please enter a player name.');
+        return false;
       }
-    }
-  }, [id, all_players, isNew]);
 
-  const handleSave = () => {
-    if (!name.trim()) {
-      Alert.alert('Missing Name', 'Please enter a player name.');
-      return;
-    }
+      const speed = parseFloat(speedIndex);
+      if (isNaN(speed)) {
+        Alert.alert('Invalid Speed Index', 'Please enter a valid number.');
+        return false;
+      }
 
-    const speed = parseFloat(speedIndex);
-    if (isNaN(speed)) {
-      Alert.alert('Invalid Speed Index', 'Please enter a valid number.');
-      return;
-    }
-
-    if (isNew) {
-      addPlayer(
-        {
+      if (isNew) {
+        addPlayer(
+          {
+            name: name.trim(),
+            email: email.trim(),
+            speedIndex: speed,
+            available: 1,
+            nickname: nickname.trim() ?? generateNickname(name.trim()),
+            mobile_number: formatPhoneNumberToE164(mobileNumber.trim()),
+          },
+          null,
+        );
+        if (showSuccessAlert) {
+          Alert.alert('Player Added', `${name} has been added`);
+        }
+      } else {
+        updatePlayer(Number(id), {
           name: name.trim(),
           email: email.trim(),
           speedIndex: speed,
-          available: 1,
-          nickname: nickname.trim() ?? generateNickname(name.trim()),
+          nickname: nickname.trim(),
           mobile_number: formatPhoneNumberToE164(mobileNumber.trim()),
-        },
-        null,
-      );
-      Alert.alert('Player Added', `${name} has been added`);
-    } else {
-      updatePlayer(Number(id), {
-        name: name.trim(),
-        email: email.trim(),
-        speedIndex: speed,
-        nickname: nickname.trim(),
-        mobile_number: formatPhoneNumberToE164(mobileNumber.trim()),
-      });
-      Alert.alert('Player Updated', `${name} has been updated.`);
+        });
+        if (showSuccessAlert) {
+          Alert.alert('Player Updated', `${name} has been updated.`);
+        }
+      }
+
+      return true;
+    },
+    [addPlayer, email, id, isNew, mobileNumber, name, nickname, speedIndex, updatePlayer],
+  );
+
+  const handleSave = useCallback(() => {
+    const didSave = savePlayer(true);
+    if (!didSave) {
+      return;
     }
 
     router.back();
-  };
+  }, [router, savePlayer]);
+
+  const hasChanges = useMemo(() => {
+    if (isNew) {
+      return [name, email, mobileNumber, nickname, speedIndex].some((value) => value.trim().length > 0);
+    }
+
+    if (!existingPlayer) {
+      return false;
+    }
+
+    const currentName = name.trim();
+    const currentEmail = email.trim();
+    const currentNickname = nickname.trim();
+    const currentMobile = formatPhoneNumberToE164(mobileNumber.trim());
+    const currentSpeed = speedIndex.trim().length ? parseFloat(speedIndex) : NaN;
+
+    const originalName = existingPlayer.name.trim();
+    const originalEmail = (existingPlayer.email || '').trim();
+    const originalNickname = (existingPlayer.nickname || '').trim();
+    const originalMobile = formatPhoneNumberToE164((existingPlayer.mobile_number || '').trim());
+    const originalSpeed = Number(existingPlayer.speedIndex);
+
+    return (
+      currentName !== originalName ||
+      currentEmail !== originalEmail ||
+      currentNickname !== originalNickname ||
+      currentMobile !== originalMobile ||
+      currentSpeed !== originalSpeed
+    );
+  }, [email, existingPlayer, isNew, mobileNumber, name, nickname, speedIndex]);
+
+  const handleNavigateToPlayer = useCallback(
+    (targetPlayerId: number) => {
+      const navigateToTarget = () => {
+        router.setParams({ id: String(targetPlayerId) });
+      };
+
+      if (hasChanges) {
+        Alert.alert('Unsaved Changes', 'Do you want to save the changes or abandon changes?', [
+          {
+            text: 'Save the changes',
+            onPress: () => {
+              const didSave = savePlayer(false);
+              if (didSave) {
+                navigateToTarget();
+              }
+            },
+          },
+          { text: 'Abandon changes', style: 'destructive', onPress: navigateToTarget },
+          { text: 'Cancel', style: 'cancel' },
+        ]);
+        return;
+      }
+
+      navigateToTarget();
+    },
+    [hasChanges, router, savePlayer],
+  );
+
+  const handleBackPress = useCallback(() => {
+    if (hasChanges) {
+      Alert.alert('Unsaved Changes', 'Do you want to save the changes or abandon changes?', [
+        { text: 'Save the changes', onPress: handleSave },
+        { text: 'Abandon changes', style: 'destructive', onPress: () => router.back() },
+        { text: 'Cancel', style: 'cancel' },
+      ]);
+      return;
+    }
+
+    router.back();
+  }, [hasChanges, router, handleSave]);
 
   return (
     <>
@@ -94,12 +183,14 @@ export default function PlayerDetailScreen() {
         options={{
           headerShown: true,
           headerTitle: '',
+          gestureEnabled: false,
+          headerLeft: () => <StyledHeaderBackButton onPress={handleBackPress} />,
           headerRight: () => (
             <View style={styles.headerButtons}>
               {previousPlayerId !== null && (
                 <Pressable
                   onPress={() => {
-                    router.setParams({ id: String(previousPlayerId) });
+                    handleNavigateToPlayer(previousPlayerId);
                   }}
                   hitSlop={8}
                 >
@@ -109,7 +200,7 @@ export default function PlayerDetailScreen() {
               {nextPlayerId !== null && (
                 <Pressable
                   onPress={() => {
-                    router.setParams({ id: String(nextPlayerId) });
+                    handleNavigateToPlayer(nextPlayerId);
                   }}
                   hitSlop={8}
                 >
