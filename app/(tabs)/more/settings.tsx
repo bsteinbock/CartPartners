@@ -20,6 +20,7 @@ export default function SettingsScreen() {
   const [useNickname, setUseNickname] = useState<boolean>(false);
   const [hidePastRounds, setHidePastRounds] = useState<boolean>(false);
   const [excludeCoordinatorFromEmail, setExcludeCoordinatorFromEmail] = useState<boolean>(false);
+  const [emailAllActiveLeaguePlayers, setEmailAllActiveLeaguePlayers] = useState<boolean>(false);
   const [isPlayerPickerVisible, setIsPlayerPickerVisible] = useState<boolean>(false);
   const [playerOptions, setPlayerOptions] = useState<OptionEntry[]>([]);
   const [pickedPlayer, setPickedPlayer] = useState<OptionEntry | null>(null);
@@ -43,6 +44,11 @@ export default function SettingsScreen() {
           'cartPartnerExcludeCoordinatorFromEmail',
         );
         setExcludeCoordinatorFromEmail(storedExcludeCoordinator === 'true');
+
+        const storedEmailAllActivePlayers = await SecureStore.getItemAsync(
+          'cartPartnerEmailAllActiveLeaguePlayers',
+        );
+        setEmailAllActiveLeaguePlayers(storedEmailAllActivePlayers === 'true');
 
         const coordinatorIdString = await SecureStore.getItemAsync('cartPartnerGroupCoordinatorId');
         if (coordinatorIdString) {
@@ -85,6 +91,11 @@ export default function SettingsScreen() {
     await SecureStore.setItemAsync('cartPartnerExcludeCoordinatorFromEmail', value.toString());
   };
 
+  const handleToggleEmailAllActivePlayers = async (value: boolean) => {
+    setEmailAllActiveLeaguePlayers(value);
+    await SecureStore.setItemAsync('cartPartnerEmailAllActiveLeaguePlayers', value.toString());
+  };
+
   const handlePlayerSelect = async (option: OptionEntry) => {
     setPickedPlayer(option);
     setIsPlayerPickerVisible(false);
@@ -117,6 +128,37 @@ export default function SettingsScreen() {
           When enabled, email notifications will place the first recipient in the &quot;To&quot; field and
           remaining recipients in the &quot;CC&quot; field. This supports email clients that only allow a
           single &quot;To&quot; recipient. As a backup, the CC recipients will also be added to the clipboard.
+        </ThemedText>
+
+        <ThemedView style={[styles.settingRow, { marginTop: 20 }]}>
+          <ThemedView style={styles.settingLabelContainer}>
+            <ThemedText style={styles.settingLabel}>
+              Exclude Group Coordinator from Email Recipients
+            </ThemedText>
+          </ThemedView>
+          <Switch
+            trackColor={{ true: switchTrackColor }}
+            value={excludeCoordinatorFromEmail}
+            onValueChange={handleToggleExcludeCoordinator}
+          />
+        </ThemedView>
+        <ThemedText type="small" style={styles.settingDescription}>
+          When enabled, the group coordinator will be excluded from email recipients.
+        </ThemedText>
+
+        <ThemedView style={[styles.settingRow, { marginTop: 20 }]}>
+          <ThemedView style={styles.settingLabelContainer}>
+            <ThemedText style={styles.settingLabel}>Email All Active League Players</ThemedText>
+          </ThemedView>
+          <Switch
+            trackColor={{ true: switchTrackColor }}
+            value={emailAllActiveLeaguePlayers}
+            onValueChange={handleToggleEmailAllActivePlayers}
+          />
+        </ThemedView>
+        <ThemedText type="small" style={styles.settingDescription}>
+          When enabled, group emails will be sent to all active league players for the current round instead
+          of only those assigned to groups.
         </ThemedText>
 
         <ThemedText type="subtitle" style={[styles.sectionTitle, styles.nicknameSection]}>
@@ -153,22 +195,6 @@ export default function SettingsScreen() {
         <ThemedText type="small" style={styles.settingDescription}>
           When enabled, the lineup screen shows each player&apos;s nickname when one is available. Otherwise,
           it shows the full name.
-        </ThemedText>
-
-        <ThemedView style={[styles.settingRow, { marginTop: 20 }]}>
-          <ThemedView style={styles.settingLabelContainer}>
-            <ThemedText style={styles.settingLabel}>
-              Exclude Group Coordinator from Email Recipients
-            </ThemedText>
-          </ThemedView>
-          <Switch
-            trackColor={{ true: switchTrackColor }}
-            value={excludeCoordinatorFromEmail}
-            onValueChange={handleToggleExcludeCoordinator}
-          />
-        </ThemedView>
-        <ThemedText type="small" style={styles.settingDescription}>
-          When enabled, the group coordinator will be excluded from email recipients.
         </ThemedText>
 
         <ThemedText type="subtitle" style={[styles.sectionTitle, styles.coordinatorSection]}>

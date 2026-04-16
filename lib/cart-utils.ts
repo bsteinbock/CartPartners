@@ -585,31 +585,40 @@ export function getMobilePhoneNumbersForGroups(
  * suitable for mailto links.
  *
  * @param groups - Array of groups (each a list of player IDs)
- * @param allPlayers - Array of all Player objects
+ * @param allPlayers - Array of all Player objects to consider
  * @param excludePlayerId - Optional player ID to exclude from the email list
+ * @param emailAllPlayers - When true, email all players; when false, email only players in groups
  * @returns string - Merged email addresses separated by commas
  */
-export function getMailtoString(
+export function assembleEmailAddresses(
   groups: GroupPlayers[],
   allPlayers: Player[],
   excludePlayerId: number | null = null,
+  emailAllPlayers: boolean = false,
 ): string {
   const playerMap: Record<number, Player> = {};
   for (const player of allPlayers) {
     playerMap[player.id] = player;
   }
 
-  const mailtoStrings = groups
-    .map((group) =>
-      group.player_ids
-        .map((id) => {
-          const player = playerMap[id];
-          if (!player || (excludePlayerId !== null && player.id === excludePlayerId)) return '';
-          return player.email;
-        })
-        .filter((email) => email && email.length > 0)
-        .join(','),
-    )
+  let playerIds: number[] = [];
+  if (emailAllPlayers) {
+    // Use all active league players
+    playerIds = allPlayers.map((p) => p.id);
+  } else {
+    // Use only players in the groups (current behavior)
+    playerIds = groups
+      .flatMap((group) => group.player_ids)
+      .filter((id, index, self) => self.indexOf(id) === index); // Remove duplicates
+  }
+
+  const mailtoStrings = playerIds
+    .map((id) => {
+      const player = playerMap[id];
+      if (!player || (excludePlayerId !== null && player.id === excludePlayerId)) return '';
+      return player.email;
+    })
+    .filter((email) => email && email.length > 0)
     .join(',');
 
   return mailtoStrings;

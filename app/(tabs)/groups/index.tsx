@@ -7,13 +7,13 @@ import ThemedButton from '@/components/ui/ThemedButton';
 import { GroupPlayers, useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import {
+  assembleEmailAddresses,
   buildPlayingPartnerFrequencies,
   composeEmail,
   formatGroupPlayersByNames,
   formatManualGroupPlayersByNames,
   generateGroupsForRound,
   getGroupPlayersByRoundId,
-  getMailtoString,
   getMobilePhoneNumbersForGroups,
   groupPlayersMatchActivePlayers,
   reportGroupsWithNames,
@@ -68,6 +68,7 @@ export default function GroupsScreen() {
   const [isSmsAvailable, setIsSmsAvailable] = useState<boolean>(false);
   const [useEmailCC, setUseEmailCC] = useState<boolean>(false);
   const [excludeCoordinatorFromEmail, setExcludeCoordinatorFromEmail] = useState<boolean>(false);
+  const [emailAllActiveLeaguePlayers, setEmailAllActiveLeaguePlayers] = useState<boolean>(false);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -97,6 +98,9 @@ export default function GroupsScreen() {
 
         const excludeCoordinator = await SecureStore.getItemAsync('cartPartnerExcludeCoordinatorFromEmail');
         setExcludeCoordinatorFromEmail(excludeCoordinator === 'true');
+
+        const emailAllActive = await SecureStore.getItemAsync('cartPartnerEmailAllActiveLeaguePlayers');
+        setEmailAllActiveLeaguePlayers(emailAllActive === 'true');
       })();
     }, []),
   );
@@ -168,12 +172,19 @@ export default function GroupsScreen() {
 
   const addresses = useMemo(
     () =>
-      getMailtoString(
+      assembleEmailAddresses(
         currentRoundGroups,
         league_players,
         excludeCoordinatorFromEmail ? groupCoordinatorId : null,
+        emailAllActiveLeaguePlayers,
       ),
-    [currentRoundGroups, league_players, excludeCoordinatorFromEmail, groupCoordinatorId],
+    [
+      currentRoundGroups,
+      league_players,
+      excludeCoordinatorFromEmail,
+      groupCoordinatorId,
+      emailAllActiveLeaguePlayers,
+    ],
   );
 
   const mobileNumbers = useMemo(
