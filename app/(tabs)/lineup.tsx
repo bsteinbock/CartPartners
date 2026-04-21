@@ -107,9 +107,7 @@ export default function LineupScreen() {
     setAvailablePlayers(availableList);
   }, [league_players, all_players, roundPlayers, currentRoundId]);
 
-  const availablePlayersToAdd = all_players
-    .filter((p) => p.available)
-    .filter((p) => !availablePlayers.find((lp) => lp.id === p.id));
+  const availablePlayersToAdd = all_players.filter((p) => !availablePlayers.find((lp) => lp.id === p.id));
 
   useEffect(() => {
     const activePlayers = roundPlayers

@@ -27,17 +27,24 @@ export default function RoundsScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      let isActive = true;
+      let isHidePastRoundsActive = true;
+      let isUseNicknameActive = true;
 
       (async () => {
         const storedHidePastRounds = await SecureStore.getItemAsync('cartPartnerHidePastRounds');
-        if (isActive) {
+        const storedUseNickname = await SecureStore.getItemAsync('cartPartnerUseNickname');
+
+        if (isHidePastRoundsActive) {
           useDbStore.getState().setOnlyUpcomingDates(storedHidePastRounds === 'true');
+        }
+        if (isUseNicknameActive) {
+          useDbStore.getState().setUsePlayerNickname(storedUseNickname === 'true');
         }
       })();
 
       return () => {
-        isActive = false;
+        isHidePastRoundsActive = false;
+        isUseNicknameActive = false;
       };
     }, []),
   );

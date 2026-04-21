@@ -336,6 +336,7 @@ export type UpdatedRound = Partial<Omit<Round, 'id'>>;
 
 type DbState = {
   onlyUpcomingDates: boolean;
+  usePlayerNickname: boolean;
   league_players: Player[];
   all_players: Player[];
   rounds: Round[]; // most recent at index 0
@@ -386,6 +387,7 @@ type DbState = {
   clearLeagueData: (leagueId: number) => void;
   setManualGroupList: (groupList: ManualGroupList[]) => void;
   setOnlyUpcomingDates: (onlyUpcoming: boolean) => void;
+  setUsePlayerNickname: (use: boolean) => void;
 };
 
 // ------------------- STORE -------------------
@@ -402,6 +404,7 @@ export const useDbStore = create<DbState>((set, get) => ({
   // initialize currentLeagueId from meta if available (will be null until fetchLeagues runs too)
   currentRoundId: null,
   onlyUpcomingDates: true,
+  usePlayerNickname: false,
   currentLeagueId: readMeta('lastActiveLeagueId') ? Number(readMeta('lastActiveLeagueId')) : null,
 
   setCurrentRoundId: (id: number | null) => {
@@ -412,6 +415,12 @@ export const useDbStore = create<DbState>((set, get) => ({
   setOnlyUpcomingDates: (onlyUpcoming: boolean) => {
     set({ onlyUpcomingDates: onlyUpcoming });
     useDbStore.getState().fetchRounds();
+  },
+
+  setUsePlayerNickname: (use: boolean) => {
+    set({ usePlayerNickname: use });
+    useDbStore.getState().fetchAllPlayers();
+    useDbStore.getState().fetchLeaguePlayers();
   },
 
   setCurrentLeagueId: (id: number | null) => {
@@ -510,6 +519,7 @@ export const useDbStore = create<DbState>((set, get) => ({
   fetchLeaguePlayers: (leagueId?: number | null) => {
     const db = getDb();
     const currentLeagueId = leagueId ?? get().currentLeagueId;
+    const sortBy = get().usePlayerNickname ? 'nickname' : 'name';
 
     if (!currentLeagueId) {
       set({ league_players: [] });
@@ -521,7 +531,7 @@ export const useDbStore = create<DbState>((set, get) => ({
        FROM players p
        INNER JOIN league_players lp ON p.id = lp.player_id
        WHERE lp.league_id = ?
-       ORDER BY p.name ASC;`,
+       ORDER BY p.${sortBy} ASC;`,
       [currentLeagueId],
     );
 
@@ -530,7 +540,8 @@ export const useDbStore = create<DbState>((set, get) => ({
 
   fetchAllPlayers: () => {
     const db = getDb();
-    const rows = db.getAllSync('SELECT * FROM players ORDER BY name ASC;') as Player[];
+    const sortBy = get().usePlayerNickname ? 'nickname' : 'name';
+    const rows = db.getAllSync(`SELECT * FROM players ORDER BY ${sortBy} ASC;`) as Player[];
     set({ all_players: rows });
   },
 

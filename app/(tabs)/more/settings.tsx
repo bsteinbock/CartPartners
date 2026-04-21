@@ -78,6 +78,7 @@ export default function SettingsScreen() {
   const handleToggleUseNickname = async (value: boolean) => {
     setUseNickname(value);
     await SecureStore.setItemAsync('cartPartnerUseNickname', value.toString());
+    useDbStore.getState().setUsePlayerNickname(value);
   };
 
   const handleToggleHidePastRounds = async (value: boolean) => {
