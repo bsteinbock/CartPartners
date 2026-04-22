@@ -537,7 +537,7 @@ export function reportGroupsWithNames(
     const groupHeader = `Group ${index + 1}:`;
 
     if (useSeparateLineForNames) {
-      return `${groupHeader}\n\t${names.join('\n\t')}`;
+      return `${groupHeader}\n\u00A0\u00A0\u00A0\u00A0${names.join('\n\u00A0\u00A0\u00A0\u00A0')}`;
     }
 
     return `${groupHeader} ${names.join(', ')}`;
@@ -718,19 +718,12 @@ export async function composeEmail(
     .map((e) => e.trim())
     .filter((e) => e.length > 0);
 
-  const shouldUseHtmlBody = body.includes('\t');
-  const escapedBody = body.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  const emailBody = shouldUseHtmlBody
-    ? `<pre style="white-space: pre-wrap; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 0;">${escapedBody}</pre>`
-    : body;
-
   if (!useCC || emailArray.length <= 1) {
     // Standard format: all addresses in 'recipients'
     await MailComposer.composeAsync({
       recipients: emailArray,
       subject,
-      body: emailBody,
-      isHtml: shouldUseHtmlBody,
+      body,
     });
   } else {
     // CC format: first address in 'recipients', rest in 'ccRecipients'
@@ -743,8 +736,7 @@ export async function composeEmail(
       recipients: [emailArray[0]],
       ccRecipients,
       subject,
-      body: emailBody,
-      isHtml: shouldUseHtmlBody,
+      body,
     });
   }
 }
