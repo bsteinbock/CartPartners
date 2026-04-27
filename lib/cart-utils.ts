@@ -1,6 +1,7 @@
 // utils.ts
 import * as Clipboard from 'expo-clipboard';
 import * as MailComposer from 'expo-mail-composer';
+import { Linking } from 'react-native';
 import { Group, GroupPlayers, ManualGroupList, Player } from '../hooks/use-dbStore';
 
 /**
@@ -642,8 +643,6 @@ async function copyccRecipientsToClipboard(ccRecipients: string[]): Promise<void
 /**
  * Build a mailto URI with optional CC field support.
  *
- * @deprecated Use composeEmail() instead for better native email composer integration
- *
  * @param addresses - Comma-separated email addresses
  * @param subject - Email subject
  * @param body - Email body
@@ -659,13 +658,11 @@ export function buildMailtoUri(
   const encodedSubject = encodeURIComponent(subject);
   const encodedBody = encodeURIComponent(body);
 
-  if (!useCC) {
-    // Standard format: all addresses in 'to'
-    const encodedAddresses = encodeURIComponent(addresses);
-    return `mailto:?to=${encodedAddresses}&subject=${encodedSubject}&body=${encodedBody}`;
-  }
-
-  // CC format: first address in 'to', rest in 'cc'
+  // Place addresses in the mailto: path (not as a ?to= query parameter).
+  // Outlook for Android only populates the body field when recipients are in
+  // the path position; using ?to= causes the body to be silently dropped.
+  // Email addresses are not encoded with encodeURIComponent so that '@' and
+  // ',' remain literal — both are valid unencoded characters in this position.
   const emailArray = addresses
     .split(',')
     .map((e) => e.trim())
@@ -675,13 +672,14 @@ export function buildMailtoUri(
     return `mailto:?subject=${encodedSubject}&body=${encodedBody}`;
   }
 
-  if (emailArray.length === 1) {
-    const encodedTo = encodeURIComponent(emailArray[0]);
-    return `mailto:?to=${encodedTo}&subject=${encodedSubject}&body=${encodedBody}`;
+  if (!useCC || emailArray.length === 1) {
+    // Standard format: all addresses in the path
+    const toPath = emailArray.join(',');
+    return `mailto:${toPath}?subject=${encodedSubject}&body=${encodedBody}`;
   }
 
-  // Multiple addresses: first in 'to', rest in 'cc'
-  const encodedTo = encodeURIComponent(emailArray[0]);
+  // CC format: first address in path, rest in 'cc' query param
+  const toPath = emailArray[0];
   const ccArrayString = emailArray.slice(1).join(',');
   const encodedCC = encodeURIComponent(ccArrayString);
 
@@ -690,7 +688,7 @@ export function buildMailtoUri(
     // silently fail if clipboard access is not available
   });
 
-  return `mailto:?to=${encodedTo}&cc=${encodedCC}&subject=${encodedSubject}&body=${encodedBody}`;
+  return `mailto:${toPath}?cc=${encodedCC}&subject=${encodedSubject}&body=${encodedBody}`;
 }
 
 /**
@@ -710,7 +708,12 @@ export async function composeEmail(
 ): Promise<void> {
   const isAvailable = await MailComposer.isAvailableAsync();
   if (!isAvailable) {
-    throw new Error('Mail composer is not available on this device');
+    // Outlook for Android often doesn't register as the system default mail handler,
+    // so isAvailableAsync() returns false even when Outlook is installed. Fall back
+    // to Linking.openURL with a mailto: URI, which Outlook handles reliably.
+    const uri = buildMailtoUri(addresses, subject, body, useCC);
+    await Linking.openURL(uri);
+    return;
   }
 
   const emailArray = addresses
