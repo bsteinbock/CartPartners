@@ -5,7 +5,7 @@ A CloudFlare Worker that provides cloud backup and restore for the CartPartners 
 ## Prerequisites
 
 - [Node.js](https://nodejs.org/) 18+
-- [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/): `npm install -g wrangler`
+- [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/): `
 - A CloudFlare account
 
 ## Setup
