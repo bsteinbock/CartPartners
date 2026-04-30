@@ -339,10 +339,16 @@ export default function GroupsScreen() {
 
     const partnerFrequencies = buildPlayingPartnerFrequencies(playerIds, groupPlayers);
 
+    const roundParticipation: Record<number, number> = {};
+    for (const id of playerIds) {
+      roundParticipation[id] = roundPlayers.filter((rp) => rp.player_id === id).length;
+    }
+
     let newGroupList = generateGroupsForRound({
       playerIds,
       partnerFrequencies,
       allPlayers: all_players,
+      roundParticipation,
     });
 
     if (manualGroupList.length) {

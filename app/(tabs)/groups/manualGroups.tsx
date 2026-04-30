@@ -156,10 +156,15 @@ export default function DefineManualGroups() {
       // Generate groups for remaining available players
       const remainingPlayerIds = availablePlayers.map((p) => p.id);
       const partnerFrequencies = buildPlayingPartnerFrequencies(remainingPlayerIds, groupPlayers);
+      const roundParticipation: Record<number, number> = {};
+      for (const id of remainingPlayerIds) {
+        roundParticipation[id] = roundPlayers.filter((rp) => rp.player_id === id).length;
+      }
       const generatedGroups = generateGroupsForRound({
         playerIds: remainingPlayerIds,
         partnerFrequencies,
         allPlayers: all_players,
+        roundParticipation,
       });
       finalGroupList = [...manualGroups, ...generatedGroups];
     }

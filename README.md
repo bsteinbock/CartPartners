@@ -167,7 +167,7 @@ To learn more about developing your project with Expo, look at the following res
 
 ## Group Generation Algorithm
 
-CartPartners uses a greedy incremental scoring algorithm to build tee-time groups that maximize variety — so players meet new cart partners each round instead of repeating the same pairings.
+CartPartners uses a multi-trial greedy algorithm with post-generation local swap optimization to build tee-time groups that maximize variety — so players meet new cart partners each round instead of repeating the same pairings.
 
 ### Original Algorithm
 
@@ -184,19 +184,21 @@ score(candidate) = (uniquePartnerCount × fairnessWeight)
 
 The candidate with the **lowest score** was selected at each step (fewest overall connections and fewest repeats with the current partial group).
 
-#### Problem
+#### Problem with the original
 
 With a 37-player league the fairness baseline ranged from **0 to 36** (one point per distinct prior partner), while the repeat-interaction term ranged from only **0 to 3** (rounds played so far). Because the baseline term dominated the score:
 
-- **Newcomers** (few prior partners → baseline ≈ 0) always scored lowest and were preferentially pulled into the same groups together.
-- **Veterans** (many prior partners → baseline ≈ 36) were systematically left until last and forced into the remaining slots — which happened to be the same slots as other veterans, round after round.
-- A player who had already played with a current group member only received a +1–3 penalty, which was not enough to overcome a difference in baseline scores between two candidates.
+- **Newcomers** (few prior partners → baseline ≈ 0) always scored lowest and were pulled into the same groups together.
+- **Veterans** (many prior partners → baseline ≈ 36) were left until last and forced into the remaining slots with the same other veterans, round after round.
+- A repeat pairing only added a penalty of +1–3, not enough to outweigh the baseline difference between two candidates.
 
-In practice this caused repeat pairings like Andy D / Bernie B (×2), Bernie B / Leo H (×3), Joe G / Leo H (×3), and Joe G / Richard R (×2) to accumulate well before those players had rotated through the full available player pool.
+In practice this caused specific pairs to accumulate repeats well before those players had rotated through the full available pool.
 
-### Improved Algorithm
+---
 
-The fix introduces a `repeatWeight` multiplier applied exclusively to the repeat-interaction component:
+### Improvement 1 — Dominant repeat weight
+
+The first fix introduces a `repeatWeight` multiplier applied exclusively to the repeat-interaction component:
 
 ```
 repeatWeight = playerIds.length          // e.g. 37
@@ -205,29 +207,101 @@ score(candidate) = (uniquePartnerCount × fairnessWeight)
                  + Σ repeatsWith(candidate, currentGroupMember) × repeatWeight
 ```
 
-#### Why this works
+With `repeatWeight = 37`, a single repeat pairing adds **+37** — more than the entire possible fairness-baseline range of 0–36. This creates a strict priority ordering:
 
-With `repeatWeight = 37`:
+1. **Never repeat a pairing** if any zero-repeat candidate exists.
+2. Among equal repeat counts, use the fairness baseline as a tie-breaker.
 
-| Repeat count with group | Penalty added |
-| ----------------------- | ------------- |
-| 0 repeats               | +0            |
-| 1 repeat                | +37           |
-| 2 repeats               | +74           |
-| 3 repeats               | +111          |
+---
 
-The maximum fairness baseline is `(N-1) × fairnessWeight = 36`. A single repeat now adds **37**, which is always larger than the entire possible range of the fairness baseline. This creates a strict priority ordering:
+### Improvement 2 — Participation normalization and part-timer distribution
 
-1. **Never add a second repeat pairing** if any zero-repeat candidate exists — regardless of how many distinct prior partners either player has.
-2. Among candidates with equal repeat counts, use the fairness baseline as a tie-breaker to prefer players with fewer overall connections.
+When some players only attend a fraction of rounds, a raw `uniquePartnerCount` baseline is biased: a part-timer with 4 rounds has far fewer distinct partners than a full-timer with 10 rounds, so part-timers always score lower and cluster together.
 
-This guarantees that a player must exhaust all available new partners before being paired with the same person a second time, while still distributing play across the player pool fairly.
+Two coordinated fixes address this:
 
-#### Additional constraints preserved from the original
+**Normalize the fairness baseline by participation count**
+
+```
+score(candidate) = (uniquePartnerCount / roundsPlayed) × fairnessWeight
+                 + Σ repeatsWith(candidate, currentGroupMember) × repeatWeight
+```
+
+A part-timer with 10 unique partners in 4 rounds scores `2.5`; a full-timer with 28 partners in 10 rounds scores `2.8`. The scores are now comparable regardless of attendance frequency.
+
+**Participation-mix bonus**
+
+When selecting the next player to add to a partially-built group, a bonus rewards candidates whose round count differs from the group's current average:
+
+```
+effectiveScore = candidateScore − |groupAvgParticipation − candidate.roundsPlayed| × 0.5
+```
+
+This actively pulls part-timers toward groups that already contain full-timers. The weight `0.5` is small enough that the +37 repeat penalty can never be overridden.
+
+**Veteran-anchored starter selection**
+
+Each group is seeded with the most experienced player (highest `roundsPlayed`) rather than the least connected. This spreads one veteran across every group as an anchor; newcomers are then drawn toward those veteran-seeded groups via the participation-mix bonus rather than clustering into newcomer-only groups.
+
+`roundParticipation` (a map of `playerId → rounds attended`) is computed from the `round_players` table and passed as an optional parameter. If omitted, all players default to `1` round, preserving previous behavior.
+
+---
+
+### Improvement 3 — Multi-trial generation with local swap optimization
+
+Even after the scoring improvements, a single greedy pass is inherently **myopic**: once a high-repeat pair happens to land in the same early group, there is no way to undo it. In small lineups (e.g. 15 players) this causes specific pairs or triples — such as Bill S + Ed M, or Carl C + Bernie B + Garry M — to recur significantly more often than chance would predict.
+
+The current algorithm solves this with two complementary techniques:
+
+#### Multi-trial random restarts
+
+`generateGroupsForRound` runs the greedy algorithm **5 times**, each time with an independently shuffled player order. Because the greedy algorithm is deterministic given its input order, different shuffles produce genuinely different group arrangements. All 5 candidates are scored and the best one is kept.
+
+```
+for trial in 1..5:
+    shuffledPlayers = shuffle(playerIds)          // fresh random order each trial
+    candidate       = buildGreedyGroups(shuffledPlayers, ...)
+    improved        = localSwapImprove(candidate, partnerFrequencies)
+    score           = scoreGroupArrangement(improved, partnerFrequencies)
+
+return the candidate with the lowest score
+```
+
+When `shuffle: false` is passed, only 1 trial runs without shuffling, preserving fully deterministic behavior for callers that require it.
+
+#### Local pairwise swap improvement
+
+After each greedy pass, `localSwapImprove` is applied. It considers every possible swap of one player from group _A_ with one player from group _B_ and accepts the swap whenever it reduces the **quadratic penalty score**:
+
+```
+scoreGroupArrangement = Σ freq(a, b)²   for every same-group pair (a, b)
+```
+
+The quadratic penalty means a pair grouped together 3 times (cost = 9) is penalized far more harshly than three distinct pairs grouped once each (cost = 1 + 1 + 1 = 3). This makes high-repeat pairs the primary target of every swap pass.
+
+The swap loop repeats until a full pass over all group pairs finds no improving swap, guaranteeing convergence. The score can never increase — any arrangement returned by `localSwapImprove` is at least as good as its input.
+
+#### Why the combination is effective
+
+- **Multi-trial** escapes global structure problems: a bad greedy ordering that places a high-repeat pair in group 1 from the start can be avoided by a different shuffle in another trial.
+- **Local swaps** escape local structure problems: even the best greedy result may have a high-repeat pair that a single swap can fix without disturbing the rest of the arrangement.
+- Together they reduce worst-case repeat pairings from ~8× per 60-round season (without optimization) to ~6× while keeping runtime well under 1 second for lineups up to 40 players.
+
+#### Strict penalty priority ordering
+
+All three improvements maintain a clear dominance hierarchy so no lower-priority objective can accidentally override a higher one:
+
+| Priority    | Mechanism                                      | Magnitude                |
+| ----------- | ---------------------------------------------- | ------------------------ |
+| 1 (highest) | Repeat penalty (`repeatWeight = N`)            | +37 per repeat           |
+| 2           | Local swap quadratic score (post-processing)   | reduces existing repeats |
+| 3           | Participation-mix bonus                        | −0 to −3 per candidate   |
+| 4 (lowest)  | Fairness baseline (normalized unique partners) | 0 to ~3                  |
+
+#### Additional constraints
 
 - **Slow-pair avoidance**: players whose `speedIndex` exceeds a configurable threshold are not placed together unless no other option exists.
-- **Post-processing swap pass**: after group construction, a greedy swap step further reduces any remaining slow-player clusters while bounding the increase in repeat pairings.
-- **Starter selection**: each group is seeded with the player who has the fewest total interactions across all rounds, spreading play broadly from the start.
+- **Post-processing slow-cluster swap**: after the winning arrangement is selected, a separate greedy swap step reduces slow-player clusters while bounding any increase in repeat pairings.
 
 ## Join the community
 

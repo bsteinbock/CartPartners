@@ -13,6 +13,12 @@ import { Group, GroupPlayers, ManualGroupList, Player } from '../hooks/use-dbSto
  * @param fairnessWeight - How strongly to favor players with fewer unique
  *                         partners 0=ignore >2 strong prioritization (default: 1.0)
  * @param shuffle - Whether to shuffle the player list (default true)
+ * @param roundParticipation - Map of playerId → number of rounds that player has
+ *                              participated in. Used to normalize the fairness baseline
+ *                              so part-time and full-time players are scored comparably,
+ *                              and to apply a participation-mix bonus that spreads
+ *                              part-time players across groups with full-time players.
+ *                              Optional; defaults to 1 for all players if omitted.
  */
 export interface GroupParams {
   playerIds: number[];
@@ -22,6 +28,7 @@ export interface GroupParams {
   shuffle?: boolean;
   avoidSlowPairs?: boolean;
   slowThreshold?: number;
+  roundParticipation?: Record<number, number>;
 }
 
 export function getGroupSizes(numPlayers: number): number[] {
@@ -137,28 +144,24 @@ export function generateGroupsForRound(params: Partial<GroupParams>): number[][]
     shuffle = true,
     avoidSlowPairs = true,
     slowThreshold = 4,
+    roundParticipation,
   } = params;
 
   if (!playerIds.length) throw new Error('generateGroupsForRound: playerIds array is required.');
 
-  // precompute helper maps to avoid repeated work
+  // Precompute helper maps once; all trials reuse them.
   const uniquePartnerCounts: Record<number, number> = {};
   const totalInteractions: Record<number, number> = {};
   for (const id of playerIds) {
     const map = partnerFrequencies[id] || {};
     uniquePartnerCounts[id] = Object.keys(map).length;
-    totalInteractions[id] = Object.values(map).reduce((s, v) => s + v, 0);
+    // Normalize total interactions by rounds played so part-timers and full-timers
+    // are compared on equal footing when choosing the group starter.
+    const rounds = Math.max(1, roundParticipation?.[id] ?? 1);
+    totalInteractions[id] = Object.values(map).reduce((s, v) => s + v, 0) / rounds;
   }
 
   const groupSizes = getGroupSizes(playerIds.length);
-  const remainingPlayers = shuffle ? [...playerIds].sort(() => Math.random() - 0.5) : [...playerIds];
-  const groups: number[][] = [];
-
-  // Repeat interactions must strongly dominate the fairness baseline so that
-  // even a single repeat pair is always avoided over any fairness consideration.
-  // Without this, the fairness baseline (uniquePartnerCounts * fairnessWeight)
-  // dominates for veteran players, causing newcomers to cluster together and
-  // veterans to repeatedly end up in the same group.
   const repeatWeight = playerIds.length;
 
   const speedCache: Record<number, number> = {};
@@ -169,92 +172,46 @@ export function generateGroupsForRound(params: Partial<GroupParams>): number[][]
     return val;
   };
 
-  // Build groups
-  for (let gi = 0; gi < groupSizes.length; gi++) {
-    const size = groupSizes[gi];
-    if (remainingPlayers.length === 0) break;
+  // Run up to NUM_TRIALS independent greedy arrangements (each with a different
+  // random shuffle), improve each with local pairwise player swaps, and keep the
+  // best-scoring result. Multiple trials escape local optima that a single greedy
+  // pass cannot recover from, eliminating stubborn high-repeat pairs.
+  const NUM_TRIALS = shuffle ? 5 : 1;
+  let bestGroups: number[][] = [];
+  let bestScore = Infinity;
 
-    // pick starter (least connected among remaining)
-    const starter = getLeastConnectedPlayer(remainingPlayers, partnerFrequencies, totalInteractions);
-    const group: number[] = [starter];
-    remainingPlayers.splice(remainingPlayers.indexOf(starter), 1);
+  for (let trial = 0; trial < NUM_TRIALS; trial++) {
+    const shuffledPlayers = shuffle ? [...playerIds].sort(() => Math.random() - 0.5) : [...playerIds];
 
-    // Prepare incremental candidate scores for the remainingPlayers
-    // score = initial fairness component (unique partner count * fairnessWeight) + cumulative repeat interactions with current group
-    const candidateScores: Record<number, number> = {};
-    for (const c of remainingPlayers) {
-      candidateScores[c] = (uniquePartnerCounts[c] || 0) * fairnessWeight;
-      // no repeat interactions yet, will update when group grows
+    const candidate = buildGreedyGroups(
+      shuffledPlayers,
+      groupSizes,
+      partnerFrequencies,
+      uniquePartnerCounts,
+      totalInteractions,
+      fairnessWeight,
+      repeatWeight,
+      roundParticipation,
+      avoidSlowPairs,
+      slowThreshold,
+      getSpeedIndex,
+    );
+
+    const improved = localSwapImprove(candidate, partnerFrequencies);
+    const score = scoreGroupArrangement(improved, partnerFrequencies);
+
+    if (score < bestScore) {
+      bestScore = score;
+      bestGroups = improved;
     }
-
-    // add starter effect: update candidate scores by starter interactions
-    for (const c of remainingPlayers) {
-      candidateScores[c] += (partnerFrequencies[c]?.[starter] ?? 0) * repeatWeight;
-    }
-
-    while (group.length < size && remainingPlayers.length > 0) {
-      // choose best candidate (lowest score) respecting slow-player constraints
-      let bestCandidate: number | null = null;
-      let bestScore = Infinity;
-      const groupHasSlow = avoidSlowPairs && group.some((id) => getSpeedIndex(id) > slowThreshold);
-
-      for (const candidate of remainingPlayers) {
-        const candidateIsSlow = getSpeedIndex(candidate) > slowThreshold;
-        if (avoidSlowPairs && groupHasSlow && candidateIsSlow) continue; // skip if would create slow cluster
-
-        const score = candidateScores[candidate];
-        if (score < bestScore) {
-          bestScore = score;
-          bestCandidate = candidate;
-        }
-      }
-
-      // if no candidate found due to slow constraints, relax and pick minimum score
-      if (bestCandidate === null) {
-        for (const candidate of remainingPlayers) {
-          const score = candidateScores[candidate];
-          if (score < bestScore) {
-            bestScore = score;
-            bestCandidate = candidate;
-          }
-        }
-      }
-
-      if (bestCandidate == null) break;
-
-      // select bestCandidate
-      group.push(bestCandidate);
-      remainingPlayers.splice(remainingPlayers.indexOf(bestCandidate), 1);
-
-      // update candidateScores: for each remaining candidate c, add partnerFrequencies[c][bestCandidate]
-      for (const c of remainingPlayers) {
-        candidateScores[c] += (partnerFrequencies[c]?.[bestCandidate] ?? 0) * repeatWeight;
-      }
-    }
-
-    groups.push(group);
   }
 
-  // assign any leftover players to groups minimizing partner conflicts (same as before)
-  for (const leftover of remainingPlayers) {
-    let bestGroup = groups[0];
-    let minConflicts = Infinity;
-    for (const group of groups) {
-      const conflicts = group.reduce((sum, member) => sum + (partnerFrequencies[leftover]?.[member] || 0), 0);
-      if (conflicts < minConflicts) {
-        minConflicts = conflicts;
-        bestGroup = group;
-      }
-    }
-    bestGroup.push(leftover);
-  }
-
-  // optional slow-cluster pass (simple, fast)
+  // optional slow-cluster pass on the winning arrangement
   if (avoidSlowPairs) {
-    simpleSlowClusterAdjustment(groups, partnerFrequencies, getSpeedIndex, slowThreshold);
+    simpleSlowClusterAdjustment(bestGroups, partnerFrequencies, getSpeedIndex, slowThreshold);
   }
 
-  return groups;
+  return bestGroups;
 }
 
 /**
@@ -279,6 +236,231 @@ function getLeastConnectedPlayer(
     }
   }
   return best;
+}
+
+/**
+ * Utility to find the most experienced player (most rounds played).
+ * Used for starter selection so that veterans anchor every group and newcomers
+ * are drawn toward them via the participation-mix bonus.
+ * Falls back to highest total interactions when roundParticipation is absent.
+ */
+function getMostExperiencedPlayer(
+  playerIds: number[],
+  roundParticipation?: Record<number, number>,
+  precomputedTotals?: Record<number, number>,
+): number {
+  let maxScore = -Infinity;
+  let best = playerIds[0];
+  for (const id of playerIds) {
+    const score = roundParticipation ? (roundParticipation[id] ?? 0) : (precomputedTotals?.[id] ?? 0);
+    if (score > maxScore) {
+      maxScore = score;
+      best = id;
+    }
+  }
+  return best;
+}
+
+// ---------------------------------------------------------------------------
+// Scoring, local-swap improvement, and greedy group-building helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Score a group arrangement using squared partner-frequency penalties.
+ * A pair that has been grouped together `freq` times contributes freq² to the
+ * total score.  The quadratic scaling strongly penalizes high-repeat pairs:
+ *   one pair at freq=3 (cost 9) >> three distinct pairs at freq=1 (cost 3).
+ * Lower score is better; 0 means no player has ever been grouped with another.
+ */
+export function scoreGroupArrangement(
+  groups: number[][],
+  partnerFrequencies: Record<number, Record<number, number>>,
+): number {
+  let score = 0;
+  for (const group of groups) {
+    for (let i = 0; i < group.length; i++) {
+      for (let j = i + 1; j < group.length; j++) {
+        const freq = partnerFrequencies[group[i]]?.[group[j]] ?? 0;
+        score += freq * freq;
+      }
+    }
+  }
+  return score;
+}
+
+/**
+ * Compute the score delta from swapping groups[gi][pi] ↔ groups[gj][pj].
+ * Returns a negative value when the swap is an improvement.
+ * Does NOT mutate the groups array.
+ */
+function swapDelta(
+  groups: number[][],
+  gi: number,
+  pi: number,
+  gj: number,
+  pj: number,
+  partnerFrequencies: Record<number, Record<number, number>>,
+): number {
+  const A = groups[gi][pi];
+  const B = groups[gj][pj];
+  // Players that remain in each group after the hypothetical swap
+  const giRest = groups[gi].filter((_, idx) => idx !== pi);
+  const gjRest = groups[gj].filter((_, idx) => idx !== pj);
+
+  let delta = 0;
+  // A leaves gi → remove A's pair costs there; B enters gi → add B's pair costs
+  for (const m of giRest) {
+    const fA = partnerFrequencies[A]?.[m] ?? 0;
+    const fB = partnerFrequencies[B]?.[m] ?? 0;
+    delta += fB * fB - fA * fA;
+  }
+  // B leaves gj → remove B's pair costs there; A enters gj → add A's pair costs
+  for (const m of gjRest) {
+    const fB = partnerFrequencies[B]?.[m] ?? 0;
+    const fA = partnerFrequencies[A]?.[m] ?? 0;
+    delta += fA * fA - fB * fB;
+  }
+  return delta;
+}
+
+/**
+ * Improve a group arrangement by repeatedly swapping players between groups
+ * whenever the swap lowers the quadratic repeat-pair score.
+ * Guaranteed to never increase the total score. Returns a new (improved) array.
+ */
+export function localSwapImprove(
+  groups: number[][],
+  partnerFrequencies: Record<number, Record<number, number>>,
+): number[][] {
+  const result = groups.map((g) => [...g]);
+  let improved = true;
+  while (improved) {
+    improved = false;
+    for (let gi = 0; gi < result.length - 1; gi++) {
+      for (let gj = gi + 1; gj < result.length; gj++) {
+        for (let pi = 0; pi < result[gi].length; pi++) {
+          for (let pj = 0; pj < result[gj].length; pj++) {
+            if (swapDelta(result, gi, pi, gj, pj, partnerFrequencies) < 0) {
+              const tmp = result[gi][pi];
+              result[gi][pi] = result[gj][pj];
+              result[gj][pj] = tmp;
+              improved = true;
+            }
+          }
+        }
+      }
+    }
+  }
+  return result;
+}
+
+/**
+ * Build one greedy group arrangement from a pre-shuffled player list.
+ * Extracted from generateGroupsForRound so the multi-trial loop can call it
+ * with different shuffles and select the best result.
+ */
+function buildGreedyGroups(
+  shuffledPlayers: number[],
+  groupSizes: number[],
+  partnerFrequencies: Record<number, Record<number, number>>,
+  uniquePartnerCounts: Record<number, number>,
+  totalInteractions: Record<number, number>,
+  fairnessWeight: number,
+  repeatWeight: number,
+  roundParticipation: Record<number, number> | undefined,
+  avoidSlowPairs: boolean,
+  slowThreshold: number,
+  getSpeedIndex: (id: number) => number,
+): number[][] {
+  const remainingPlayers = [...shuffledPlayers];
+  const groups: number[][] = [];
+
+  for (let gi = 0; gi < groupSizes.length; gi++) {
+    const size = groupSizes[gi];
+    if (remainingPlayers.length === 0) break;
+
+    // Anchor each group with the most experienced player so that veterans are
+    // spread as starters and newcomers are drawn toward them via the
+    // participation-mix bonus.
+    const starter = getMostExperiencedPlayer(remainingPlayers, roundParticipation, totalInteractions);
+    const group: number[] = [starter];
+    remainingPlayers.splice(remainingPlayers.indexOf(starter), 1);
+
+    // Fairness baseline normalized by rounds played so part-timers score
+    // comparably to full-timers rather than always clustering due to lower raw counts.
+    const candidateScores: Record<number, number> = {};
+    for (const c of remainingPlayers) {
+      const cRounds = Math.max(1, roundParticipation?.[c] ?? 1);
+      candidateScores[c] = (uniquePartnerCounts[c] / cRounds) * fairnessWeight;
+    }
+    for (const c of remainingPlayers) {
+      candidateScores[c] += (partnerFrequencies[c]?.[starter] ?? 0) * repeatWeight;
+    }
+
+    while (group.length < size && remainingPlayers.length > 0) {
+      let bestCandidate: number | null = null;
+      let bestScore = Infinity;
+      const groupHasSlow = avoidSlowPairs && group.some((id) => getSpeedIndex(id) > slowThreshold);
+
+      // Participation-mix bonus: prefer candidates whose round count differs from
+      // the group average, spreading part-timers across full-timer groups.
+      const participationMixWeight = 0.5;
+      const groupAvgParticipation =
+        group.reduce((s, id) => s + Math.max(1, roundParticipation?.[id] ?? 1), 0) / group.length;
+
+      for (const candidate of remainingPlayers) {
+        if (avoidSlowPairs && groupHasSlow && getSpeedIndex(candidate) > slowThreshold) continue;
+        const participationGap = Math.abs(
+          groupAvgParticipation - Math.max(1, roundParticipation?.[candidate] ?? 1),
+        );
+        const effectiveScore = candidateScores[candidate] - participationGap * participationMixWeight;
+        if (effectiveScore < bestScore) {
+          bestScore = effectiveScore;
+          bestCandidate = candidate;
+        }
+      }
+
+      // Relax slow constraint if no candidate was found
+      if (bestCandidate === null) {
+        for (const candidate of remainingPlayers) {
+          const participationGap = Math.abs(
+            groupAvgParticipation - Math.max(1, roundParticipation?.[candidate] ?? 1),
+          );
+          const effectiveScore = candidateScores[candidate] - participationGap * participationMixWeight;
+          if (effectiveScore < bestScore) {
+            bestScore = effectiveScore;
+            bestCandidate = candidate;
+          }
+        }
+      }
+
+      if (bestCandidate == null) break;
+
+      group.push(bestCandidate);
+      remainingPlayers.splice(remainingPlayers.indexOf(bestCandidate), 1);
+      for (const c of remainingPlayers) {
+        candidateScores[c] += (partnerFrequencies[c]?.[bestCandidate] ?? 0) * repeatWeight;
+      }
+    }
+
+    groups.push(group);
+  }
+
+  // Assign leftover players to the group with fewest repeat conflicts
+  for (const leftover of remainingPlayers) {
+    let bestGroup = groups[0];
+    let minConflicts = Infinity;
+    for (const group of groups) {
+      const conflicts = group.reduce((sum, m) => sum + (partnerFrequencies[leftover]?.[m] ?? 0), 0);
+      if (conflicts < minConflicts) {
+        minConflicts = conflicts;
+        bestGroup = group;
+      }
+    }
+    bestGroup.push(leftover);
+  }
+
+  return groups;
 }
 
 /**
