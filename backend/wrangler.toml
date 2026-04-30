@@ -1,6 +1,7 @@
 name = "cart-partners-backend"
 main = "worker.ts"
 compatibility_date = "2024-09-23"
+tsconfig = "tsconfig.json"
 
 [[r2_buckets]]
 binding = "CART_PARTNERS_BUCKET"
