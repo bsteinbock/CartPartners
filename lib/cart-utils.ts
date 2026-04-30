@@ -154,6 +154,13 @@ export function generateGroupsForRound(params: Partial<GroupParams>): number[][]
   const remainingPlayers = shuffle ? [...playerIds].sort(() => Math.random() - 0.5) : [...playerIds];
   const groups: number[][] = [];
 
+  // Repeat interactions must strongly dominate the fairness baseline so that
+  // even a single repeat pair is always avoided over any fairness consideration.
+  // Without this, the fairness baseline (uniquePartnerCounts * fairnessWeight)
+  // dominates for veteran players, causing newcomers to cluster together and
+  // veterans to repeatedly end up in the same group.
+  const repeatWeight = playerIds.length;
+
   const speedCache: Record<number, number> = {};
   const getSpeedIndex = (id: number) => {
     if (speedCache[id] !== undefined) return speedCache[id];
@@ -182,7 +189,7 @@ export function generateGroupsForRound(params: Partial<GroupParams>): number[][]
 
     // add starter effect: update candidate scores by starter interactions
     for (const c of remainingPlayers) {
-      candidateScores[c] += partnerFrequencies[c]?.[starter] ?? 0;
+      candidateScores[c] += (partnerFrequencies[c]?.[starter] ?? 0) * repeatWeight;
     }
 
     while (group.length < size && remainingPlayers.length > 0) {
@@ -221,7 +228,7 @@ export function generateGroupsForRound(params: Partial<GroupParams>): number[][]
 
       // update candidateScores: for each remaining candidate c, add partnerFrequencies[c][bestCandidate]
       for (const c of remainingPlayers) {
-        candidateScores[c] += partnerFrequencies[c]?.[bestCandidate] ?? 0;
+        candidateScores[c] += (partnerFrequencies[c]?.[bestCandidate] ?? 0) * repeatWeight;
       }
     }
 
@@ -626,16 +633,15 @@ export function assembleEmailAddresses(
 }
 
 /**
- * Helper function to copy CC recipients to clipboard as a backup.
+ * Helper function to copy the email body to clipboard as a backup.
  * This is useful for email clients (like Yahoo Mail) that have limitations with CC fields.
  *
- * @param ccRecipients - Array of CC recipient email addresses
+ * @param body - Email body text
  */
-async function copyccRecipientsToClipboard(ccRecipients: string[]): Promise<void> {
-  if (ccRecipients.length === 0) return;
+async function copyBodyToClipboard(body: string): Promise<void> {
+  if (!body) return;
 
-  const ccArrayString = ccRecipients.join(',');
-  await Clipboard.setStringAsync(ccArrayString).catch(() => {
+  await Clipboard.setStringAsync(body).catch(() => {
     // silently fail if clipboard access is not available
   });
 }
@@ -658,11 +664,6 @@ export function buildMailtoUri(
   const encodedSubject = encodeURIComponent(subject);
   const encodedBody = encodeURIComponent(body);
 
-  // Place addresses in the mailto: path (not as a ?to= query parameter).
-  // Outlook for Android only populates the body field when recipients are in
-  // the path position; using ?to= causes the body to be silently dropped.
-  // Email addresses are not encoded with encodeURIComponent so that '@' and
-  // ',' remain literal — both are valid unencoded characters in this position.
   const emailArray = addresses
     .split(',')
     .map((e) => e.trim())
@@ -673,22 +674,32 @@ export function buildMailtoUri(
   }
 
   if (!useCC || emailArray.length === 1) {
-    // Standard format: all addresses in the path
-    const toPath = emailArray.join(',');
-    return `mailto:${toPath}?subject=${encodedSubject}&body=${encodedBody}`;
+    if (emailArray.length === 1) {
+      // Single recipient: address in the path — universally supported by all clients.
+      return `mailto:${emailArray[0]}?subject=${encodedSubject}&body=${encodedBody}`;
+    }
+    // Multiple recipients, no CC: use ?to= with each address individually encoded
+    // and joined by literal commas (not %2C). Outlook for Android treats comma-
+    // separated path addresses as To+CC, so ?to= is required here. Encoding each
+    // address individually escapes special chars while keeping commas as separators,
+    // allowing Outlook to parse the full query string (including body) correctly.
+    const toParam = emailArray.map((addr) => encodeURIComponent(addr)).join(',');
+    return `mailto:?to=${toParam}&subject=${encodedSubject}&body=${encodedBody}`;
   }
 
-  // CC format: first address in path, rest in 'cc' query param
+  // CC format: single address in path, rest in 'cc' query param with per-address encoding
   const toPath = emailArray[0];
-  const ccArrayString = emailArray.slice(1).join(',');
-  const encodedCC = encodeURIComponent(ccArrayString);
+  const ccParam = emailArray
+    .slice(1)
+    .map((addr) => encodeURIComponent(addr))
+    .join(',');
 
-  // add ccArrayString to clipboard as a backup for Yahoo Mail limitation
-  Clipboard.setStringAsync(ccArrayString).catch(() => {
+  // copy email body to clipboard as a backup for Yahoo Mail limitation
+  Clipboard.setStringAsync(body).catch(() => {
     // silently fail if clipboard access is not available
   });
 
-  return `mailto:${toPath}?cc=${encodedCC}&subject=${encodedSubject}&body=${encodedBody}`;
+  return `mailto:${toPath}?cc=${ccParam}&subject=${encodedSubject}&body=${encodedBody}`;
 }
 
 /**
@@ -732,8 +743,8 @@ export async function composeEmail(
     // CC format: first address in 'recipients', rest in 'ccRecipients'
     const ccRecipients = emailArray.slice(1);
 
-    // Copy CC recipients to clipboard as a backup for Yahoo Mail limitation
-    await copyccRecipientsToClipboard(ccRecipients);
+    // Copy email body to clipboard as a backup for Yahoo Mail limitation
+    await copyBodyToClipboard(body);
 
     await MailComposer.composeAsync({
       recipients: [emailArray[0]],

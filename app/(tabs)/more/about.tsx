@@ -1,10 +1,14 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import ThemedButton from '@/components/ui/ThemedButton';
+import { useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { buildPlayingPartnerFrequencies } from '@/lib/cart-utils';
 import * as Application from 'expo-application';
+import { File, Paths } from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 import React from 'react';
-import { Platform, ScrollView, StyleSheet } from 'react-native';
+import { Alert, Platform, ScrollView, StyleSheet } from 'react-native';
 import { ReactNativeLegal } from 'react-native-legal';
 
 export default function AboutScreen() {
@@ -14,9 +18,59 @@ export default function AboutScreen() {
     : `(${Platform.OS})`;
   const versionText = `Version: ${version}${buildNumber}`;
   const iconButton = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
+  const { all_players, groupPlayers, usePlayerNickname } = useDbStore();
 
   const showLicenses = () => {
     ReactNativeLegal.launchLicenseListScreen('Open Source Software Licenses');
+  };
+
+  const exportPartnerMatrix = async () => {
+    try {
+      if (all_players.length === 0) {
+        Alert.alert('No Players', 'There are no players to build a matrix from.');
+        return;
+      }
+
+      const playerIds = all_players.map((p) => p.id);
+      const frequencies = buildPlayingPartnerFrequencies(playerIds, groupPlayers);
+
+      const getName = (p: (typeof all_players)[0]) =>
+        (usePlayerNickname && p.nickname ? p.nickname : p.name).replace(/"/g, '""');
+
+      // Header row: blank cell then one column per player
+      const header = ['', ...all_players.map((p) => `"${getName(p)}"`)].join(',');
+
+      // Data rows: player name then frequency counts
+      const rows = all_players.map((rowPlayer) => {
+        const rowFreqs = frequencies[rowPlayer.id] ?? {};
+        const cells = all_players.map((colPlayer) => {
+          if (rowPlayer.id === colPlayer.id) return '';
+          return String(rowFreqs[colPlayer.id] ?? 0);
+        });
+        return [`"${getName(rowPlayer)}"`, ...cells].join(',');
+      });
+
+      const csvContent = [header, ...rows].join('\n');
+
+      const fileName = 'cartpartners_partner_matrix.csv';
+      const file = new File(Paths.cache, fileName);
+      file.create({ overwrite: true });
+      file.write(csvContent);
+
+      const canShare = await Sharing.isAvailableAsync();
+      if (!canShare) {
+        Alert.alert('Sharing not available', 'This device does not support sharing files.');
+        return;
+      }
+
+      await Sharing.shareAsync(file.uri, {
+        mimeType: 'text/csv',
+        dialogTitle: 'Partner Frequency Matrix',
+      });
+    } catch (err) {
+      console.error('Error exporting partner matrix', err);
+      Alert.alert('Error', 'Failed to generate partner frequency matrix.');
+    }
   };
 
   return (
@@ -136,6 +190,12 @@ export default function AboutScreen() {
         <ThemedView style={styles.licenseButtonContainer}>
           <ThemedView style={{ borderColor: iconButton, borderWidth: 1, borderRadius: 6 }}>
             <ThemedButton title="Show Source Licenses" onPress={showLicenses} />
+          </ThemedView>
+        </ThemedView>
+
+        <ThemedView style={styles.licenseButtonContainer}>
+          <ThemedView style={{ borderColor: iconButton, borderWidth: 1, borderRadius: 6 }}>
+            <ThemedButton title="Export Partner Frequency Matrix" onPress={exportPartnerMatrix} />
           </ThemedView>
         </ThemedView>
       </ThemedView>

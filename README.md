@@ -165,6 +165,70 @@ To learn more about developing your project with Expo, look at the following res
 - [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
 - [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
 
+## Group Generation Algorithm
+
+CartPartners uses a greedy incremental scoring algorithm to build tee-time groups that maximize variety — so players meet new cart partners each round instead of repeating the same pairings.
+
+### Original Algorithm
+
+The original algorithm scored each candidate player using two components added together:
+
+```
+score(candidate) = (uniquePartnerCount × fairnessWeight)
+                 + Σ repeatsWith(candidate, currentGroupMember)
+```
+
+- **uniquePartnerCount** — how many distinct players this candidate has played with across all prior rounds
+- **fairnessWeight** — a configurable multiplier (default `1.0`)
+- **repeatsWith** — how many times this candidate has already played with each player already placed in the current group
+
+The candidate with the **lowest score** was selected at each step (fewest overall connections and fewest repeats with the current partial group).
+
+#### Problem
+
+With a 37-player league the fairness baseline ranged from **0 to 36** (one point per distinct prior partner), while the repeat-interaction term ranged from only **0 to 3** (rounds played so far). Because the baseline term dominated the score:
+
+- **Newcomers** (few prior partners → baseline ≈ 0) always scored lowest and were preferentially pulled into the same groups together.
+- **Veterans** (many prior partners → baseline ≈ 36) were systematically left until last and forced into the remaining slots — which happened to be the same slots as other veterans, round after round.
+- A player who had already played with a current group member only received a +1–3 penalty, which was not enough to overcome a difference in baseline scores between two candidates.
+
+In practice this caused repeat pairings like Andy D / Bernie B (×2), Bernie B / Leo H (×3), Joe G / Leo H (×3), and Joe G / Richard R (×2) to accumulate well before those players had rotated through the full available player pool.
+
+### Improved Algorithm
+
+The fix introduces a `repeatWeight` multiplier applied exclusively to the repeat-interaction component:
+
+```
+repeatWeight = playerIds.length          // e.g. 37
+
+score(candidate) = (uniquePartnerCount × fairnessWeight)
+                 + Σ repeatsWith(candidate, currentGroupMember) × repeatWeight
+```
+
+#### Why this works
+
+With `repeatWeight = 37`:
+
+| Repeat count with group | Penalty added |
+| ----------------------- | ------------- |
+| 0 repeats               | +0            |
+| 1 repeat                | +37           |
+| 2 repeats               | +74           |
+| 3 repeats               | +111          |
+
+The maximum fairness baseline is `(N-1) × fairnessWeight = 36`. A single repeat now adds **37**, which is always larger than the entire possible range of the fairness baseline. This creates a strict priority ordering:
+
+1. **Never add a second repeat pairing** if any zero-repeat candidate exists — regardless of how many distinct prior partners either player has.
+2. Among candidates with equal repeat counts, use the fairness baseline as a tie-breaker to prefer players with fewer overall connections.
+
+This guarantees that a player must exhaust all available new partners before being paired with the same person a second time, while still distributing play across the player pool fairly.
+
+#### Additional constraints preserved from the original
+
+- **Slow-pair avoidance**: players whose `speedIndex` exceeds a configurable threshold are not placed together unless no other option exists.
+- **Post-processing swap pass**: after group construction, a greedy swap step further reduces any remaining slow-player clusters while bounding the increase in repeat pairings.
+- **Starter selection**: each group is seeded with the player who has the fewest total interactions across all rounds, spreading play broadly from the start.
+
 ## Join the community
 
 Join our community of developers creating universal apps.
