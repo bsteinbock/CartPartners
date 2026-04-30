@@ -4,7 +4,7 @@ import BottomSheetContainer from '@/components/ui/BottomSheetContainer';
 import OptionList, { OptionEntry } from '@/components/ui/OptionList';
 import { OptionPickerItem } from '@/components/ui/OptionPickerItem';
 import ThemedButton from '@/components/ui/ThemedButton';
-import { GroupPlayers, useDbStore } from '@/hooks/use-dbStore';
+import { GroupPlayers, cloudBackupDatabase, useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import {
   assembleEmailAddresses,
@@ -69,6 +69,8 @@ export default function GroupsScreen() {
   const [useEmailCC, setUseEmailCC] = useState<boolean>(false);
   const [excludeCoordinatorFromEmail, setExcludeCoordinatorFromEmail] = useState<boolean>(false);
   const [emailAllActiveLeaguePlayers, setEmailAllActiveLeaguePlayers] = useState<boolean>(false);
+  const [cloudBackupUrl, setCloudBackupUrl] = useState<string>('');
+  const [cloudBackupApiKey, setCloudBackupApiKey] = useState<string>('');
 
   useFocusEffect(
     React.useCallback(() => {
@@ -101,6 +103,12 @@ export default function GroupsScreen() {
 
         const emailAllActive = await SecureStore.getItemAsync('cartPartnerEmailAllActiveLeaguePlayers');
         setEmailAllActiveLeaguePlayers(emailAllActive === 'true');
+
+        const storedBackupUrl = await SecureStore.getItemAsync('cartPartnerBackupServerUrl');
+        setCloudBackupUrl(storedBackupUrl ?? '');
+
+        const storedBackupApiKey = await SecureStore.getItemAsync('cartPartnerBackupApiKey');
+        setCloudBackupApiKey(storedBackupApiKey ?? '');
       })();
     }, []),
   );
@@ -257,6 +265,19 @@ export default function GroupsScreen() {
     }
   };
 
+  // Silently back up the database after groups are sent if a cloud server is configured.
+  // Failures show a non-blocking alert but do not interrupt the user's workflow.
+  const triggerAutoCloudBackup = () => {
+    if (!cloudBackupUrl.trim() || !cloudBackupApiKey.trim()) return;
+    cloudBackupDatabase(cloudBackupUrl.trim(), cloudBackupApiKey.trim()).catch((err: unknown) => {
+      console.warn('Auto cloud backup failed:', err);
+      Alert.alert(
+        'Cloud Backup Failed',
+        'Groups were sent successfully, but the automatic cloud backup encountered an error. You can retry from the Backup/Restore screen.',
+      );
+    });
+  };
+
   const informPlayers = async () => {
     if (currentRoundGroups.length === 0) return Alert.alert('No groups to export for this round');
 
@@ -290,6 +311,7 @@ export default function GroupsScreen() {
             const subject = `Cart Groups - ${pickedRound?.label}`;
             try {
               await composeEmail(addresses, subject, bodyText, useEmailCC);
+              triggerAutoCloudBackup();
             } catch {
               Alert.alert('Could not open mail app');
             }
@@ -303,6 +325,7 @@ export default function GroupsScreen() {
                   // don't include my number in the list for texting
                   if (groupCoordinatorId !== 0) {
                     await sendTextMessage(mobileNumbers, textMessageBody);
+                    triggerAutoCloudBackup();
                   } else {
                     Alert.alert(
                       'No Coordinator Selected',

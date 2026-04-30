@@ -1,0 +1,7 @@
+name = "cart-partners-backup"
+main = "worker.ts"
+compatibility_date = "2024-09-23"
+
+[[r2_buckets]]
+binding = "CART_PARTNERS_BUCKET"
+bucket_name = "cart-partners-backup"
