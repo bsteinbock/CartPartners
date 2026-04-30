@@ -1,4 +1,5 @@
 import { ThemedText } from '@/components/themed-text';
+import { ThemedTextInput } from '@/components/themed-textinput';
 import { ThemedView } from '@/components/themed-view';
 import BottomSheetContainer from '@/components/ui/BottomSheetContainer';
 import OptionList, { OptionEntry } from '@/components/ui/OptionList';
@@ -24,6 +25,8 @@ export default function SettingsScreen() {
   const [isPlayerPickerVisible, setIsPlayerPickerVisible] = useState<boolean>(false);
   const [playerOptions, setPlayerOptions] = useState<OptionEntry[]>([]);
   const [pickedPlayer, setPickedPlayer] = useState<OptionEntry | null>(null);
+  const [backupServerUrl, setBackupServerUrl] = useState<string>('');
+  const [backupApiKey, setBackupApiKey] = useState<string>('');
   const { all_players } = useDbStore();
   const isDevelopment = Constants.appOwnership === 'expo' || __DEV__;
 
@@ -58,6 +61,12 @@ export default function SettingsScreen() {
             setPickedPlayer({ label: coordinator.name, value: coordinator.id });
           }
         }
+
+        const storedBackupUrl = await SecureStore.getItemAsync('cartPartnerBackupServerUrl');
+        setBackupServerUrl(storedBackupUrl ?? '');
+
+        const storedBackupApiKey = await SecureStore.getItemAsync('cartPartnerBackupApiKey');
+        setBackupApiKey(storedBackupApiKey ?? '');
       })();
     }, [all_players]),
   );
@@ -106,6 +115,26 @@ export default function SettingsScreen() {
   const handleClearCoordinator = async () => {
     setPickedPlayer(null);
     await SecureStore.deleteItemAsync('cartPartnerGroupCoordinatorId');
+  };
+
+  const handleBackupUrlBlur = async () => {
+    const trimmed = backupServerUrl.trim();
+    setBackupServerUrl(trimmed);
+    if (trimmed) {
+      await SecureStore.setItemAsync('cartPartnerBackupServerUrl', trimmed);
+    } else {
+      await SecureStore.deleteItemAsync('cartPartnerBackupServerUrl');
+    }
+  };
+
+  const handleBackupApiKeyBlur = async () => {
+    const trimmed = backupApiKey.trim();
+    setBackupApiKey(trimmed);
+    if (trimmed) {
+      await SecureStore.setItemAsync('cartPartnerBackupApiKey', trimmed);
+    } else {
+      await SecureStore.deleteItemAsync('cartPartnerBackupApiKey');
+    }
   };
 
   return (
@@ -226,6 +255,39 @@ export default function SettingsScreen() {
             </ThemedView>
           </ThemedView>
         )}
+
+        <ThemedText type="subtitle" style={[styles.sectionTitle, { marginTop: 24, marginBottom: 10 }]}>
+          Cloud Backup
+        </ThemedText>
+        <ThemedText type="small" style={styles.settingDescription}>
+          Optional. Enter your CartPartners backup worker URL and API key to enable cloud backup and restore.
+          When configured, the database will be automatically backed up after groups are sent. Leave both
+          fields blank to disable cloud backup.
+        </ThemedText>
+        <ThemedText style={[styles.settingLabel, { marginTop: 14 }]}>Backend URL</ThemedText>
+        <ThemedTextInput
+          value={backupServerUrl}
+          onChangeText={setBackupServerUrl}
+          onBlur={handleBackupUrlBlur}
+          placeholder="https://cart-partners-backup.example.workers.dev"
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="url"
+          returnKeyType="done"
+          style={{ marginBottom: 12 }}
+        />
+        <ThemedText style={styles.settingLabel}>API Key</ThemedText>
+        <ThemedTextInput
+          value={backupApiKey}
+          onChangeText={setBackupApiKey}
+          onBlur={handleBackupApiKeyBlur}
+          placeholder="Enter API key"
+          autoCapitalize="none"
+          autoCorrect={false}
+          secureTextEntry
+          returnKeyType="done"
+          style={{ marginBottom: 20 }}
+        />
       </ThemedView>
 
       {playerOptions && isPlayerPickerVisible && (

@@ -306,6 +306,87 @@ export const restoreDatabaseFromFile = async (selectedFileUri: string): Promise<
   }
 };
 
+/**
+ * Upload the current database to a remote backup server.
+ * The DB is read as base64 and sent as JSON to PUT /backup.
+ * The DB connection is always re-opened, even if the upload fails.
+ * @param serverUrl Base URL of the CartPartners backup worker (e.g. https://cart-partners-backup.example.workers.dev)
+ * @param apiKey Pre-shared API key used in the Authorization: Bearer header
+ */
+export async function cloudBackupDatabase(serverUrl: string, apiKey: string): Promise<void> {
+  const database = getDb();
+  const dbPath = database.databasePath;
+  closeDbConnection();
+
+  try {
+    const sourceFile = new File(dbPath);
+    if (!sourceFile.exists) {
+      throw new Error('Database file not found at ' + dbPath);
+    }
+
+    const base64 = await sourceFile.base64();
+
+    const url = serverUrl.replace(/\/+$/, '');
+    const response = await fetch(`${url}/backup`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({ backup: base64 }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Cloud backup failed with status ${response.status}`);
+    }
+  } finally {
+    // Always re-open the DB so the app remains functional
+    try {
+      db = SQLite.openDatabaseSync(DB_NAME, undefined, getDbDirectory().uri);
+    } catch (err) {
+      console.error('Failed to reopen DB after cloud backup:', err);
+    }
+  }
+}
+
+/**
+ * Download and restore the database from a remote backup server.
+ * The backup is fetched as base64 JSON from GET /restore, written to a temp
+ * file, then the existing restoreDatabaseFromFile flow handles validation and
+ * the DB swap.
+ * @param serverUrl Base URL of the CartPartners backup worker
+ * @param apiKey Pre-shared API key used in the Authorization: Bearer header
+ * @returns true if the restore succeeded, false otherwise
+ */
+export async function cloudRestoreDatabase(serverUrl: string, apiKey: string): Promise<boolean> {
+  const url = serverUrl.replace(/\/+$/, '');
+  const response = await fetch(`${url}/restore`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Cloud restore failed with status ${response.status}`);
+  }
+
+  const data: { backup?: unknown } = await response.json();
+  if (!data.backup || typeof data.backup !== 'string') {
+    throw new Error('Invalid response from backup server: missing backup field');
+  }
+
+  // Write base64 payload to a temp file then use the existing restore flow
+  const tempFile = new File(Paths.cache, 'cloud-restore-temp.db');
+  deleteFileIfExists(tempFile);
+  deleteFileIfExists(new File(Paths.cache, 'cloud-restore-temp.db-wal'));
+  deleteFileIfExists(new File(Paths.cache, 'cloud-restore-temp.db-shm'));
+
+  tempFile.write(data.backup, { encoding: 'base64' });
+
+  return restoreDatabaseFromFile(tempFile.uri);
+}
+
 // ------------------- TYPES -------------------
 export type Player = {
   id: number;

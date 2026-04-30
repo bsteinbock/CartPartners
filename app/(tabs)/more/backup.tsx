@@ -1,15 +1,38 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import ThemedButton from '@/components/ui/ThemedButton';
-import { backupDatabase, restoreDatabaseFromFile, useDbStore } from '@/hooks/use-dbStore';
+import {
+  backupDatabase,
+  cloudBackupDatabase,
+  cloudRestoreDatabase,
+  restoreDatabaseFromFile,
+  useDbStore,
+} from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import * as DocumentPicker from 'expo-document-picker';
-import React from 'react';
+import { useFocusEffect } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
+import React, { useState } from 'react';
 import { Alert, ScrollView, StyleSheet } from 'react-native';
 
 export default function BackupScreen() {
   const { refreshAll } = useDbStore();
   const iconButton = useThemeColor({ light: undefined, dark: undefined }, 'iconButton');
+  const [cloudBackupUrl, setCloudBackupUrl] = useState<string>('');
+  const [cloudApiKey, setCloudApiKey] = useState<string>('');
+
+  useFocusEffect(
+    React.useCallback(() => {
+      (async () => {
+        const url = await SecureStore.getItemAsync('cartPartnerBackupServerUrl');
+        setCloudBackupUrl(url ?? '');
+        const key = await SecureStore.getItemAsync('cartPartnerBackupApiKey');
+        setCloudApiKey(key ?? '');
+      })();
+    }, []),
+  );
+
+  const isCloudConfigured = cloudBackupUrl.trim().length > 0 && cloudApiKey.trim().length > 0;
 
   const handleImportDb = async () => {
     Alert.alert(
@@ -50,6 +73,61 @@ export default function BackupScreen() {
             } catch (error) {
               console.error('Restore error:', error);
               Alert.alert('Error', 'Failed to restore database. Original DB backed up.');
+            }
+          },
+        },
+      ],
+      { cancelable: true },
+    );
+  };
+
+  const handleCloudBackup = () => {
+    Alert.alert(
+      'Cloud Backup',
+      'Upload the current database to your backup server? This will overwrite any existing cloud backup.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Upload',
+          onPress: async () => {
+            try {
+              await cloudBackupDatabase(cloudBackupUrl, cloudApiKey);
+              Alert.alert('Cloud Backup Successful', 'Database has been uploaded to the backup server.');
+            } catch (error: unknown) {
+              console.error('Cloud backup error:', error);
+              Alert.alert('Cloud Backup Failed', error instanceof Error ? error.message : 'Unknown error');
+            }
+          },
+        },
+      ],
+      { cancelable: true },
+    );
+  };
+
+  const handleCloudRestore = () => {
+    Alert.alert(
+      'Cloud Restore',
+      'Are you sure you want to replace all your current data with the last cloud backup?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Restore',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const success = await cloudRestoreDatabase(cloudBackupUrl, cloudApiKey);
+              if (success) {
+                Alert.alert('Cloud Restore Successful', 'Database has been restored from the backup server.');
+                refreshAll();
+              } else {
+                Alert.alert(
+                  'Cloud Restore Failed',
+                  'The server backup could not be restored. Your original database has been preserved.',
+                );
+              }
+            } catch (error: unknown) {
+              console.error('Cloud restore error:', error);
+              Alert.alert('Cloud Restore Failed', error instanceof Error ? error.message : 'Unknown error');
             }
           },
         },
@@ -125,6 +203,47 @@ export default function BackupScreen() {
         >
           <ThemedButton title="Restore Database from backup" onPress={handleImportDb} />
         </ThemedView>
+
+        {isCloudConfigured && (
+          <>
+            <ThemedText type="title" style={[styles.title, { marginTop: 20 }]}>
+              Cloud Backup
+            </ThemedText>
+            <ThemedText style={{ marginTop: 5, marginBottom: 10 }}>
+              Upload the current database to your configured backup server. This overwrites any previous cloud
+              backup.
+            </ThemedText>
+            <ThemedView
+              style={{
+                margin: 10,
+                marginBottom: 20,
+                borderColor: iconButton,
+                borderWidth: 1,
+                borderRadius: 6,
+              }}
+            >
+              <ThemedButton title="Cloud Backup" onPress={handleCloudBackup} />
+            </ThemedView>
+
+            <ThemedText type="title" style={[styles.title, { marginTop: 20 }]}>
+              Cloud Restore
+            </ThemedText>
+            <ThemedText style={{ marginTop: 5, marginBottom: 10 }}>
+              WARNING: Restoring from the cloud will replace all your current data with the last cloud backup.
+            </ThemedText>
+            <ThemedView
+              style={{
+                margin: 10,
+                marginBottom: 20,
+                borderColor: iconButton,
+                borderWidth: 1,
+                borderRadius: 6,
+              }}
+            >
+              <ThemedButton title="Cloud Restore" onPress={handleCloudRestore} />
+            </ThemedView>
+          </>
+        )}
       </ThemedView>
     </ScrollView>
   );
