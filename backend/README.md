@@ -84,10 +84,10 @@ If no backup has been uploaded yet, the response will be `404` with `{ "success"
 
 ## Endpoints
 
-| Method | Path       | Description                                          |
-| ------ | ---------- | ---------------------------------------------------- |
-| PUT    | `/backup`  | Upload DB as `{ "backup": "<base64>" }`.             |
-| GET    | `/restore` | Returns latest backup as `{ "backup": "<base64>" }`. |
+| Method | Path       | Description                                                                   |
+| ------ | ---------- | ----------------------------------------------------------------------------- |
+| PUT    | `/backup`  | Upload DB as `{ "backup": "<base64>" }`.                                      |
+| GET    | `/restore` | Returns latest backup as `{ "backup": "<base64>" }`.                          |
 | GET    | `/verify`  | Returns `{ success, key, size, uploaded }` if a backup exists; 404 otherwise. |
 
 Both endpoints require an `Authorization: Bearer <API_KEY>` header and return 401 if it is missing or incorrect.
