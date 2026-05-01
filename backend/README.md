@@ -26,7 +26,7 @@ wrangler login
 ### 3. Create the R2 bucket
 
 ```bash
-wrangler r2 bucket create cart-partners-backup
+wrangler r2 bucket create cart-partners-db-backup
 ```
 
 ### 4. Set the API key secret
@@ -46,7 +46,7 @@ wrangler secret put API_KEY
 npm run deploy
 ```
 
-After deploying, Wrangler will print the Worker's URL (e.g. `https://cart-partners-backup.<your-subdomain>.workers.dev`). Enter this URL and the API key in the app under **More → Settings → Cloud Backup**.
+After deploying, Wrangler will print the Worker's URL (e.g. `https://cart-partners-backend.<your-subdomain>.workers.dev`). Enter this URL and the API key in the app under **More → Settings → Cloud Backup**.
 
 ## Local development
 
@@ -68,7 +68,19 @@ curl -X PUT http://localhost:8787/backup \
 # Restore (download)
 curl http://localhost:8787/restore \
   -H "Authorization: Bearer YOUR_API_KEY"
+
+# Verify (check a backup exists)
+curl http://localhost:8787/verify \
+  -H "Authorization: Bearer YOUR_API_KEY"
 ```
+
+A successful `/verify` response looks like:
+
+```json
+{ "success": true, "key": "cart-partners.db", "size": 204800, "uploaded": "2026-05-01T18:14:04.000Z" }
+```
+
+If no backup has been uploaded yet, the response will be `404` with `{ "success": false, "error": "No backup found" }`.
 
 ## Endpoints
 
@@ -76,6 +88,7 @@ curl http://localhost:8787/restore \
 | ------ | ---------- | ---------------------------------------------------- |
 | PUT    | `/backup`  | Upload DB as `{ "backup": "<base64>" }`.             |
 | GET    | `/restore` | Returns latest backup as `{ "backup": "<base64>" }`. |
+| GET    | `/verify`  | Returns `{ success, key, size, uploaded }` if a backup exists; 404 otherwise. |
 
 Both endpoints require an `Authorization: Bearer <API_KEY>` header and return 401 if it is missing or incorrect.
 

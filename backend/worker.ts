@@ -93,6 +93,23 @@ export default {
       });
     }
 
+    // GET /verify — check whether a backup exists in R2 without downloading it
+    if (url.pathname === '/verify' && request.method === 'GET') {
+      const object = await env.CART_PARTNERS_BUCKET.head(BACKUP_KEY);
+      if (object) {
+        return new Response(
+          JSON.stringify({ success: true, key: BACKUP_KEY, size: object.size, uploaded: object.uploaded }),
+          {
+            headers: { 'Content-Type': 'application/json' },
+          },
+        );
+      }
+      return new Response(JSON.stringify({ success: false, error: 'No backup found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
     return new Response(JSON.stringify({ error: 'Not found' }), {
       status: 404,
       headers: { 'Content-Type': 'application/json' },
