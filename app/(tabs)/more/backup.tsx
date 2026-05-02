@@ -4,6 +4,7 @@ import ThemedButton from '@/components/ui/ThemedButton';
 import {
   backupDatabase,
   cloudBackupDatabase,
+  cloudDownloadDatabase,
   cloudRestoreDatabase,
   restoreDatabaseFromFile,
   useDbStore,
@@ -104,6 +105,28 @@ export default function BackupScreen() {
     );
   };
 
+  const handleCloudDownload = () => {
+    Alert.alert(
+      'Download Cloud Backup',
+      'Download the cloud backup to your device? You will be prompted to choose where to save the file.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Download',
+          onPress: async () => {
+            try {
+              await cloudDownloadDatabase(cloudBackupUrl, cloudApiKey);
+            } catch (error: unknown) {
+              console.error('Cloud download error:', error);
+              Alert.alert('Download Failed', error instanceof Error ? error.message : 'Unknown error');
+            }
+          },
+        },
+      ],
+      { cancelable: true },
+    );
+  };
+
   const handleCloudRestore = () => {
     Alert.alert(
       'Cloud Restore',
@@ -165,7 +188,66 @@ export default function BackupScreen() {
   return (
     <ScrollView style={styles.container}>
       <ThemedView style={styles.content}>
-        <ThemedText type="title" style={styles.title}>
+        {isCloudConfigured && (
+          <>
+            <ThemedText type="title" style={[styles.title]}>
+              Cloud Backup
+            </ThemedText>
+            <ThemedText style={{ marginTop: 5, marginBottom: 5 }}>
+              Upload the current database to your configured backup server. This overwrites any previous cloud
+              backup.
+            </ThemedText>
+            <ThemedView
+              style={{
+                margin: 10,
+                marginBottom: 20,
+                borderColor: iconButton,
+                borderWidth: 1,
+                borderRadius: 6,
+              }}
+            >
+              <ThemedButton title="Cloud Backup" onPress={handleCloudBackup} />
+            </ThemedView>
+
+            <ThemedText type="title" style={[styles.title, { marginTop: 10 }]}>
+              Cloud Restore
+            </ThemedText>
+            <ThemedText style={{ marginTop: 5, marginBottom: 5 }}>
+              WARNING: Restoring from the cloud will replace all your current data with the last cloud backup.
+            </ThemedText>
+            <ThemedView
+              style={{
+                margin: 10,
+                marginBottom: 20,
+                borderColor: iconButton,
+                borderWidth: 1,
+                borderRadius: 6,
+              }}
+            >
+              <ThemedButton title="Cloud Restore" onPress={handleCloudRestore} />
+            </ThemedView>
+            <ThemedText type="title" style={[styles.title, { marginTop: 10 }]}>
+              Download Cloud Backup
+            </ThemedText>
+            <ThemedText style={{ marginTop: 5, marginBottom: 5 }}>
+              Download the cloud backup to your device. The file will be saved as cartpartners-MM-DD-YYYY.db
+              and you will be prompted to choose where to store it.
+            </ThemedText>
+            <ThemedView
+              style={{
+                margin: 10,
+                marginBottom: 20,
+                borderColor: iconButton,
+                borderWidth: 1,
+                borderRadius: 6,
+              }}
+            >
+              <ThemedButton title="Download Cloud Backup" onPress={handleCloudDownload} />
+            </ThemedView>
+          </>
+        )}
+
+        <ThemedText type="title" style={[styles.title, { marginTop: 10 }]}>
           Backup Database
         </ThemedText>
         <ThemedText style={{ marginTop: 5 }}>
@@ -184,7 +266,7 @@ export default function BackupScreen() {
         >
           <ThemedButton title="Backup Database" onPress={handleExportDb} />
         </ThemedView>
-        <ThemedText type="title" style={[styles.title, { marginTop: 20, marginBottom: 5 }]}>
+        <ThemedText type="title" style={[styles.title, { marginTop: 10, marginBottom: 5 }]}>
           Restore Database
         </ThemedText>
 
@@ -195,7 +277,7 @@ export default function BackupScreen() {
         <ThemedView
           style={{
             margin: 10,
-            marginBottom: 20,
+            marginBottom: 10,
             borderColor: iconButton,
             borderWidth: 1,
             borderRadius: 6,
@@ -203,47 +285,6 @@ export default function BackupScreen() {
         >
           <ThemedButton title="Restore Database from backup" onPress={handleImportDb} />
         </ThemedView>
-
-        {isCloudConfigured && (
-          <>
-            <ThemedText type="title" style={[styles.title, { marginTop: 20 }]}>
-              Cloud Backup
-            </ThemedText>
-            <ThemedText style={{ marginTop: 5, marginBottom: 10 }}>
-              Upload the current database to your configured backup server. This overwrites any previous cloud
-              backup.
-            </ThemedText>
-            <ThemedView
-              style={{
-                margin: 10,
-                marginBottom: 20,
-                borderColor: iconButton,
-                borderWidth: 1,
-                borderRadius: 6,
-              }}
-            >
-              <ThemedButton title="Cloud Backup" onPress={handleCloudBackup} />
-            </ThemedView>
-
-            <ThemedText type="title" style={[styles.title, { marginTop: 20 }]}>
-              Cloud Restore
-            </ThemedText>
-            <ThemedText style={{ marginTop: 5, marginBottom: 10 }}>
-              WARNING: Restoring from the cloud will replace all your current data with the last cloud backup.
-            </ThemedText>
-            <ThemedView
-              style={{
-                margin: 10,
-                marginBottom: 20,
-                borderColor: iconButton,
-                borderWidth: 1,
-                borderRadius: 6,
-              }}
-            >
-              <ThemedButton title="Cloud Restore" onPress={handleCloudRestore} />
-            </ThemedView>
-          </>
-        )}
       </ThemedView>
     </ScrollView>
   );

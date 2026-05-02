@@ -11,7 +11,8 @@ import Constants from 'expo-constants';
 import { useFocusEffect } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import React, { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Switch } from 'react-native';
+import { StyleSheet, Switch } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 
 export default function SettingsScreen() {
   const switchTrackColor = useThemeColor({ light: undefined, dark: undefined }, 'switchTrackColor');
@@ -138,7 +139,7 @@ export default function SettingsScreen() {
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <KeyboardAwareScrollView style={styles.container} bottomOffset={45} keyboardShouldPersistTaps="handled">
       <ThemedView style={styles.content}>
         <ThemedText type="subtitle" style={styles.sectionTitle}>
           Email Settings
@@ -300,7 +301,7 @@ export default function SettingsScreen() {
           <OptionList options={playerOptions} onSelect={handlePlayerSelect} />
         </BottomSheetContainer>
       )}
-    </ScrollView>
+    </KeyboardAwareScrollView>
   );
 }
 

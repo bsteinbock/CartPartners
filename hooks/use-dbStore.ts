@@ -387,6 +387,44 @@ export async function cloudRestoreDatabase(serverUrl: string, apiKey: string): P
   return restoreDatabaseFromFile(tempFile.uri);
 }
 
+/**
+ * Download the cloud backup and share it so the user can save it to their
+ * device (e.g. Files app / Downloads folder). The file is named
+ * `cartpartners-MM-DD-YYYY.db` using today's date.
+ * @param serverUrl Base URL of the CartPartners backup worker
+ * @param apiKey Pre-shared API key used in the Authorization: Bearer header
+ */
+export async function cloudDownloadDatabase(serverUrl: string, apiKey: string): Promise<void> {
+  const url = serverUrl.replace(/\/+$/, '');
+  const response = await fetch(`${url}/restore`, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${apiKey}` },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Cloud download failed with status ${response.status}`);
+  }
+
+  const data: { backup?: unknown } = await response.json();
+  if (!data.backup || typeof data.backup !== 'string') {
+    throw new Error('Invalid response from backup server: missing backup field');
+  }
+
+  const now = new Date();
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+  const yyyy = now.getFullYear();
+  const filename = `cartpartners-${mm}-${dd}-${yyyy}.db`;
+
+  const downloadFile = new File(Paths.document, filename);
+  deleteFileIfExists(downloadFile);
+  downloadFile.write(data.backup, { encoding: 'base64' });
+
+  if (await Sharing.isAvailableAsync()) {
+    await Sharing.shareAsync(downloadFile.uri);
+  }
+}
+
 // ------------------- TYPES -------------------
 export type Player = {
   id: number;

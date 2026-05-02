@@ -82,6 +82,29 @@ A successful `/verify` response looks like:
 
 If no backup has been uploaded yet, the response will be `404` with `{ "success": false, "error": "No backup found" }`.
 
+## Testing the deployed Worker
+
+After running `npm run deploy`, verify the Worker is reachable and a backup exists using curl against the production URL:
+
+```bash
+curl https://cart-partners-backend.<your-subdomain>.workers.dev/verify \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+Expected response when a backup is present:
+
+```json
+{ "success": true, "key": "cart-partners.db", "size": 204800, "uploaded": "2026-05-01T18:14:04.000Z" }
+```
+
+Expected response when no backup has been uploaded yet:
+
+```json
+{ "success": false, "error": "No backup found" }
+```
+
+If you receive a `401 Unauthorized` response, the API key in the header does not match the `API_KEY` secret set on the Worker. Re-run `wrangler secret put API_KEY` to update it.
+
 ## Endpoints
 
 | Method | Path       | Description                                                                   |
