@@ -29,7 +29,7 @@ export default function SettingsScreen() {
   const [backupServerUrl, setBackupServerUrl] = useState<string>('');
   const [backupApiKey, setBackupApiKey] = useState<string>('');
   const { all_players } = useDbStore();
-  const isDevelopment = Constants.appOwnership === 'expo' || __DEV__;
+  const isDevelopment = Constants.executionEnvironment === 'storeClient' || __DEV__;
 
   // Load settings on mount and when screen is focused
   useFocusEffect(

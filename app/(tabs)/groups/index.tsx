@@ -21,6 +21,7 @@ import {
 import { formatDate } from '@/lib/formatters';
 import Entypo from '@expo/vector-icons/Entypo';
 import Feather from '@expo/vector-icons/Feather';
+import Constants from 'expo-constants';
 import { useFocusEffect, useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import * as SMS from 'expo-sms';
@@ -37,6 +38,7 @@ export default function GroupsScreen() {
     all_players,
     roundPlayers,
     setGroupsForRound,
+    setRoundPlayers,
     swapGroupSlots,
     currentRoundId,
     setCurrentRoundId,
@@ -65,6 +67,7 @@ export default function GroupsScreen() {
   const router = useRouter();
   const [groupCoordinatorId, setGroupCoordinatorId] = useState<number>(0);
   const league = leagues.find((l) => l.id === currentLeagueId);
+  const isDevelopment = Constants.executionEnvironment === 'storeClient' || __DEV__;
   const [isSmsAvailable, setIsSmsAvailable] = useState<boolean>(false);
   const [useEmailCC, setUseEmailCC] = useState<boolean>(false);
   const [excludeCoordinatorFromEmail, setExcludeCoordinatorFromEmail] = useState<boolean>(false);
@@ -505,15 +508,41 @@ export default function GroupsScreen() {
               <ThemedText type="small">{league?.name}</ThemedText>
             </ThemedView>
 
-            {currentRoundPlayerIds.length > 0 && (
-              <Pressable
-                onPress={() => {
-                  router.push('/(tabs)/groups/manualGroups');
-                }}
-              >
-                <Feather name="edit" size={28} color={iconButton} />
-              </Pressable>
-            )}
+            <ThemedView style={{ flexDirection: 'row', gap: 16, alignItems: 'center' }}>
+              {isDevelopment && currentRoundId !== null && currentRoundPlayerIds.length > 0 && (
+                <Pressable
+                  onPress={() => {
+                    Alert.alert(
+                      'Clear Round Data',
+                      'Remove all groups and deselect all players for this round?',
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                          text: 'Clear',
+                          style: 'destructive',
+                          onPress: () => {
+                            setGroupsForRound(currentRoundId, []);
+                            setRoundPlayers(currentRoundId, []);
+                          },
+                        },
+                      ],
+                      { cancelable: true },
+                    );
+                  }}
+                >
+                  <Feather name="trash-2" size={24} color={iconButton} />
+                </Pressable>
+              )}
+              {currentRoundPlayerIds.length > 0 && (
+                <Pressable
+                  onPress={() => {
+                    router.push('/(tabs)/groups/manualGroups');
+                  }}
+                >
+                  <Feather name="edit" size={28} color={iconButton} />
+                </Pressable>
+              )}
+            </ThemedView>
           </View>
           {rounds.length === 0 ? (
             <ThemedText type="defaultSemiBold" style={{ color: errorText, padding: 10 }}>
