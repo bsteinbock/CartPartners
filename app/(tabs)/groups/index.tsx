@@ -160,10 +160,10 @@ export default function GroupsScreen() {
 
   useEffect(() => {
     if (manualGroupList.length > 0) {
-      const names = formatManualGroupPlayersByNames(manualGroupList, league_players);
+      const names = formatManualGroupPlayersByNames(manualGroupList, all_players);
       setManualGroupsPlayersNames(names);
     }
-  }, [manualGroupList, league_players]);
+  }, [manualGroupList, all_players]);
 
   useEffect(() => {
     if (roundPlayers.length > 0) {
@@ -181,17 +181,27 @@ export default function GroupsScreen() {
     }
   }, [currentRoundGroups, currentRoundPlayerIds]);
 
+  const roundPlayersToNotify = useMemo(() => {
+    const leaguePlayerIds = new Set(league_players.map((p) => p.id));
+    const groupPlayerIds = currentRoundGroups.flatMap((g) => g.player_ids);
+    const extraPlayers = groupPlayerIds
+      .filter((id) => !leaguePlayerIds.has(id))
+      .map((id) => all_players.find((p) => p.id === id))
+      .filter((p): p is NonNullable<typeof p> => p !== undefined);
+    return [...league_players, ...extraPlayers];
+  }, [league_players, currentRoundGroups, all_players]);
+
   const addresses = useMemo(
     () =>
       assembleEmailAddresses(
         currentRoundGroups,
-        league_players,
+        roundPlayersToNotify,
         excludeCoordinatorFromEmail ? groupCoordinatorId : null,
         emailAllActiveLeaguePlayers,
       ),
     [
       currentRoundGroups,
-      league_players,
+      roundPlayersToNotify,
       excludeCoordinatorFromEmail,
       groupCoordinatorId,
       emailAllActiveLeaguePlayers,
@@ -199,8 +209,8 @@ export default function GroupsScreen() {
   );
 
   const mobileNumbers = useMemo(
-    () => getMobilePhoneNumbersForGroups(currentRoundGroups, league_players, groupCoordinatorId),
-    [currentRoundGroups, league_players, groupCoordinatorId],
+    () => getMobilePhoneNumbersForGroups(currentRoundGroups, roundPlayersToNotify, groupCoordinatorId),
+    [currentRoundGroups, roundPlayersToNotify, groupCoordinatorId],
   );
 
   const sendTextMessage = async (addresses: string[] | string, message: string) => {
@@ -285,7 +295,7 @@ export default function GroupsScreen() {
     if (currentRoundGroups.length === 0) return Alert.alert('No groups to export for this round');
 
     let bodyText = roundTeeTimeInfo ? `${roundTeeTimeInfo}\n\n` : '';
-    const summary = reportGroupsWithNames(currentRoundGroups, league_players, true);
+    const summary = reportGroupsWithNames(currentRoundGroups, roundPlayersToNotify, true);
     bodyText += summary;
     const textMessageBody = `Cart Groups - ${pickedRound?.label}\n\n${bodyText}`;
 
