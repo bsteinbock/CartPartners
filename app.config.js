@@ -1,0 +1,85 @@
+const IS_DEV = process.env.APP_VARIANT === 'development';
+
+module.exports = {
+  expo: {
+    name: IS_DEV ? 'CartPartners (Dev)' : 'CartPartners',
+    slug: 'cartpartners',
+    version: '1.0.1',
+    orientation: 'portrait',
+    icon: './assets/images/icon.png',
+    scheme: 'cartpartners',
+    userInterfaceStyle: 'automatic',
+    ios: {
+      supportsTablet: false,
+      bundleIdentifier: IS_DEV ? 'com.bsteinbk.cartpartners.dev' : 'com.bsteinbk.cartpartners',
+      icon: {
+        dark: './assets/images/ios-dark.png',
+        light: './assets/images/ios-light.png',
+        tinted: './assets/images/ios-tinted.png',
+      },
+      infoPlist: {
+        ITSAppUsesNonExemptEncryption: false,
+      },
+    },
+    android: {
+      softwareKeyboardLayoutMode: 'pan',
+      adaptiveIcon: {
+        backgroundColor: '#E6F4FE',
+        foregroundImage: './assets/images/adaptive-icon.png',
+        monochromeImage: './assets/images/adaptive-icon.png',
+      },
+      predictiveBackGestureEnabled: false,
+      package: IS_DEV ? 'com.bsteinbk.cartpartners.dev' : 'com.bsteinbk.cartpartners',
+    },
+    plugins: [
+      'expo-router',
+      [
+        'expo-splash-screen',
+        {
+          image: './assets/images/splash-icon-dark.png',
+          imageWidth: 200,
+          resizeMode: 'contain',
+          backgroundColor: '#ffffff',
+          dark: {
+            image: './assets/images/splash-icon-light.png',
+            backgroundColor: '#000000',
+          },
+        },
+      ],
+      [
+        'expo-document-picker',
+        {
+          iCloudContainerEnvironment: 'Production',
+        },
+      ],
+      'expo-sqlite',
+      'expo-web-browser',
+      'expo-secure-store',
+      '@react-native-community/datetimepicker',
+      'expo-font',
+      'expo-image',
+      'expo-mail-composer',
+      'expo-sharing',
+    ],
+    experiments: {
+      typedRoutes: true,
+      reactCompiler: true,
+    },
+    extra: {
+      router: {},
+      eas: {
+        projectId: 'aa2776ab-0acf-45e8-8024-a45feb67b0fe',
+      },
+    },
+    owner: 'bsteinbk',
+    runtimeVersion: {
+      policy: 'appVersion',
+    },
+    updates: {
+      url: 'https://u.expo.dev/aa2776ab-0acf-45e8-8024-a45feb67b0fe',
+      enabled: true,
+      checkAutomatically: 'ON_LOAD',
+      fallbackToCacheTimeout: 0,
+    },
+  },
+};
