@@ -4,7 +4,7 @@ module.exports = {
   expo: {
     name: IS_DEV ? 'CartPartners (Dev)' : 'CartPartners',
     slug: 'cartpartners',
-    version: '1.0.1',
+    version: '1.0.2',
     orientation: 'portrait',
     icon: './assets/images/icon.png',
     scheme: 'cartpartners',
