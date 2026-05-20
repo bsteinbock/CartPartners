@@ -10,7 +10,8 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "test": "jest --runInBand"
+    "test": "jest --runInBand",
+    "test:group-distribution": "jest --runInBand __tests__/group-distribution.test.ts"
   },
   "jest": {
     "preset": "ts-jest",

@@ -289,14 +289,54 @@ The swap loop repeats until a full pass over all group pairs finds no improving 
 
 #### Strict penalty priority ordering
 
-All three improvements maintain a clear dominance hierarchy so no lower-priority objective can accidentally override a higher one:
+All improvements maintain a clear dominance hierarchy so no lower-priority objective can accidentally override a higher one:
 
 | Priority    | Mechanism                                      | Magnitude                |
 | ----------- | ---------------------------------------------- | ------------------------ |
 | 1 (highest) | Repeat penalty (`repeatWeight = N`)            | +37 per repeat           |
-| 2           | Local swap quadratic score (post-processing)   | reduces existing repeats |
-| 3           | Participation-mix bonus                        | −0 to −3 per candidate   |
-| 4 (lowest)  | Fairness baseline (normalized unique partners) | 0 to ~3                  |
+| 2           | Previous-round pairing penalty                 | ~`0.75N` per pair        |
+| 3           | Local swap quadratic score (post-processing)   | reduces existing repeats |
+| 4           | Participation-mix bonus                        | −0 to −3 per candidate   |
+| 5 (lowest)  | Fairness baseline (normalized unique partners) | 0 to ~3                  |
+
+---
+
+### Improvement 4 — Previous-round pairing penalty
+
+Even with strong historical repeat penalties, two players can still end up together in back-to-back rounds when several candidates have similar global repeat totals. In practice this feels noticeably repetitive to players, even if their long-run repeat count remains acceptable.
+
+This improvement adds a separate near-dominant penalty when a candidate was grouped with someone in the **immediately previous round**.
+
+```
+repeatWeight = N
+previousRoundPenaltyWeight = 50
+
+score(candidate) = normalizedFairness
+                 + Σ repeatsWith(candidate, currentGroupMember) × repeatWeight
+                 + Σ pairedInPreviousRound(candidate, currentGroupMember) × previousRoundPenaltyWeight
+```
+
+Where:
+
+- `pairedInPreviousRound(...)` is `1` when the pair appeared in last round's groups, otherwise `0`
+- `previousRoundPenaltyWeight` defaults to `50` and is configurable
+
+With a 37-player lineup:
+
+- `repeatWeight = 37`
+- `previousRoundPenaltyWeight = 27`
+
+So a back-to-back pair incurs a large penalty that typically outweighs fairness and participation tie-breakers, while still remaining below the full repeat-penalty dominance.
+
+Implementation details:
+
+- The previous round is identified as the immediately prior round in date order.
+- Its groups are converted to a fast pair lookup set.
+- The penalty is applied in both phases:
+  - **Greedy candidate selection** (`buildGreedyGroups`)
+  - **Post-generation optimization** (`localSwapImprove` / `scoreGroupArrangement`)
+
+This means the algorithm not only avoids creating consecutive pairs during initial construction, but also actively breaks remaining consecutive pairs during local swaps whenever a lower combined score is available.
 
 #### Additional constraints
 

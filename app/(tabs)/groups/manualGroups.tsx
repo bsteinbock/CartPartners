@@ -11,6 +11,7 @@ import {
   buildPlayingPartnerFrequencies,
   formatManualGroupPlayersByNames,
   generateGroupsForRound,
+  getGroupPlayersByRoundId,
   getGroupSizes,
 } from '@/lib/cart-utils';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -23,6 +24,8 @@ export default function DefineManualGroups() {
   const {
     roundPlayers,
     currentRoundId,
+    rounds,
+    groups,
     setManualGroupList,
     manualGroupList,
     league_players,
@@ -160,11 +163,23 @@ export default function DefineManualGroups() {
       for (const id of remainingPlayerIds) {
         roundParticipation[id] = roundPlayers.filter((rp) => rp.player_id === id).length;
       }
+      const sortedRounds = [...rounds].sort((a, b) => {
+        const timeA = new Date(a.date).getTime();
+        const timeB = new Date(b.date).getTime();
+        return timeA === timeB ? a.id - b.id : timeA - timeB;
+      });
+      const currentRoundIndex = sortedRounds.findIndex((r) => r.id === currentRoundId);
+      const previousRoundId = currentRoundIndex > 0 ? sortedRounds[currentRoundIndex - 1].id : null;
+      const previousRoundGroups = previousRoundId
+        ? getGroupPlayersByRoundId(previousRoundId, groups, groupPlayers).map((gp) => gp.player_ids)
+        : undefined;
+
       const generatedGroups = generateGroupsForRound({
         playerIds: remainingPlayerIds,
         partnerFrequencies,
         allPlayers: all_players,
         roundParticipation,
+        previousRoundGroups,
       });
       finalGroupList = [...manualGroups, ...generatedGroups];
     }
@@ -182,6 +197,8 @@ export default function DefineManualGroups() {
     setManualGroupList,
     router,
     groupPlayers,
+    groups,
+    rounds,
     all_players,
   ]);
 

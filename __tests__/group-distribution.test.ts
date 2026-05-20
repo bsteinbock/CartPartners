@@ -91,6 +91,7 @@ function mulberry32(seed: number) {
 
 type RoundPlayer = { round_id: number; player_id: number };
 type GroupPlayers = { group_id: number; player_ids: number[] };
+type SimulationOptions = { usePreviousRoundPenalty?: boolean; shuffle?: boolean };
 
 /**
  * Build the attendance schedule: for each of the 5 part-timers, decide which
@@ -128,14 +129,17 @@ function buildPartTimerSchedule(rng: () => number, totalRounds: number): Map<num
 // Main simulation
 // ---------------------------------------------------------------------------
 
-function runSimulation(totalRounds = 60) {
+function runSimulation(totalRounds = 60, options: SimulationOptions = {}) {
   const rng = mulberry32(0xdeadbeef);
+  const { usePreviousRoundPenalty = true, shuffle = true } = options;
 
   const schedule = buildPartTimerSchedule(rng, totalRounds);
 
   const groupHistory: GroupPlayers[] = [];
+  const roundGroupsHistory: number[][][] = [];
   const roundPlayerHistory: RoundPlayer[] = [];
   let groupIdCounter = 1;
+  let previousRoundGroups: number[][] | undefined;
 
   // Track per-part-timer: rounds played, how many of those had 0 other part-timers in group
   const partTimerStats = new Map<number, { roundsPlayed: number; roundsWithNoOtherPartTimer: number }>(
@@ -161,14 +165,17 @@ function runSimulation(totalRounds = 60) {
       playerIds,
       partnerFrequencies,
       roundParticipation,
-      shuffle: true,
+      shuffle,
+      previousRoundGroups: usePreviousRoundPenalty ? previousRoundGroups : undefined,
     });
 
     // Record results
+    roundGroupsHistory.push(groups.map((g) => [...g]));
     for (const group of groups) {
       const gid = groupIdCounter++;
       groupHistory.push({ group_id: gid, player_ids: group });
     }
+    previousRoundGroups = groups.map((g) => [...g]);
     for (const id of playerIds) {
       roundPlayerHistory.push({ round_id: r, player_id: id });
     }
@@ -186,7 +193,7 @@ function runSimulation(totalRounds = 60) {
     }
   }
 
-  return { groupHistory, roundPlayerHistory, partTimerStats };
+  return { groupHistory, roundGroupsHistory, roundPlayerHistory, partTimerStats };
 }
 
 // ---------------------------------------------------------------------------
@@ -208,6 +215,34 @@ describe('Group distribution simulation (60 rounds)', () => {
   // Compute max repeat pairing for a given pair
   function pairRepeatCount(a: number, b: number): number {
     return allFrequencies[a]?.[b] ?? 0;
+  }
+
+  function pairKey(a: number, b: number): string {
+    return a < b ? `${a}|${b}` : `${b}|${a}`;
+  }
+
+  function pairsForRound(groupsForRound: number[][]): Set<string> {
+    const result = new Set<string>();
+    for (const group of groupsForRound) {
+      for (let i = 0; i < group.length; i++) {
+        for (let j = i + 1; j < group.length; j++) {
+          result.add(pairKey(group[i], group[j]));
+        }
+      }
+    }
+    return result;
+  }
+
+  function consecutiveRoundOverlapCount(roundGroupsHistory: number[][][]): number {
+    let overlaps = 0;
+    for (let r = 1; r < roundGroupsHistory.length; r++) {
+      const prevPairs = pairsForRound(roundGroupsHistory[r - 1]);
+      const currentPairs = pairsForRound(roundGroupsHistory[r]);
+      for (const pair of currentPairs) {
+        if (prevPairs.has(pair)) overlaps++;
+      }
+    }
+    return overlaps;
   }
 
   // -------------------------------------------------------------------------
@@ -321,6 +356,23 @@ describe('Group distribution simulation (60 rounds)', () => {
   });
 
   // -------------------------------------------------------------------------
+  it('Inhibits duplicate pairings from the immediately previous round', () => {
+    // Use shuffle=false for deterministic, apples-to-apples comparison.
+    const baseline = runSimulation(60, { usePreviousRoundPenalty: false, shuffle: false });
+    const penalized = runSimulation(60, { usePreviousRoundPenalty: true, shuffle: false });
+
+    const baselineOverlaps = consecutiveRoundOverlapCount(baseline.roundGroupsHistory);
+    const penalizedOverlaps = consecutiveRoundOverlapCount(penalized.roundGroupsHistory);
+
+    console.log(
+      `[prev-round inhibition] consecutive overlap pairs baseline=${baselineOverlaps} penalized=${penalizedOverlaps}`,
+    );
+
+    expect(penalizedOverlaps).toBeLessThanOrEqual(baselineOverlaps);
+    expect(penalizedOverlaps).toBeLessThan(baselineOverlaps);
+  });
+
+  // -------------------------------------------------------------------------
   it('Prints a summary of part-timer distribution for manual review', () => {
     console.log('\n=== Part-timer distribution summary ===');
     for (const pt of PART_TIMERS) {
@@ -330,8 +382,10 @@ describe('Group distribution simulation (60 rounds)', () => {
       const uniqueFullTime = Object.keys(allFrequencies[pt.id] ?? {})
         .map(Number)
         .filter((id) => FULL_TIMER_IDS.has(id)).length;
+
+      // solo-in-group percentage: roundsWithNoOtherPartTimer / roundsPlayed × 100
       console.log(
-        `  ${pt.name.padEnd(10)}: ${stats.roundsPlayed} rounds, ` +
+        `[part-timer distribution]  ${pt.name.padEnd(10)}: ${stats.roundsPlayed} rounds, ` +
           `${ratio.toFixed(0)}% solo-in-group, ` +
           `${uniqueFullTime} unique full-time partners`,
       );
@@ -347,8 +401,69 @@ describe('Group distribution simulation (60 rounds)', () => {
     }
     pairs.sort((x, y) => y.count - x.count);
     for (const p of pairs.slice(0, 10)) {
-      console.log(`  ${p.a} + ${p.b}: ${p.count}`);
+      console.log(`[part-timer distribution]  ${p.a} + ${p.b}: ${p.count}`);
     }
+  });
+});
+
+// ===========================================================================
+// 10-round scoring trace (>=80% roster each round)
+// ===========================================================================
+
+describe('Group scoring trace simulation (10 rounds)', () => {
+  it('logs per-round scoring values while maintaining >=80% player participation', () => {
+    const totalRounds = 10;
+    const minParticipationRatio = 0.8;
+    const allPlayerIds = ALL_PLAYERS.map((p) => p.id);
+    const minPlayersPerRound = Math.ceil(allPlayerIds.length * minParticipationRatio);
+
+    const groupHistory: GroupPlayers[] = [];
+    const roundPlayerHistory: RoundPlayer[] = [];
+    let groupIdCounter = 1;
+
+    const roundScores: number[] = [];
+    const participationRatios: number[] = [];
+
+    for (let r = 0; r < totalRounds; r++) {
+      // Use full roster (100%) to satisfy the >=80% requirement every round.
+      const playerIds = [...allPlayerIds];
+      const participationRatio = playerIds.length / allPlayerIds.length;
+      participationRatios.push(participationRatio);
+
+      const roundParticipation: Record<number, number> = {};
+      for (const id of playerIds) {
+        roundParticipation[id] = roundPlayerHistory.filter((rp) => rp.player_id === id).length;
+      }
+
+      const partnerFrequencies = buildPlayingPartnerFrequencies(playerIds, groupHistory);
+      const groups = generateGroupsForRound({
+        playerIds,
+        partnerFrequencies,
+        roundParticipation,
+        shuffle: true,
+      });
+
+      const score = scoreGroupArrangement(groups, partnerFrequencies);
+      roundScores.push(score);
+
+      console.log(
+        `[10-round trace] round=${r + 1} players=${playerIds.length}/${allPlayerIds.length} ` +
+          `ratio=${participationRatio.toFixed(2)} groups=${groups.length} score=${score}`,
+      );
+
+      for (const group of groups) {
+        groupHistory.push({ group_id: groupIdCounter++, player_ids: group });
+      }
+      for (const id of playerIds) {
+        roundPlayerHistory.push({ round_id: r, player_id: id });
+      }
+
+      expect(playerIds.length).toBeGreaterThanOrEqual(minPlayersPerRound);
+    }
+
+    expect(roundScores).toHaveLength(totalRounds);
+    expect(participationRatios).toHaveLength(totalRounds);
+    expect(participationRatios.every((ratio) => ratio >= minParticipationRatio)).toBe(true);
   });
 });
 
@@ -446,6 +561,82 @@ describe('15-player lineup regression (30 rounds)', () => {
 // ===========================================================================
 
 describe('localSwapImprove unit tests', () => {
+  it('scoreGroupArrangement adds a penalty for previous-round pairs', () => {
+    const freqs: Record<number, Record<number, number>> = {
+      1: {},
+      2: {},
+      3: {},
+      4: {},
+    };
+    const groups = [
+      [1, 2],
+      [3, 4],
+    ];
+
+    const noPrevScore = scoreGroupArrangement(groups, freqs);
+    const prevRoundPairs = new Set<string>(['1|2']);
+    const withPrevPenaltyScore = scoreGroupArrangement(groups, freqs, prevRoundPairs, 20);
+
+    expect(noPrevScore).toBe(0);
+    expect(withPrevPenaltyScore).toBe(20);
+  });
+
+  it('generateGroupsForRound reduces immediate prior-round pair overlaps vs no-penalty baseline', () => {
+    const playerIds = [1, 2, 3, 4, 5, 6];
+    const freqs: Record<number, Record<number, number>> = {
+      1: {},
+      2: {},
+      3: {},
+      4: {},
+      5: {},
+      6: {},
+    };
+
+    const previousRoundGroups = [
+      [1, 2, 3],
+      [4, 5, 6],
+    ];
+    const previousRoundPairs = new Set<string>(['1|2', '1|3', '2|3', '4|5', '4|6', '5|6']);
+
+    const baseline = generateGroupsForRound({
+      playerIds,
+      partnerFrequencies: freqs,
+      shuffle: false,
+      previousRoundPenaltyWeight: 0,
+    });
+
+    const groups = generateGroupsForRound({
+      playerIds,
+      partnerFrequencies: freqs,
+      shuffle: false,
+      previousRoundGroups,
+      previousRoundPenaltyWeight: 50,
+    });
+
+    const countPreviousRoundOverlaps = (candidateGroups: number[][]) => {
+      let overlaps = 0;
+      for (const group of candidateGroups) {
+        for (let i = 0; i < group.length; i++) {
+          for (let j = i + 1; j < group.length; j++) {
+            const a = group[i];
+            const b = group[j];
+            const key = a < b ? `${a}|${b}` : `${b}|${a}`;
+            if (previousRoundPairs.has(key)) overlaps++;
+          }
+        }
+      }
+      return overlaps;
+    };
+
+    const baselineOverlaps = countPreviousRoundOverlaps(baseline);
+    const penalizedOverlaps = countPreviousRoundOverlaps(groups);
+
+    console.log(`[unit prev-round overlaps] baseline=${baselineOverlaps} penalized=${penalizedOverlaps}`);
+
+    expect(penalizedOverlaps).toBeLessThanOrEqual(baselineOverlaps);
+    expect(penalizedOverlaps).toBeLessThan(baselineOverlaps);
+  });
+
   it('never increases the score', () => {
     // Groups where players 1 and 2 (freq=4 together) are in the same group
     const freqs: Record<number, Record<number, number>> = {
