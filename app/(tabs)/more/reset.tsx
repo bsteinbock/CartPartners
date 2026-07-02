@@ -16,7 +16,7 @@ export default function ResetScreen() {
   const backgroundColor = useThemeColor({ light: undefined, dark: undefined }, 'background');
 
   const [leagueOptions, setLeagueOptions] = useState<OptionEntry[]>([]);
-  const [pickedLeagueForRounds, setPickedLeagueForRounds] = useState<OptionEntry | undefined>(undefined);
+  const [, setPickedLeagueForRounds] = useState<OptionEntry | undefined>(undefined);
   const [pickedLeagueForClear, setPickedLeagueForClear] = useState<OptionEntry | undefined>(undefined);
   const [isClearLeaguePickerVisible, setIsClearLeaguePickerVisible] = useState(false);
 
@@ -95,7 +95,8 @@ export default function ResetScreen() {
         <ThemedText type="title">Reset/Clear Data</ThemedText>
         <ThemedText type="small">
           Before running the commands below, it is recommended that you back up your data. See the
-          "Backup/Restore" section in the menu available by selecting the button at top left of the screen.
+          &#34;Backup/Restore&#34; section in the menu available by selecting the button at top left of the
+          screen.
         </ThemedText>
 
         <ThemedView style={styles.section}>

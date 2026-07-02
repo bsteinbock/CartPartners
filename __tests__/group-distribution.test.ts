@@ -139,7 +139,6 @@ function runSimulation(totalRounds = 60, options: SimulationOptions = {}) {
   const roundGroupsHistory: number[][][] = [];
   const roundPlayerHistory: RoundPlayer[] = [];
   let groupIdCounter = 1;
-  let previousRoundGroups: number[][] | undefined;
 
   // Track per-part-timer: rounds played, how many of those had 0 other part-timers in group
   const partTimerStats = new Map<number, { roundsPlayed: number; roundsWithNoOtherPartTimer: number }>(
@@ -161,12 +160,19 @@ function runSimulation(totalRounds = 60, options: SimulationOptions = {}) {
     const partnerFrequencies = buildPlayingPartnerFrequencies(playerIds, groupHistory);
 
     // Generate groups
+    const recentRoundGroups = usePreviousRoundPenalty
+      ? roundGroupsHistory
+          .slice(Math.max(0, roundGroupsHistory.length - 2))
+          .map((round) => round.map((group) => [...group]))
+          .reverse()
+      : undefined;
+
     const groups = generateGroupsForRound({
       playerIds,
       partnerFrequencies,
       roundParticipation,
       shuffle,
-      previousRoundGroups: usePreviousRoundPenalty ? previousRoundGroups : undefined,
+      recentRoundGroups,
     });
 
     // Record results
@@ -175,7 +181,6 @@ function runSimulation(totalRounds = 60, options: SimulationOptions = {}) {
       const gid = groupIdCounter++;
       groupHistory.push({ group_id: gid, player_ids: group });
     }
-    previousRoundGroups = groups.map((g) => [...g]);
     for (const id of playerIds) {
       roundPlayerHistory.push({ round_id: r, player_id: id });
     }
@@ -240,6 +245,23 @@ describe('Group distribution simulation (60 rounds)', () => {
       const currentPairs = pairsForRound(roundGroupsHistory[r]);
       for (const pair of currentPairs) {
         if (prevPairs.has(pair)) overlaps++;
+      }
+    }
+    return overlaps;
+  }
+
+  function twoRoundRecencyOverlapCount(roundGroupsHistory: number[][][]): number {
+    let overlaps = 0;
+    for (let r = 1; r < roundGroupsHistory.length; r++) {
+      const recentPairs = new Set<string>(pairsForRound(roundGroupsHistory[r - 1]));
+      if (r > 1) {
+        for (const pair of pairsForRound(roundGroupsHistory[r - 2])) {
+          recentPairs.add(pair);
+        }
+      }
+      const currentPairs = pairsForRound(roundGroupsHistory[r]);
+      for (const pair of currentPairs) {
+        if (recentPairs.has(pair)) overlaps++;
       }
     }
     return overlaps;
@@ -366,6 +388,23 @@ describe('Group distribution simulation (60 rounds)', () => {
 
     console.log(
       `[prev-round inhibition] consecutive overlap pairs baseline=${baselineOverlaps} penalized=${penalizedOverlaps}`,
+    );
+
+    expect(penalizedOverlaps).toBeLessThanOrEqual(baselineOverlaps);
+    expect(penalizedOverlaps).toBeLessThan(baselineOverlaps);
+  });
+
+  // -------------------------------------------------------------------------
+  it('Inhibits duplicate pairings from either of the two most recent rounds', () => {
+    // Use shuffle=false for deterministic, apples-to-apples comparison.
+    const baseline = runSimulation(60, { usePreviousRoundPenalty: false, shuffle: false });
+    const penalized = runSimulation(60, { usePreviousRoundPenalty: true, shuffle: false });
+
+    const baselineOverlaps = twoRoundRecencyOverlapCount(baseline.roundGroupsHistory);
+    const penalizedOverlaps = twoRoundRecencyOverlapCount(penalized.roundGroupsHistory);
+
+    console.log(
+      `[two-round recency inhibition] overlaps baseline=${baselineOverlaps} penalized=${penalizedOverlaps}`,
     );
 
     expect(penalizedOverlaps).toBeLessThanOrEqual(baselineOverlaps);
@@ -574,11 +613,26 @@ describe('localSwapImprove unit tests', () => {
     ];
 
     const noPrevScore = scoreGroupArrangement(groups, freqs);
-    const prevRoundPairs = new Set<string>(['1|2']);
-    const withPrevPenaltyScore = scoreGroupArrangement(groups, freqs, prevRoundPairs, 20);
+    const withPrevPenaltyScore = scoreGroupArrangement(groups, freqs, { '1|2': 20 });
 
     expect(noPrevScore).toBe(0);
     expect(withPrevPenaltyScore).toBe(20);
+  });
+
+  it('scoreGroupArrangement supports stacked recency penalties across rounds', () => {
+    const freqs: Record<number, Record<number, number>> = {
+      1: {},
+      2: {},
+      3: {},
+      4: {},
+    };
+    const groups = [
+      [1, 2],
+      [3, 4],
+    ];
+
+    const withRecencyScore = scoreGroupArrangement(groups, freqs, { '1|2': 75, '3|4': 25 });
+    expect(withRecencyScore).toBe(100);
   });
 
   it('generateGroupsForRound reduces immediate prior-round pair overlaps vs no-penalty baseline', () => {
@@ -609,8 +663,8 @@ describe('localSwapImprove unit tests', () => {
       playerIds,
       partnerFrequencies: freqs,
       shuffle: false,
-      previousRoundGroups,
-      previousRoundPenaltyWeight: 50,
+      recentRoundGroups: [previousRoundGroups],
+      recentRoundPenaltyWeights: [50],
     });
 
     const countPreviousRoundOverlaps = (candidateGroups: number[][]) => {
@@ -635,6 +689,61 @@ describe('localSwapImprove unit tests', () => {
 
     expect(penalizedOverlaps).toBeLessThanOrEqual(baselineOverlaps);
     expect(penalizedOverlaps).toBeLessThan(baselineOverlaps);
+  });
+
+  it('generateGroupsForRound honors custom recentRoundPenaltyWeights for second-last round', () => {
+    const playerIds = [1, 2, 3, 4, 5, 6];
+    const freqs: Record<number, Record<number, number>> = {
+      1: {},
+      2: {},
+      3: {},
+      4: {},
+      5: {},
+      6: {},
+    };
+
+    const secondLastRoundGroups = [
+      [1, 2, 3],
+      [4, 5, 6],
+    ];
+    const secondLastRoundPairs = new Set<string>(['1|2', '1|3', '2|3', '4|5', '4|6', '5|6']);
+
+    const countSecondLastOverlaps = (candidateGroups: number[][]) => {
+      let overlaps = 0;
+      for (const group of candidateGroups) {
+        for (let i = 0; i < group.length; i++) {
+          for (let j = i + 1; j < group.length; j++) {
+            const a = group[i];
+            const b = group[j];
+            const key = a < b ? `${a}|${b}` : `${b}|${a}`;
+            if (secondLastRoundPairs.has(key)) overlaps++;
+          }
+        }
+      }
+      return overlaps;
+    };
+
+    const noSecondLastPenalty = generateGroupsForRound({
+      playerIds,
+      partnerFrequencies: freqs,
+      shuffle: false,
+      recentRoundGroups: [[], secondLastRoundGroups],
+      recentRoundPenaltyWeights: [50, 0],
+    });
+
+    const strongSecondLastPenalty = generateGroupsForRound({
+      playerIds,
+      partnerFrequencies: freqs,
+      shuffle: false,
+      recentRoundGroups: [[], secondLastRoundGroups],
+      recentRoundPenaltyWeights: [50, 100],
+    });
+
+    const noPenaltyOverlaps = countSecondLastOverlaps(noSecondLastPenalty);
+    const weightedOverlaps = countSecondLastOverlaps(strongSecondLastPenalty);
+
+    expect(weightedOverlaps).toBeLessThanOrEqual(noPenaltyOverlaps);
+    expect(weightedOverlaps).toBeLessThan(noPenaltyOverlaps);
   });
 
   it('never increases the score', () => {

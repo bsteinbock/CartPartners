@@ -169,17 +169,20 @@ export default function DefineManualGroups() {
         return timeA === timeB ? a.id - b.id : timeA - timeB;
       });
       const currentRoundIndex = sortedRounds.findIndex((r) => r.id === currentRoundId);
-      const previousRoundId = currentRoundIndex > 0 ? sortedRounds[currentRoundIndex - 1].id : null;
-      const previousRoundGroups = previousRoundId
-        ? getGroupPlayersByRoundId(previousRoundId, groups, groupPlayers).map((gp) => gp.player_ids)
-        : undefined;
+      const recentRoundGroups =
+        currentRoundIndex > 0
+          ? sortedRounds
+              .slice(Math.max(0, currentRoundIndex - 2), currentRoundIndex)
+              .reverse()
+              .map((r) => getGroupPlayersByRoundId(r.id, groups, groupPlayers).map((gp) => gp.player_ids))
+          : undefined;
 
       const generatedGroups = generateGroupsForRound({
         playerIds: remainingPlayerIds,
         partnerFrequencies,
         allPlayers: all_players,
         roundParticipation,
-        previousRoundGroups,
+        recentRoundGroups,
       });
       finalGroupList = [...manualGroups, ...generatedGroups];
     }
@@ -199,6 +202,7 @@ export default function DefineManualGroups() {
     groupPlayers,
     groups,
     rounds,
+    roundPlayers,
     all_players,
   ]);
 

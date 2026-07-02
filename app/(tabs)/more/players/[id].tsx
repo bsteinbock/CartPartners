@@ -272,7 +272,10 @@ export default function PlayerDetailScreen() {
                         }
                         await Linking.openURL(url);
                       } catch (error) {
-                        Alert.alert('Call failed', 'An error occurred while trying to place the call.');
+                        Alert.alert(
+                          'Call failed',
+                          `An error occurred while trying to place the call: ${error}`,
+                        );
                       }
                     }}
                     hitSlop={8}
@@ -293,7 +296,7 @@ export default function PlayerDetailScreen() {
                       } catch (error) {
                         Alert.alert(
                           'Text failed',
-                          'An error occurred while trying to open the messaging app.',
+                          `An error occurred while trying to open the messaging app: ${error}`,
                         );
                       }
                     }}

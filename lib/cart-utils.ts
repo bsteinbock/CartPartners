@@ -29,6 +29,8 @@ export interface GroupParams {
   avoidSlowPairs?: boolean;
   slowThreshold?: number;
   roundParticipation?: Record<number, number>;
+  recentRoundGroups?: number[][][];
+  recentRoundPenaltyWeights?: number[];
   previousRoundGroups?: number[][];
   previousRoundPenaltyWeight?: number;
 }
@@ -50,6 +52,27 @@ function buildPairSet(groups?: number[][]): Set<string> {
   }
 
   return pairSet;
+}
+
+function buildRecencyPairPenaltyMap(
+  recentRoundGroups: number[][][],
+  recencyWeights: number[],
+): Record<string, number> {
+  const penaltyByPair: Record<string, number> = {};
+  for (let i = 0; i < recentRoundGroups.length; i++) {
+    const groups = recentRoundGroups[i];
+    const weight = recencyWeights[i] ?? 0;
+    if (weight <= 0) continue;
+    const pairSet = buildPairSet(groups);
+    for (const key of pairSet) {
+      penaltyByPair[key] = (penaltyByPair[key] ?? 0) + weight;
+    }
+  }
+  return penaltyByPair;
+}
+
+function recencyPenaltyForPair(a: number, b: number, recencyPairPenalties: Record<string, number>): number {
+  return recencyPairPenalties[pairKey(a, b)] ?? 0;
 }
 
 export function getGroupSizes(numPlayers: number): number[] {
@@ -166,6 +189,8 @@ export function generateGroupsForRound(params: Partial<GroupParams>): number[][]
     avoidSlowPairs = true,
     slowThreshold = 4,
     roundParticipation,
+    recentRoundGroups,
+    recentRoundPenaltyWeights,
     previousRoundGroups,
     previousRoundPenaltyWeight = 50,
   } = params;
@@ -187,7 +212,20 @@ export function generateGroupsForRound(params: Partial<GroupParams>): number[][]
   const groupSizes = getGroupSizes(playerIds.length);
   const repeatWeight = playerIds.length;
   const previousRoundWeight = previousRoundPenaltyWeight !== undefined ? previousRoundPenaltyWeight : 50;
-  const previousRoundPairSet = buildPairSet(previousRoundGroups);
+  const resolvedRecentRoundGroups =
+    recentRoundGroups && recentRoundGroups.length > 0
+      ? recentRoundGroups
+      : previousRoundGroups
+        ? [previousRoundGroups]
+        : [];
+  const resolvedRecentRoundPenaltyWeights =
+    recentRoundPenaltyWeights && recentRoundPenaltyWeights.length > 0
+      ? recentRoundPenaltyWeights
+      : [previousRoundWeight, Math.max(1, Math.round(previousRoundWeight * 0.5))];
+  const recencyPairPenalties = buildRecencyPairPenaltyMap(
+    resolvedRecentRoundGroups,
+    resolvedRecentRoundPenaltyWeights,
+  );
 
   const speedCache: Record<number, number> = {};
   const getSpeedIndex = (id: number) => {
@@ -212,30 +250,19 @@ export function generateGroupsForRound(params: Partial<GroupParams>): number[][]
       shuffledPlayers,
       groupSizes,
       partnerFrequencies,
-      previousRoundPairSet,
+      recencyPairPenalties,
       uniquePartnerCounts,
       totalInteractions,
       fairnessWeight,
       repeatWeight,
-      previousRoundWeight,
       roundParticipation,
       avoidSlowPairs,
       slowThreshold,
       getSpeedIndex,
     );
 
-    const improved = localSwapImprove(
-      candidate,
-      partnerFrequencies,
-      previousRoundPairSet,
-      previousRoundWeight,
-    );
-    const score = scoreGroupArrangement(
-      improved,
-      partnerFrequencies,
-      previousRoundPairSet,
-      previousRoundWeight,
-    );
+    const improved = localSwapImprove(candidate, partnerFrequencies, recencyPairPenalties);
+    const score = scoreGroupArrangement(improved, partnerFrequencies, recencyPairPenalties);
 
     if (score < bestScore) {
       bestScore = score;
@@ -312,8 +339,7 @@ function getMostExperiencedPlayer(
 export function scoreGroupArrangement(
   groups: number[][],
   partnerFrequencies: Record<number, Record<number, number>>,
-  previousRoundPairs?: Set<string>,
-  previousRoundPenaltyWeight = 50,
+  recencyPairPenalties: Record<string, number> = {},
 ): number {
   let score = 0;
   for (const group of groups) {
@@ -323,9 +349,7 @@ export function scoreGroupArrangement(
         const b = group[j];
         const freq = partnerFrequencies[a]?.[b] ?? 0;
         score += freq * freq;
-        if (previousRoundPairs?.has(pairKey(a, b))) {
-          score += previousRoundPenaltyWeight;
-        }
+        score += recencyPenaltyForPair(a, b, recencyPairPenalties);
       }
     }
   }
@@ -344,8 +368,7 @@ function swapDelta(
   gj: number,
   pj: number,
   partnerFrequencies: Record<number, Record<number, number>>,
-  previousRoundPairs?: Set<string>,
-  previousRoundPenaltyWeight = 50,
+  recencyPairPenalties: Record<string, number> = {},
 ): number {
   const A = groups[gi][pi];
   const B = groups[gj][pj];
@@ -358,16 +381,16 @@ function swapDelta(
   for (const m of giRest) {
     const fA = partnerFrequencies[A]?.[m] ?? 0;
     const fB = partnerFrequencies[B]?.[m] ?? 0;
-    const prevA = previousRoundPairs?.has(pairKey(A, m)) ? previousRoundPenaltyWeight : 0;
-    const prevB = previousRoundPairs?.has(pairKey(B, m)) ? previousRoundPenaltyWeight : 0;
+    const prevA = recencyPenaltyForPair(A, m, recencyPairPenalties);
+    const prevB = recencyPenaltyForPair(B, m, recencyPairPenalties);
     delta += fB * fB + prevB - (fA * fA + prevA);
   }
   // B leaves gj → remove B's pair costs there; A enters gj → add A's pair costs
   for (const m of gjRest) {
     const fB = partnerFrequencies[B]?.[m] ?? 0;
     const fA = partnerFrequencies[A]?.[m] ?? 0;
-    const prevB = previousRoundPairs?.has(pairKey(B, m)) ? previousRoundPenaltyWeight : 0;
-    const prevA = previousRoundPairs?.has(pairKey(A, m)) ? previousRoundPenaltyWeight : 0;
+    const prevB = recencyPenaltyForPair(B, m, recencyPairPenalties);
+    const prevA = recencyPenaltyForPair(A, m, recencyPairPenalties);
     delta += fA * fA + prevA - (fB * fB + prevB);
   }
   return delta;
@@ -381,8 +404,7 @@ function swapDelta(
 export function localSwapImprove(
   groups: number[][],
   partnerFrequencies: Record<number, Record<number, number>>,
-  previousRoundPairs?: Set<string>,
-  previousRoundPenaltyWeight = 50,
+  recencyPairPenalties: Record<string, number> = {},
 ): number[][] {
   const result = groups.map((g) => [...g]);
   let improved = true;
@@ -392,18 +414,7 @@ export function localSwapImprove(
       for (let gj = gi + 1; gj < result.length; gj++) {
         for (let pi = 0; pi < result[gi].length; pi++) {
           for (let pj = 0; pj < result[gj].length; pj++) {
-            if (
-              swapDelta(
-                result,
-                gi,
-                pi,
-                gj,
-                pj,
-                partnerFrequencies,
-                previousRoundPairs,
-                previousRoundPenaltyWeight,
-              ) < 0
-            ) {
+            if (swapDelta(result, gi, pi, gj, pj, partnerFrequencies, recencyPairPenalties) < 0) {
               const tmp = result[gi][pi];
               result[gi][pi] = result[gj][pj];
               result[gj][pj] = tmp;
@@ -426,12 +437,11 @@ function buildGreedyGroups(
   shuffledPlayers: number[],
   groupSizes: number[],
   partnerFrequencies: Record<number, Record<number, number>>,
-  previousRoundPairs: Set<string>,
+  recencyPairPenalties: Record<string, number>,
   uniquePartnerCounts: Record<number, number>,
   totalInteractions: Record<number, number>,
   fairnessWeight: number,
   repeatWeight: number,
-  previousRoundPenaltyWeight: number,
   roundParticipation: Record<number, number> | undefined,
   avoidSlowPairs: boolean,
   slowThreshold: number,
@@ -460,9 +470,7 @@ function buildGreedyGroups(
     }
     for (const c of remainingPlayers) {
       candidateScores[c] += (partnerFrequencies[c]?.[starter] ?? 0) * repeatWeight;
-      if (previousRoundPairs.has(pairKey(c, starter))) {
-        candidateScores[c] += previousRoundPenaltyWeight;
-      }
+      candidateScores[c] += recencyPenaltyForPair(c, starter, recencyPairPenalties);
     }
 
     while (group.length < size && remainingPlayers.length > 0) {
@@ -508,9 +516,7 @@ function buildGreedyGroups(
       remainingPlayers.splice(remainingPlayers.indexOf(bestCandidate), 1);
       for (const c of remainingPlayers) {
         candidateScores[c] += (partnerFrequencies[c]?.[bestCandidate] ?? 0) * repeatWeight;
-        if (previousRoundPairs.has(pairKey(c, bestCandidate))) {
-          candidateScores[c] += previousRoundPenaltyWeight;
-        }
+        candidateScores[c] += recencyPenaltyForPair(c, bestCandidate, recencyPairPenalties);
       }
     }
 
@@ -522,7 +528,13 @@ function buildGreedyGroups(
     let bestGroup = groups[0];
     let minConflicts = Infinity;
     for (const group of groups) {
-      const conflicts = group.reduce((sum, m) => sum + (partnerFrequencies[leftover]?.[m] ?? 0), 0);
+      const conflicts = group.reduce(
+        (sum, m) =>
+          sum +
+          (partnerFrequencies[leftover]?.[m] ?? 0) * repeatWeight +
+          recencyPenaltyForPair(leftover, m, recencyPairPenalties),
+        0,
+      );
       if (conflicts < minConflicts) {
         minConflicts = conflicts;
         bestGroup = group;
