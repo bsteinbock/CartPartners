@@ -390,7 +390,10 @@ describe('Group distribution simulation (60 rounds)', () => {
       `[prev-round inhibition] consecutive overlap pairs baseline=${baselineOverlaps} penalized=${penalizedOverlaps}`,
     );
 
-    expect(penalizedOverlaps).toBeLessThanOrEqual(baselineOverlaps);
+    // With the hard immediate-repeat filter + swap-fix post-process, overlaps with the
+    // directly preceding round should be eliminated or reduced to a handful of
+    // mathematically-unavoidable cases (e.g. odd-numbered leftover groups).
+    expect(penalizedOverlaps).toBeLessThanOrEqual(2);
     expect(penalizedOverlaps).toBeLessThan(baselineOverlaps);
   });
 

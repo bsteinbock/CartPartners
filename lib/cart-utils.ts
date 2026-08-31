@@ -226,6 +226,8 @@ export function generateGroupsForRound(params: Partial<GroupParams>): number[][]
     resolvedRecentRoundGroups,
     resolvedRecentRoundPenaltyWeights,
   );
+  // Only the single most recent round is treated as a hard avoid-if-possible constraint.
+  const immediatePrevPairSet = buildPairSet(resolvedRecentRoundGroups[0]);
 
   const speedCache: Record<number, number> = {};
   const getSpeedIndex = (id: number) => {
@@ -235,11 +237,12 @@ export function generateGroupsForRound(params: Partial<GroupParams>): number[][]
     return val;
   };
 
-  // Run up to NUM_TRIALS independent greedy arrangements (each with a different
-  // random shuffle), improve each with local pairwise player swaps, and keep the
-  // best-scoring result. Multiple trials escape local optima that a single greedy
-  // pass cannot recover from, eliminating stubborn high-repeat pairs.
-  const NUM_TRIALS = shuffle ? 5 : 1;
+  // Run up to NUM_TRIALS independent greedy arrangements, improve each with local
+  // pairwise player swaps, and keep the best-scoring result. Trials after the first
+  // use a randomized starter pick (not just a reshuffled input order) so they explore
+  // genuinely different topologies instead of converging on the same deterministic
+  // greedy structure, which otherwise limits how much "best of N" can help.
+  const NUM_TRIALS = shuffle ? 8 : 1;
   let bestGroups: number[][] = [];
   let bestScore = Infinity;
 
@@ -259,9 +262,12 @@ export function generateGroupsForRound(params: Partial<GroupParams>): number[][]
       avoidSlowPairs,
       slowThreshold,
       getSpeedIndex,
+      immediatePrevPairSet,
+      trial > 0,
     );
 
     const improved = localSwapImprove(candidate, partnerFrequencies, recencyPairPenalties);
+    fixImmediateRepeatPairs(improved, immediatePrevPairSet, partnerFrequencies, recencyPairPenalties);
     const score = scoreGroupArrangement(improved, partnerFrequencies, recencyPairPenalties);
 
     if (score < bestScore) {
@@ -323,6 +329,25 @@ function getMostExperiencedPlayer(
     }
   }
   return best;
+}
+
+/**
+ * Like getMostExperiencedPlayer, but picks randomly among the top few candidates
+ * instead of always the single most experienced. Used to diversify trial starters
+ * so repeated multi-trial runs actually explore different group topologies.
+ */
+function getWeightedRandomStarter(
+  playerIds: number[],
+  roundParticipation?: Record<number, number>,
+  precomputedTotals?: Record<number, number>,
+): number {
+  const scored = playerIds.map((id) => ({
+    id,
+    score: roundParticipation ? (roundParticipation[id] ?? 0) : (precomputedTotals?.[id] ?? 0),
+  }));
+  scored.sort((a, b) => b.score - a.score);
+  const poolSize = Math.min(3, scored.length);
+  return scored[Math.floor(Math.random() * poolSize)].id;
 }
 
 // ---------------------------------------------------------------------------
@@ -446,6 +471,8 @@ function buildGreedyGroups(
   avoidSlowPairs: boolean,
   slowThreshold: number,
   getSpeedIndex: (id: number) => number,
+  immediatePrevPairSet: Set<string>,
+  randomizeStarter: boolean,
 ): number[][] {
   const remainingPlayers = [...shuffledPlayers];
   const groups: number[][] = [];
@@ -456,8 +483,11 @@ function buildGreedyGroups(
 
     // Anchor each group with the most experienced player so that veterans are
     // spread as starters and newcomers are drawn toward them via the
-    // participation-mix bonus.
-    const starter = getMostExperiencedPlayer(remainingPlayers, roundParticipation, totalInteractions);
+    // participation-mix bonus. Trials after the first randomize among the top
+    // candidates so multi-trial runs explore distinct topologies (see NUM_TRIALS).
+    const starter = randomizeStarter
+      ? getWeightedRandomStarter(remainingPlayers, roundParticipation, totalInteractions)
+      : getMostExperiencedPlayer(remainingPlayers, roundParticipation, totalInteractions);
     const group: number[] = [starter];
     remainingPlayers.splice(remainingPlayers.indexOf(starter), 1);
 
@@ -486,6 +516,9 @@ function buildGreedyGroups(
 
       for (const candidate of remainingPlayers) {
         if (avoidSlowPairs && groupHasSlow && getSpeedIndex(candidate) > slowThreshold) continue;
+        // Hard-avoid pairing with anyone from the same group in the immediately
+        // preceding round; relaxed below only if no other candidate is available.
+        if (group.some((m) => immediatePrevPairSet.has(pairKey(candidate, m)))) continue;
         const participationGap = Math.abs(
           groupAvgParticipation - Math.max(1, roundParticipation?.[candidate] ?? 1),
         );
@@ -496,7 +529,7 @@ function buildGreedyGroups(
         }
       }
 
-      // Relax slow constraint if no candidate was found
+      // Relax slow/immediate-repeat constraints if no candidate was found
       if (bestCandidate === null) {
         for (const candidate of remainingPlayers) {
           const participationGap = Math.abs(
@@ -708,6 +741,85 @@ function simpleSlowClusterAdjustment(
 
   //const finalSlowCount = groups.map((g) => g.filter(isSlow).length);
   //console.log('Final slow counts per group:', finalSlowCount);
+
+  return groups;
+}
+
+/**
+ * Post-process that eliminates any remaining pair that also played together in the
+ * immediately preceding round (per `immediatePrevPairSet`). For each violating pair,
+ * searches for a single swap with another group that removes the violation without
+ * introducing a new one, accepting a bounded increase in partner-repeat cost.
+ * Mutates `groups` in-place and returns the same array for convenience.
+ */
+function fixImmediateRepeatPairs(
+  groups: number[][],
+  immediatePrevPairSet: Set<string>,
+  partnerFrequencies: Record<number, Record<number, number>>,
+  recencyPairPenalties: Record<string, number>,
+  costTolerance = 5,
+): number[][] {
+  if (!immediatePrevPairSet.size || groups.length < 2) return groups;
+
+  const pairCost = (a: number, b: number) =>
+    (partnerFrequencies[a]?.[b] ?? 0) ** 2 + recencyPenaltyForPair(a, b, recencyPairPenalties);
+  const groupCost = (player: number, group: number[]) =>
+    group.reduce((sum, m) => sum + pairCost(player, m), 0);
+
+  const findViolation = (): { gi: number; a: number; b: number } | null => {
+    for (let gi = 0; gi < groups.length; gi++) {
+      const group = groups[gi];
+      for (let i = 0; i < group.length; i++) {
+        for (let j = i + 1; j < group.length; j++) {
+          if (immediatePrevPairSet.has(pairKey(group[i], group[j]))) {
+            return { gi, a: group[i], b: group[j] };
+          }
+        }
+      }
+    }
+    return null;
+  };
+
+  let violation = findViolation();
+  let guard = 0;
+  while (violation && guard++ < groups.flat().length * 2) {
+    const { gi, a, b } = violation;
+    let bestSwap: { tgtIdx: number; movePlayer: number; swapWith: number; costDelta: number } | null = null;
+
+    for (const movePlayer of [a, b]) {
+      const srcRest = groups[gi].filter((m) => m !== movePlayer);
+      for (let tgtIdx = 0; tgtIdx < groups.length; tgtIdx++) {
+        if (tgtIdx === gi) continue;
+        const tgtGroup = groups[tgtIdx];
+
+        for (const swapWith of tgtGroup) {
+          const tgtRest = tgtGroup.filter((m) => m !== swapWith);
+          // Skip swaps that would create a new immediate-repeat violation elsewhere.
+          const createsNewViolation =
+            srcRest.some((m) => immediatePrevPairSet.has(pairKey(swapWith, m))) ||
+            tgtRest.some((m) => immediatePrevPairSet.has(pairKey(movePlayer, m)));
+          if (createsNewViolation) continue;
+
+          const costDelta =
+            groupCost(swapWith, srcRest) +
+            groupCost(movePlayer, tgtRest) -
+            (groupCost(movePlayer, srcRest) + groupCost(swapWith, tgtRest));
+
+          if (costDelta <= costTolerance && (!bestSwap || costDelta < bestSwap.costDelta)) {
+            bestSwap = { tgtIdx, movePlayer, swapWith, costDelta };
+          }
+        }
+      }
+    }
+
+    if (!bestSwap) break; // no safe swap found; leave this violation (mathematically unavoidable)
+
+    const { tgtIdx, movePlayer, swapWith } = bestSwap;
+    groups[gi][groups[gi].indexOf(movePlayer)] = swapWith;
+    groups[tgtIdx][groups[tgtIdx].indexOf(swapWith)] = movePlayer;
+
+    violation = findViolation();
+  }
 
   return groups;
 }
