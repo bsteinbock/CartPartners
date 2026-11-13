@@ -10,11 +10,13 @@
  */
 
 import {
+  buildGroupingHistory,
   buildPlayingPartnerFrequencies,
   generateGroupsForRound,
   localSwapImprove,
   scoreGroupArrangement,
 } from '../lib/cart-utils';
+import type { Group, Player, Round } from '../hooks/use-dbStore';
 
 // ---------------------------------------------------------------------------
 // Player definitions
@@ -620,6 +622,179 @@ describe('localSwapImprove unit tests', () => {
 
     expect(noPrevScore).toBe(0);
     expect(withPrevPenaltyScore).toBe(20);
+  });
+
+  describe('grouping priorities', () => {
+    const playerIds = [1, 2, 3, 4, 5, 6, 7, 8];
+    const players: Player[] = playerIds.map((id) => ({
+      id,
+      name: String(id),
+      nickname: '',
+      mobile_number: '',
+      speedIndex: id <= 2 ? 5 : 0,
+      email: '',
+      available: 1,
+    }));
+    const groupHasPair = (groups: number[][], a: number, b: number) =>
+      groups.some((group) => group.includes(a) && group.includes(b));
+
+    it('separates slow and infrequent players before minimizing historical repeats', () => {
+      const frequencies: Record<number, Record<number, number>> = {};
+      for (const a of playerIds) {
+        frequencies[a] = {};
+        for (const b of playerIds) {
+          if (
+            a !== b &&
+            !([1, 2].includes(a) && [1, 2].includes(b)) &&
+            !([3, 4].includes(a) && [3, 4].includes(b))
+          ) {
+            frequencies[a][b] = 10;
+          }
+        }
+      }
+      const groups = generateGroupsForRound({
+        playerIds,
+        allPlayers: players,
+        partnerFrequencies: frequencies,
+        roundParticipation: { 1: 10, 2: 10, 3: 4, 4: 4, 5: 10, 6: 10, 7: 10, 8: 10 },
+        shuffle: false,
+      });
+
+      expect(groupHasPair(groups, 1, 2)).toBe(false);
+      expect(groupHasPair(groups, 3, 4)).toBe(false);
+      expect(groups.flat().sort((a, b) => a - b)).toEqual(playerIds);
+      expect(groups.map((group) => group.length)).toEqual([4, 4]);
+    });
+
+    it('spreads unavoidable slow players as evenly as possible', () => {
+      const fourSlow = players.map((player) => ({ ...player, speedIndex: player.id <= 4 ? 5 : 0 }));
+      const groups = generateGroupsForRound({ playerIds, allPlayers: fourSlow, shuffle: false });
+      expect(groups.map((group) => group.filter((id) => id <= 4).length).sort()).toEqual([2, 2]);
+    });
+
+    it('spreads infrequent players when some must share a group', () => {
+      const groups = generateGroupsForRound({
+        playerIds,
+        roundParticipation: { 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 10, 7: 10, 8: 10 },
+        shuffle: false,
+      });
+      expect(groups.map((group) => group.filter((id) => id <= 5).length).sort()).toEqual([2, 3]);
+    });
+
+    it('can disable slow-player separation', () => {
+      const frequencies: Record<number, Record<number, number>> = {};
+      for (const a of playerIds) {
+        frequencies[a] = {};
+        for (const b of playerIds) {
+          if ((a <= 4) !== (b <= 4)) frequencies[a][b] = 1;
+        }
+      }
+      const groups = generateGroupsForRound({
+        playerIds,
+        allPlayers: players,
+        partnerFrequencies: frequencies,
+        avoidSlowPairs: false,
+        shuffle: false,
+      });
+      expect(groupHasPair(groups, 1, 2)).toBe(true);
+    });
+
+    it('uses the entire lineup for the infrequent-player baseline, including manually assigned players', () => {
+      const groups = generateGroupsForRound({
+        playerIds: [1, 2, 3, 4, 5, 6],
+        roundParticipation: { 1: 4, 2: 4, 3: 5, 4: 5, 5: 5, 6: 5, 7: 10 },
+        shuffle: false,
+      });
+      expect(groupHasPair(groups, 1, 2)).toBe(false);
+    });
+
+    it('prefers first-time pairings over repeating the same partners', () => {
+      const frequencies: Record<number, Record<number, number>> = {};
+      for (const a of playerIds) {
+        frequencies[a] = {};
+        for (const b of playerIds) {
+          if ((a <= 4) !== (b <= 4)) frequencies[a][b] = 1;
+        }
+      }
+      const groups = generateGroupsForRound({ playerIds, partnerFrequencies: frequencies, shuffle: false });
+      expect(groups.every((group) => group.every((id) => id <= 4) || group.every((id) => id > 4))).toBe(true);
+    });
+
+    it('rejects duplicate player IDs', () => {
+      expect(() => generateGroupsForRound({ playerIds: [1, 1] })).toThrow('playerIds must be unique');
+    });
+
+    it('maintains slow and infrequent separation across seeded multi-round simulations', () => {
+      const ids = Array.from({ length: 12 }, (_, index) => index + 1);
+      const roster: Player[] = ids.map((id) => ({
+        id,
+        name: String(id),
+        nickname: '',
+        mobile_number: '',
+        speedIndex: id <= 3 ? 5 : 0,
+        email: '',
+        available: 1,
+      }));
+
+      for (const seed of [1, 42, 1234]) {
+        const random = jest.spyOn(Math, 'random').mockImplementation(mulberry32(seed));
+        try {
+          const history: GroupPlayers[] = [];
+          for (let round = 0; round < 8; round++) {
+            const participation = Object.fromEntries(ids.map((id) => [id, id >= 4 && id <= 6 ? 1 : 10 + round]));
+            const groups = generateGroupsForRound({
+              playerIds: ids,
+              allPlayers: roster,
+              partnerFrequencies: buildPlayingPartnerFrequencies(ids, history),
+              roundParticipation: participation,
+            });
+            expect(groups.flat().sort((a, b) => a - b)).toEqual(ids);
+            for (const group of groups) {
+              expect(group.filter((id) => id <= 3)).toHaveLength(1);
+              expect(group.filter((id) => id >= 4 && id <= 6)).toHaveLength(1);
+              history.push({ group_id: history.length + 1, player_ids: group });
+            }
+          }
+        } finally {
+          random.mockRestore();
+        }
+      }
+    });
+  });
+
+  describe('grouping history', () => {
+    it('excludes the selected and future rounds while retaining past cross-league history', () => {
+      const rounds: Pick<Round, 'id' | 'date' | 'league_id'>[] = [
+        { id: 1, date: '2026-01-01T00:00:00Z', league_id: 1 },
+        { id: 2, date: '2026-01-02T00:00:00Z', league_id: 1 },
+        { id: 3, date: '2026-01-02T00:00:00Z', league_id: 1 },
+        { id: 4, date: '2026-01-02T00:00:00Z', league_id: 1 },
+        { id: 5, date: '2026-01-01T12:00:00Z', league_id: 2 },
+      ];
+      const groups: Group[] = rounds.map((round) => ({
+        id: round.id,
+        round_id: round.id,
+        slot_index: 0,
+        created_at: '',
+      }));
+      const groupPlayers = [
+        { group_id: 1, player_ids: [1, 2] },
+        { group_id: 2, player_ids: [1, 3] },
+        { group_id: 3, player_ids: [1, 2] },
+        { group_id: 4, player_ids: [1, 2] },
+        { group_id: 5, player_ids: [1, 2] },
+      ];
+      const roundPlayers = rounds.map((round) => ({ round_id: round.id, player_id: 1 }));
+      const history = buildGroupingHistory([1, 2, 3], 3, rounds, groups, groupPlayers, roundPlayers);
+
+      expect(history.partnerFrequencies[1]).toEqual({ 2: 2, 3: 1 });
+      expect(history.roundParticipation).toEqual({ 1: 3, 2: 0, 3: 0 });
+      expect(history.recentRoundGroups).toEqual([[[1, 3]], [[1, 2]]]);
+    });
+
+    it('reports an invalid target round rather than treating future rounds as history', () => {
+      expect(() => buildGroupingHistory([1], 10, [], [], [], [])).toThrow('selected round was not found');
+    });
   });
 
   it('scoreGroupArrangement supports stacked recency penalties across rounds', () => {

@@ -4,11 +4,11 @@ import BottomSheetContainer from '@/components/ui/BottomSheetContainer';
 import OptionList, { OptionEntry } from '@/components/ui/OptionList';
 import { OptionPickerItem } from '@/components/ui/OptionPickerItem';
 import ThemedButton from '@/components/ui/ThemedButton';
-import { GroupPlayers, cloudBackupDatabase, useDbStore } from '@/hooks/use-dbStore';
+import { GroupPlayers, cloudBackupDatabase, getRoundsForGrouping, useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import {
   assembleEmailAddresses,
-  buildPlayingPartnerFrequencies,
+  buildGroupingHistory,
   composeEmail,
   formatGroupPlayersByNames,
   formatManualGroupPlayersByNames,
@@ -365,49 +365,26 @@ export default function GroupsScreen() {
   };
 
   const generateGroups = () => {
-    let playerIds = [...currentRoundPlayerIds];
-
-    if (manualGroupList.length) {
-      // build a list of playerIds by take currentRoundPlayerIds and removing any id specified in the manualGroupList array
+    try {
+      if (currentRoundId === null) throw new Error('No round is selected.');
       const manualGroupPlayerIds = manualGroupList.flat().flat();
-      playerIds = playerIds.filter((pid) => !manualGroupPlayerIds.includes(pid));
+      const playerIds = currentRoundPlayerIds.filter((pid) => !manualGroupPlayerIds.includes(pid));
+      const history = buildGroupingHistory(
+        currentRoundPlayerIds,
+        currentRoundId,
+        getRoundsForGrouping(),
+        groups,
+        groupPlayers,
+        roundPlayers,
+      );
+      const generated = playerIds.length
+        ? generateGroupsForRound({ playerIds, allPlayers: all_players, ...history })
+        : [];
+      setGroupsForRound(currentRoundId, [...manualGroupList, ...generated]);
+      setManualGroupList([]);
+    } catch (error) {
+      Alert.alert('Unable to generate groups', error instanceof Error ? error.message : String(error));
     }
-
-    const partnerFrequencies = buildPlayingPartnerFrequencies(playerIds, groupPlayers);
-
-    const roundParticipation: Record<number, number> = {};
-    for (const id of playerIds) {
-      roundParticipation[id] = roundPlayers.filter((rp) => rp.player_id === id).length;
-    }
-
-    const sortedRounds = [...rounds].sort((a, b) => {
-      const timeA = new Date(a.date).getTime();
-      const timeB = new Date(b.date).getTime();
-      return timeA === timeB ? a.id - b.id : timeA - timeB;
-    });
-    const currentRoundIndex = sortedRounds.findIndex((r) => r.id === currentRoundId);
-    const recentRoundGroups =
-      currentRoundIndex > 0
-        ? sortedRounds
-            .slice(Math.max(0, currentRoundIndex - 2), currentRoundIndex)
-            .reverse()
-            .map((r) => getGroupPlayersByRoundId(r.id, groups, groupPlayers).map((gp) => gp.player_ids))
-        : undefined;
-
-    let newGroupList = generateGroupsForRound({
-      playerIds,
-      partnerFrequencies,
-      allPlayers: all_players,
-      roundParticipation,
-      recentRoundGroups,
-    });
-
-    if (manualGroupList.length) {
-      newGroupList = [...manualGroupList, ...newGroupList];
-    }
-
-    setGroupsForRound(currentRoundId!, newGroupList);
-    setManualGroupList([]);
   };
 
   const handleGenerateGroupings = async () => {

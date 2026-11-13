@@ -167,79 +167,37 @@ To learn more about developing your project with Expo, look at the following res
 
 ## Group Generation Algorithm
 
-CartPartners generates tee-time groups (up to 4 players) with a multi-trial greedy builder plus local swap optimization. The objective is to minimize repeated pairings while keeping participation balanced across full-timers and part-timers.
+CartPartners creates groups of up to four using multiple greedy starts and local
+swaps. Construction, swaps, and final selection use the same priorities, in order:
 
-### Objective Function
+1. Minimize pairs of slow players (`speedIndex > 4` by default).
+2. Minimize pairs of infrequent players. A player is infrequent if their prior
+   round count is less than half the highest prior count in the current lineup.
+   When nobody has prior attendance, no player is classified as infrequent.
+3. Minimize pairs that have played together before.
+4. Minimize recent-round pair penalties, then squared historical pair counts.
+5. Among otherwise equal arrangements, favor first-time partners for players
+   with fewer unique partners per round (`fairnessWeight`, default 1; 0 disables it).
 
-During greedy construction, each candidate is scored against the current partial group:
+Higher priorities take precedence even when that increases lower-priority costs.
+The search is heuristic, so it does not guarantee a globally optimal arrangement.
+It preserves group sizes and manually selected groups; manual groups are not
+rearranged. When `shuffle` is false, multiple deterministic starts are used.
 
-```
-score(candidate) = normalizedFairness
-                 + repeatPenalty
-                 + recencyPenalty
-                 - participationMixBonus
-```
+History includes groupings and attendance from all leagues strictly before the
+selected round, ordered by date and then round ID. The current and future rounds
+are excluded, including when regenerating groups. The two-round recency window
+uses the selected round's league and includes rounds even if they had no groups.
+Attendance counts sign-ups, not confirmed play. The full current lineup, including
+manually grouped players, determines the infrequent-player threshold.
 
-Where:
-
-- `normalizedFairness = (uniquePartnerCount / roundsPlayed) * fairnessWeight`
-- `repeatPenalty = Σ repeatsWith(candidate, member) * repeatWeight`
-- `recencyPenalty = Σ recentPairPenalty(candidate, member)`
-- `participationMixBonus = |groupAvgParticipation - candidate.roundsPlayed| * 0.5`
-
-Default weights:
-
-- `fairnessWeight = 1.0`
-- `repeatWeight = N` (number of players in the current round)
-- recency window uses the two most recent rounds with default penalties:
-  - last round: `previousRoundPenaltyWeight` (default `50`)
-  - second-last round: `0.5 * previousRoundPenaltyWeight` (rounded, minimum 1)
-
-This makes historical repeats dominant, recency near-dominant, and fairness/participation tie-breakers.
-
-### Generation Flow
-
-`generateGroupsForRound` uses the following pipeline:
-
-1. Compute target group sizes (3s/4s, with special handling for awkward remainders).
-2. Run greedy construction across multiple trials:
-   - `5` trials when `shuffle: true`
-   - `1` trial when `shuffle: false`
-3. In each greedy trial:
-   - Seed each group with the most experienced available player (highest rounds played).
-   - Add remaining players by lowest score under the objective above.
-4. Improve each trial with local pairwise swaps (`localSwapImprove`) using the same recency-aware objective used by scoring.
-5. Keep the arrangement with the lowest post-swap score.
-6. Optionally run slow-player cluster adjustment to reduce groups containing multiple players above the speed threshold.
-
-### Post-Generation Scoring
-
-`scoreGroupArrangement` evaluates complete group sets as:
-
-```
-arrangementScore = Σ freq(a, b)^2 + Σ recencyPairPenalty(a, b)
-```
-
-- `freq(a, b)^2` strongly penalizes high-repeat pairs.
-- `recencyPairPenalty(a, b)` penalizes pairs that appeared in recent rounds (default: last two rounds with decay).
-
-`localSwapImprove` only accepts swaps that reduce this score, so optimization is monotonic (never worsens the objective).
-
-### Slow-Player Constraint
-
-When enabled:
-
-- Players with `speedIndex > slowThreshold` are not paired together during greedy selection unless no feasible alternative exists.
-- A conservative post-process (`simpleSlowClusterAdjustment`) may swap players to reduce slow clustering while bounding repeat-cost increases.
-
-### Backward Compatibility
-
-Callers can pass either:
-
-- `recentRoundGroups` + optional `recentRoundPenaltyWeights` (preferred), or
-- `previousRoundGroups` + `previousRoundPenaltyWeight` (legacy)
-
-If only legacy fields are provided, the algorithm behaves equivalently by constructing a one-round recency model.
+Callers can provide `recentRoundGroups` and optional
+`recentRoundPenaltyWeights`, or the legacy `previousRoundGroups` and
+`previousRoundPenaltyWeight`. Default recency penalties are 50 for the previous
+round and 25 for the second-previous round. `avoidSlowPairs: false` disables
+the slow-player priority; missing speed information is treated as not slow.
+The exported `scoreGroupArrangement` and `localSwapImprove` helpers retain their
+repeat-and-recency-only scoring and do not represent the full generator objective.
 
 ## Join the community
 

@@ -453,6 +453,12 @@ export type NewPlayer = Pick<Player, 'name'> & Partial<Omit<Player, 'id' | 'name
 export type UpdatedPlayer = Partial<Omit<Player, 'id'>>;
 export type UpdatedRound = Partial<Omit<Round, 'id'>>;
 
+export function getRoundsForGrouping(): Pick<Round, 'id' | 'date' | 'league_id'>[] {
+  return getDb().getAllSync<Pick<Round, 'id' | 'date' | 'league_id'>>(
+    'SELECT id, date, league_id FROM rounds;',
+  );
+}
+
 type DbState = {
   onlyUpcomingDates: boolean;
   usePlayerNickname: boolean;

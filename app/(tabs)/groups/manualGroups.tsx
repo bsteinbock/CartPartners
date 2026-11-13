@@ -5,13 +5,12 @@ import MultiSelectOptionList from '@/components/ui/MultiSelectOptionList';
 import { OptionEntry } from '@/components/ui/OptionList';
 import { StyledHeaderBackButton } from '@/components/ui/StyledHeaderBackButton';
 import ThemedButton from '@/components/ui/ThemedButton';
-import { ManualGroupList, Player, RoundPlayer, useDbStore } from '@/hooks/use-dbStore';
+import { ManualGroupList, Player, RoundPlayer, getRoundsForGrouping, useDbStore } from '@/hooks/use-dbStore';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import {
-  buildPlayingPartnerFrequencies,
+  buildGroupingHistory,
   formatManualGroupPlayersByNames,
   generateGroupsForRound,
-  getGroupPlayersByRoundId,
   getGroupSizes,
 } from '@/lib/cart-utils';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -24,7 +23,6 @@ export default function DefineManualGroups() {
   const {
     roundPlayers,
     currentRoundId,
-    rounds,
     groups,
     setManualGroupList,
     manualGroupList,
@@ -153,45 +151,35 @@ export default function DefineManualGroups() {
   };
 
   const finishGrouping = useCallback(() => {
-    let finalGroupList: ManualGroupList[] = [...manualGroups];
+    try {
+      if (currentRoundId === null) throw new Error('No round is selected.');
+      let finalGroupList: ManualGroupList[] = [...manualGroups];
 
-    if (availablePlayers.length > 0) {
-      // Generate groups for remaining available players
-      const remainingPlayerIds = availablePlayers.map((p) => p.id);
-      const partnerFrequencies = buildPlayingPartnerFrequencies(remainingPlayerIds, groupPlayers);
-      const roundParticipation: Record<number, number> = {};
-      for (const id of remainingPlayerIds) {
-        roundParticipation[id] = roundPlayers.filter((rp) => rp.player_id === id).length;
+      if (availablePlayers.length > 0) {
+        const remainingPlayerIds = availablePlayers.map((p) => p.id);
+        const lineupIds = roundPlayers.filter((rp) => rp.round_id === currentRoundId).map((rp) => rp.player_id);
+        const history = buildGroupingHistory(
+          lineupIds,
+          currentRoundId,
+          getRoundsForGrouping(),
+          groups,
+          groupPlayers,
+          roundPlayers,
+        );
+        const generatedGroups = generateGroupsForRound({
+          playerIds: remainingPlayerIds,
+          allPlayers: all_players,
+          ...history,
+        });
+        finalGroupList = [...manualGroups, ...generatedGroups];
       }
-      const sortedRounds = [...rounds].sort((a, b) => {
-        const timeA = new Date(a.date).getTime();
-        const timeB = new Date(b.date).getTime();
-        return timeA === timeB ? a.id - b.id : timeA - timeB;
-      });
-      const currentRoundIndex = sortedRounds.findIndex((r) => r.id === currentRoundId);
-      const recentRoundGroups =
-        currentRoundIndex > 0
-          ? sortedRounds
-              .slice(Math.max(0, currentRoundIndex - 2), currentRoundIndex)
-              .reverse()
-              .map((r) => getGroupPlayersByRoundId(r.id, groups, groupPlayers).map((gp) => gp.player_ids))
-          : undefined;
-
-      const generatedGroups = generateGroupsForRound({
-        playerIds: remainingPlayerIds,
-        partnerFrequencies,
-        allPlayers: all_players,
-        roundParticipation,
-        recentRoundGroups,
-      });
-      finalGroupList = [...manualGroups, ...generatedGroups];
+      setGroupsForRound(currentRoundId, finalGroupList);
+      setManualGroupList([]);
+      setManualGroups([]);
+      router.back();
+    } catch (error) {
+      Alert.alert('Unable to generate groups', error instanceof Error ? error.message : String(error));
     }
-
-    // Save all groups (manual + generated) to database
-    setGroupsForRound(currentRoundId!, finalGroupList);
-    setManualGroupList([]);
-    setManualGroups([]);
-    router.back();
   }, [
     availablePlayers,
     currentRoundId,
@@ -201,7 +189,6 @@ export default function DefineManualGroups() {
     router,
     groupPlayers,
     groups,
-    rounds,
     roundPlayers,
     all_players,
   ]);
