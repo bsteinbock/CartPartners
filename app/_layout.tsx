@@ -3,8 +3,7 @@ import { ThemedView } from '@/components/themed-view';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { initDb, useDbStore } from '@/hooks/use-dbStore';
 import { useOTAUpdates } from '@/hooks/use-ota-updates';
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet } from 'react-native';
@@ -55,7 +54,7 @@ export default function RootLayout() {
       <KeyboardProvider>
         <GestureHandlerRootView>
           <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-            <Stack>
+            <Stack screenOptions={{ headerTransparent: false }}>
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
               <Stack.Screen
                 name="setGroupCoordinator"

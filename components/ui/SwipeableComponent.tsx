@@ -1,6 +1,6 @@
 import React, { ReactNode, useImperativeHandle, forwardRef } from 'react';
 import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
 import Animated, {
   clamp,
   interpolate,
@@ -55,43 +55,45 @@ export const SwipeableComponent = forwardRef<SwipeableHandles, SwipeableProps>(f
       close,
     }));
 
-    const pan = Gesture.Pan()
-      .activeOffsetX([-10, 10]) // Only activate after 10px horizontal movement
-      .failOffsetY([-10, 10]) // Fail gesture if vertical movement exceeds 10px
-      .onTouchesDown(() => {
+    const hasLeftActions = !!renderLeftActions;
+    const hasRightActions = !!renderRightActions;
+    const pan = usePanGesture({
+      activeOffsetX: [-10, 10],
+      failOffsetY: [-10, 10],
+      onTouchesDown: () => {
         isHorizontal.value = false;
-      })
-      .onUpdate((event) => {
+      },
+      onUpdate: (event) => {
         if (isOpen.value) return; // prevent dragging open cell
 
         const dx = event.translationX;
 
         // If swiping right and no left actions → block
-        if (dx > 0 && !renderLeftActions) {
+        if (dx > 0 && !hasLeftActions) {
           translateX.value = 0;
           return;
         }
 
         // If swiping left and no right actions → block
-        if (dx < 0 && !renderRightActions) {
+        if (dx < 0 && !hasRightActions) {
           translateX.value = 0;
           return;
         }
 
         gestureOffset.value = dx;
         translateX.value = clamp(dx, -actionWidth, actionWidth);
-      })
-      .onEnd(() => {
+      },
+      onDeactivate: () => {
         if (gestureOffset.value > threshold) {
           // Swiped right
-          if (renderLeftActions) {
+          if (hasLeftActions) {
             translateX.value = withSpring(actionWidth);
             isOpen.value = true;
             openDirection.value = 'right';
           }
         } else if (gestureOffset.value < -threshold) {
           // Swiped left
-          if (renderRightActions) {
+          if (hasRightActions) {
             translateX.value = withSpring(-actionWidth);
             isOpen.value = true;
             openDirection.value = 'left';
@@ -103,7 +105,8 @@ export const SwipeableComponent = forwardRef<SwipeableHandles, SwipeableProps>(f
           openDirection.value = null;
         }
         gestureOffset.value = 0;
-      });
+      },
+    });
 
     const animatedStyle = useAnimatedStyle(() => ({
       transform: [{ translateX: translateX.value }],
@@ -144,7 +147,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   backgroundContainer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',

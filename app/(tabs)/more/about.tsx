@@ -55,7 +55,7 @@ export default function AboutScreen() {
       const fileName = 'cartpartners_partner_matrix.csv';
       const file = new File(Paths.cache, fileName);
       file.create({ overwrite: true });
-      file.write(csvContent);
+      file.writeSync(csvContent);
 
       const canShare = await Sharing.isAvailableAsync();
       if (!canShare) {

@@ -63,7 +63,7 @@ export default function PlayersScreen() {
       const fileName = 'cartpartners_all_players.csv';
       const file = new File(Paths.cache, fileName);
       file.create({ overwrite: true });
-      file.write(csvString);
+      file.writeSync(csvString);
 
       const canShare = await Sharing.isAvailableAsync();
       if (!canShare) {
@@ -193,7 +193,7 @@ export default function PlayersScreen() {
       const fileName = 'cartpartners_sample_players.csv';
       const file = new File(Paths.cache, fileName);
       file.create({ overwrite: true });
-      file.write(csvString);
+      file.writeSync(csvString);
 
       const canShare = await Sharing.isAvailableAsync();
       if (!canShare) {

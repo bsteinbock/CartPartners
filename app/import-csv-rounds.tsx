@@ -121,7 +121,7 @@ export default function ImportRoundsCSVScreen() {
       const fileName = 'cartpartners_sample_rounds.csv';
       const file = new File(Paths.cache, fileName);
       file.create({ overwrite: true });
-      file.write(csvString);
+      file.writeSync(csvString);
 
       const canShare = await Sharing.isAvailableAsync();
       if (!canShare) {

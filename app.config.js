@@ -4,11 +4,14 @@ module.exports = {
   expo: {
     name: IS_DEV ? 'CartPartners (Dev)' : 'CartPartners',
     slug: 'cartpartners',
-    version: '1.0.2',
+    version: '1.0.3',
     orientation: 'portrait',
     icon: './assets/images/icon.png',
     scheme: 'cartpartners',
     userInterfaceStyle: 'automatic',
+    web: {
+      output: 'single',
+    },
     ios: {
       supportsTablet: false,
       bundleIdentifier: IS_DEV ? 'com.bsteinbk.cartpartners.dev' : 'com.bsteinbk.cartpartners',
@@ -60,6 +63,7 @@ module.exports = {
       'expo-image',
       'expo-mail-composer',
       'expo-sharing',
+      'react-native-legal',
     ],
     experiments: {
       typedRoutes: true,

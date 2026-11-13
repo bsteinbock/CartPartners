@@ -6,6 +6,10 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
 
 ## Get started
 
+This project uses Expo SDK 58 and requires Node.js 22.13+ (on the 22.x line),
+24.3+ (on the 24.x line), or 26 or later. Rebuild development clients after
+native dependency changes; older SDK 55 builds cannot run SDK 58 updates.
+
 1. Install dependencies
 
    ```bash
@@ -26,6 +30,10 @@ In the output, you'll find options to open the app in a
 - [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
 
 You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+
+For web hosting, configure `Cross-Origin-Opener-Policy: same-origin` and
+`Cross-Origin-Embedder-Policy: credentialless` so Expo SQLite can use
+`SharedArrayBuffer`. Metro supplies these headers during local development.
 
 ## App Features
 

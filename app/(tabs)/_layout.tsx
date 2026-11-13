@@ -36,7 +36,7 @@ export default function TabLayout() {
         options={{
           title: 'Rounds',
           tabBarLabel: 'Rounds',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="calendar" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="calendar" color={color ?? tabIconDefault} />,
         }}
       />
       <Tabs.Screen
@@ -44,7 +44,7 @@ export default function TabLayout() {
         options={{
           title: 'Lineup',
           popToTopOnBlur: true,
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="figure.golf" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="figure.golf" color={color ?? tabIconDefault} />,
           headerShown: false,
         }}
       />
@@ -53,14 +53,14 @@ export default function TabLayout() {
         options={{
           popToTopOnBlur: true,
           title: 'Groups',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.3.fill" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.3.fill" color={color ?? tabIconDefault} />,
         }}
       />
       <Tabs.Screen
         name="more"
         options={{
           title: 'More',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="ellipsis" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="ellipsis" color={color ?? tabIconDefault} />,
           headerShown: false,
         }}
       />

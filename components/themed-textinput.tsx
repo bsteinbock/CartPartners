@@ -1,5 +1,5 @@
 import { forwardRef } from 'react';
-import { StyleSheet, TextInput, type TextInputProps } from 'react-native';
+import { StyleSheet, TextInput, type TextInputInstance, type TextInputProps } from 'react-native';
 
 import { useThemeColor } from '@/hooks/use-theme-color';
 
@@ -8,7 +8,7 @@ export type ThemedTextInputProps = TextInputProps & {
   darkColor?: string;
 };
 
-export const ThemedTextInput = forwardRef<TextInput, ThemedTextInputProps>(function ThemedTextInput(
+export const ThemedTextInput = forwardRef<TextInputInstance, ThemedTextInputProps>(function ThemedTextInput(
   { style, lightColor, darkColor, ...rest },
   ref,
 ) {

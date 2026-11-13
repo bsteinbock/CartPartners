@@ -1,22 +1,15 @@
 import { useThemeColor } from '@/hooks/use-theme-color';
-import { HeaderBackButton, HeaderBackButtonProps } from '@react-navigation/elements';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import React from 'react';
-import { Platform, StyleSheet } from 'react-native';
-/**
- * A styled HeaderBackButton that matches the default expo-router header styling.
- * This addresses the issue where the default HeaderBackButton from @react-navigation/elements
- * has too much left margin when compared to the default expo-router header.
- */
-export const StyledHeaderBackButton: React.FC<HeaderBackButtonProps> = (props) => {
+import { Platform, Pressable, StyleSheet } from 'react-native';
+
+export const StyledHeaderBackButton: React.FC<{ onPress: () => void }> = ({ onPress }) => {
   const iconColor = useThemeColor({ light: undefined, dark: undefined }, 'icon');
 
   return (
-    <HeaderBackButton
-      {...props}
-      style={[styles.backButton, props.style]}
-      pressColor={iconColor}
-      tintColor={iconColor}
-    />
+    <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={onPress} hitSlop={10} style={styles.backButton}>
+      <Ionicons name={Platform.OS === 'ios' ? 'chevron-back' : 'arrow-back'} size={24} color={iconColor} />
+    </Pressable>
   );
 };
 

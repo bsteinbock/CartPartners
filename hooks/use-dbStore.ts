@@ -204,7 +204,7 @@ export async function backupDatabase() {
   const backupFile = new File(backupDir, DB_NAME);
   const sourceDbFile = new File(dbPath);
   if (sourceDbFile.exists) {
-    sourceDbFile.copy(backupFile);
+    sourceDbFile.copySync(backupFile);
   } else {
     console.error('Source DB does not exist!');
     throw new Error('Source DB does not exist!');
@@ -255,7 +255,7 @@ export const restoreDatabaseFromFile = async (selectedFileUri: string): Promise<
     }
     deleteFileIfExists(tempImportWalFile);
     deleteFileIfExists(tempImportShmFile);
-    sourceFile.copy(tempImportFile);
+    sourceFile.copySync(tempImportFile);
     const testDb = SQLite.openDatabaseSync('imported-temp.db', undefined, Paths.cache.uri);
 
     // explicitly type the query result as an array of objects with a `name` string property
@@ -288,14 +288,14 @@ export const restoreDatabaseFromFile = async (selectedFileUri: string): Promise<
 
     // Backup current DB after the connection is closed so the file is fully flushed.
     if (currentDbFile.exists) {
-      currentDbFile.copy(backupFile);
+      currentDbFile.copySync(backupFile);
     }
 
     // Remove the current database and SQLite WAL sidecar files before swapping in the restored DB.
     deleteFileIfExists(currentDbFiles.main);
     deleteFileIfExists(currentDbFiles.wal);
     deleteFileIfExists(currentDbFiles.shm);
-    sourceFile.copy(currentDbFile);
+    sourceFile.copySync(currentDbFile);
 
     initDb(); // re-initialize DB connection and schema if needed
 
@@ -382,7 +382,7 @@ export async function cloudRestoreDatabase(serverUrl: string, apiKey: string): P
   deleteFileIfExists(new File(Paths.cache, 'cloud-restore-temp.db-wal'));
   deleteFileIfExists(new File(Paths.cache, 'cloud-restore-temp.db-shm'));
 
-  tempFile.write(data.backup, { encoding: 'base64' });
+  tempFile.writeSync(data.backup, { encoding: 'base64' });
 
   return restoreDatabaseFromFile(tempFile.uri);
 }
@@ -418,7 +418,7 @@ export async function cloudDownloadDatabase(serverUrl: string, apiKey: string): 
 
   const downloadFile = new File(Paths.document, filename);
   deleteFileIfExists(downloadFile);
-  downloadFile.write(data.backup, { encoding: 'base64' });
+  downloadFile.writeSync(data.backup, { encoding: 'base64' });
 
   if (await Sharing.isAvailableAsync()) {
     await Sharing.shareAsync(downloadFile.uri);
